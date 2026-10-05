@@ -1,0 +1,239 @@
+//! Transporte libp2p sobre Tor (D-020).
+//!
+//! Cada nodo publica un servicio onion y acepta conexiones por él, así que es
+//! alcanzable aunque esté tras CGNAT y sin ningún servidor público propio. Las
+//! direcciones `/onion3/…` se difunden como cualquier otra (identify y la
+//! DHT). Encima van Noise y yamux, igual que sobre TCP.
+//!
+//! La clave del servicio onion la genera Arti y se guarda en `<datos>/tor`; no
+//! es la clave del dispositivo (ver D-008).
+
+use std::fmt;
+use std::path::Path;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+
+use anyhow::{Context as _, Result};
+use arti_client::config::TorClientConfigBuilder;
+use arti_client::config::onion_service::OnionServiceConfigBuilder;
+use arti_client::{DataStream, TorClient};
+use futures::future::{BoxFuture, Ready, ready};
+use futures::{FutureExt, StreamExt};
+use libp2p::core::transport::{DialOpts, ListenerId, TransportError, TransportEvent};
+use libp2p::multiaddr::{Onion3Addr, Protocol};
+use libp2p::{Multiaddr, Transport};
+use safelog::DisplayRedacted;
+use tokio::sync::mpsc;
+use tor_cell::relaycell::msg::Connected;
+use tor_hsservice::{HsNickname, RunningOnionService, StreamRequest, handle_rend_requests};
+use tor_proto::stream::IncomingStreamRequest;
+use tor_rtcompat::PreferredRuntime;
+use tracing::{debug, info, warn};
+
+/// Puerto virtual del servicio onion (no abre nada en la máquina).
+pub const ONION_PORT: u16 = 4001;
+
+#[derive(Debug)]
+pub struct TorError(String);
+
+impl fmt::Display for TorError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "tor: {}", self.0)
+    }
+}
+
+impl std::error::Error for TorError {}
+
+enum ServiceEvent {
+    /// El descriptor está publicado: ya se nos puede llamar.
+    Reachable,
+    Stream(DataStream),
+}
+
+pub struct TorTransport {
+    client: Arc<TorClient<PreferredRuntime>>,
+    /// Nuestra dirección onion.
+    addr: Multiaddr,
+    events: mpsc::Receiver<ServiceEvent>,
+    listener: Option<ListenerId>,
+    reachable: bool,
+    /// Mantiene vivo el servicio.
+    _service: Arc<RunningOnionService>,
+}
+
+impl TorTransport {
+    /// Arranca el cliente Tor y el servicio onion. No espera a que estén
+    /// listos: el arranque sigue en segundo plano.
+    pub fn new(data: &Path) -> Result<Self> {
+        let dir = data.join("tor");
+        let config = TorClientConfigBuilder::from_directories(dir.join("state"), dir.join("cache"))
+            .build()
+            .context("configuración de Tor")?;
+        let client = TorClient::builder().config(config).create_unbootstrapped().context("cliente Tor")?;
+
+        let nick: HsNickname = "p2message".parse().expect("apodo válido");
+        let svc = OnionServiceConfigBuilder::default().nickname(nick).build().context("servicio onion")?;
+        let (service, requests) = client
+            .launch_onion_service(svc)
+            .context("arranque del servicio onion")?
+            .context("servicio onion desactivado")?;
+        let hsid = service.onion_address().context("servicio onion sin dirección")?;
+        let addr = onion_multiaddr(&hsid.display_unredacted().to_string())?;
+
+        {
+            let client = client.clone();
+            tokio::spawn(async move {
+                match client.bootstrap().await {
+                    Ok(()) => info!("conectado a la red Tor"),
+                    Err(e) => warn!("no se pudo conectar a Tor: {e}"),
+                }
+            });
+        }
+        let (tx, events) = mpsc::channel(32);
+        let mut status = service.status_events();
+        let ready_tx = tx.clone();
+        tokio::spawn(async move {
+            while let Some(s) = status.next().await {
+                debug!(estado = ?s.state(), "servicio onion");
+                if s.state().is_fully_reachable() {
+                    let _ = ready_tx.send(ServiceEvent::Reachable).await;
+                    break;
+                }
+            }
+        });
+        tokio::spawn(async move {
+            let mut streams = Box::pin(handle_rend_requests(requests));
+            while let Some(req) = streams.next().await {
+                let tx = tx.clone();
+                tokio::spawn(async move {
+                    if let Some(s) = accept(req).await {
+                        let _ = tx.send(ServiceEvent::Stream(s)).await;
+                    }
+                });
+            }
+        });
+        Ok(Self { client, addr, events, listener: None, reachable: false, _service: service })
+    }
+
+    /// Dirección onion de este nodo.
+    pub fn address(&self) -> Multiaddr {
+        self.addr.clone()
+    }
+}
+
+async fn accept(req: StreamRequest) -> Option<DataStream> {
+    match req.request() {
+        IncomingStreamRequest::Begin(b) if b.port() == ONION_PORT => {}
+        _ => {
+            let _ = req.shutdown_circuit();
+            return None;
+        }
+    }
+    match req.accept(Connected::new_empty()).await {
+        Ok(s) => Some(s),
+        Err(e) => {
+            debug!("conexión onion rechazada: {e}");
+            None
+        }
+    }
+}
+
+/// `xxxx.onion` → `/onion3/xxxx:ONION_PORT`.
+fn onion_multiaddr(host: &str) -> Result<Multiaddr> {
+    let b32 = host.trim_end_matches(".onion").to_ascii_uppercase();
+    let raw = data_encoding::BASE32_NOPAD.decode(b32.as_bytes()).context("dirección onion")?;
+    let raw: [u8; 35] = raw.try_into().map_err(|_| anyhow::anyhow!("dirección onion de longitud incorrecta"))?;
+    Ok(Multiaddr::empty().with(Protocol::Onion3(Onion3Addr::from((raw, ONION_PORT)))))
+}
+
+/// `/onion3/xxxx:puerto[/p2p/…]` → (`xxxx.onion`, puerto).
+fn onion_target(addr: &Multiaddr) -> Option<(String, u16)> {
+    let mut it = addr.iter();
+    let Some(Protocol::Onion3(a)) = it.next() else { return None };
+    if !matches!(it.next(), None | Some(Protocol::P2p(_))) {
+        return None;
+    }
+    let host = data_encoding::BASE32_NOPAD.encode(a.hash()).to_ascii_lowercase();
+    Some((format!("{host}.onion"), a.port()))
+}
+
+impl Transport for TorTransport {
+    type Output = DataStream;
+    type Error = TorError;
+    type ListenerUpgrade = Ready<Result<DataStream, TorError>>;
+    type Dial = BoxFuture<'static, Result<DataStream, TorError>>;
+
+    fn listen_on(&mut self, id: ListenerId, addr: Multiaddr) -> Result<(), TransportError<TorError>> {
+        if addr != self.addr || self.listener.is_some() {
+            return Err(TransportError::MultiaddrNotSupported(addr));
+        }
+        self.listener = Some(id);
+        Ok(())
+    }
+
+    fn remove_listener(&mut self, id: ListenerId) -> bool {
+        if self.listener == Some(id) {
+            self.listener = None;
+            return true;
+        }
+        false
+    }
+
+    fn dial(&mut self, addr: Multiaddr, _opts: DialOpts) -> Result<Self::Dial, TransportError<TorError>> {
+        let Some((host, port)) = onion_target(&addr) else {
+            return Err(TransportError::MultiaddrNotSupported(addr));
+        };
+        if Some((host.clone(), port)) == onion_target(&self.addr) {
+            return Err(TransportError::Other(TorError("llamada a nosotros mismos".into())));
+        }
+        let client = self.client.clone();
+        Ok(async move {
+            debug!(%host, "llamando por Tor");
+            client.connect((host.as_str(), port)).await.map_err(|e| TorError(e.to_string()))
+        }
+        .boxed())
+    }
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<TransportEvent<Self::ListenerUpgrade, TorError>> {
+        let Some(listener_id) = self.listener else { return Poll::Pending };
+        loop {
+            match self.events.poll_recv(cx) {
+                Poll::Ready(Some(ServiceEvent::Reachable)) => {
+                    if !self.reachable {
+                        self.reachable = true;
+                        info!(addr = %self.addr, "servicio onion publicado");
+                        return Poll::Ready(TransportEvent::NewAddress { listener_id, listen_addr: self.addr.clone() });
+                    }
+                }
+                Poll::Ready(Some(ServiceEvent::Stream(s))) => {
+                    return Poll::Ready(TransportEvent::Incoming {
+                        listener_id,
+                        upgrade: ready(Ok(s)),
+                        local_addr: self.addr.clone(),
+                        // Tor no revela quién llama.
+                        send_back_addr: Multiaddr::empty(),
+                    });
+                }
+                Poll::Ready(None) => {
+                    warn!("el servicio onion se ha detenido");
+                    self.listener = None;
+                    return Poll::Ready(TransportEvent::ListenerClosed { listener_id, reason: Ok(()) });
+                }
+                Poll::Pending => return Poll::Pending,
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn onion_addresses_round_trip() {
+        let host = "pg6mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscryd.onion";
+        let addr = onion_multiaddr(host).unwrap();
+        assert_eq!(onion_target(&addr), Some((host.to_string(), ONION_PORT)));
+    }
+}

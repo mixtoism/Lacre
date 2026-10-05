@@ -1,0 +1,26 @@
+[package]
+name = "p2m-core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+argon2 = "0.6.0"
+blake3 = "1.8.7"
+chacha20poly1305 = "0.10"
+ciborium = "0.2.2"
+curve25519-dalek = "4"
+data-encoding = "2.11.1"
+ed25519-dalek = { version = "2", features = ["rand_core", "serde", "zeroize"] }
+openmls = "0.9.0"
+openmls_basic_credential = "0.6"
+openmls_memory_storage = { version = "0.6", features = ["persistence"] }
+openmls_rust_crypto = "0.6.0"
+openmls_traits = "0.6.0"
+rand = "0.8"
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.21"
+zeroize = "1.9.0"
+
+[dev-dependencies]
+tempfile = "3.27.0"
