@@ -1,0 +1,31 @@
+# Nodo Lacre siempre encendido (relay, buzones, servicio onion).
+#
+#   sudo useradd --system --home-dir /var/lib/lacre-node lacre
+#   sudo install -m755 target/release/lacre-node /usr/local/bin/
+#   sudo cp deploy/lacre-node.service /etc/systemd/system/
+#   sudo systemctl enable --now lacre-node
+#
+# Con IP pública, abre el puerto 4001 (TCP y UDP) y deja `--relay-server`.
+# Tras NAT o CGNAT quita `--relay-server`: el nodo sigue siendo útil como
+# buzón y como punto de entrada por su servicio onion. La dirección, lista
+# para usar como `--bootstrap`, sale en el journal:
+#   journalctl -u lacre-node | grep 'escuchando en /onion3'
+[Unit]
+Description=Lacre node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=lacre
+StateDirectory=lacre-node
+ExecStart=/usr/local/bin/lacre-node --headless --data /var/lib/lacre-node --port 4001 --relay-server
+Environment=RUST_LOG=info
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

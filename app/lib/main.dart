@@ -13,12 +13,12 @@ import 'ui/onboarding.dart';
 Future<void> main() async {
   await RustLib.init();
   final store = Store();
-  runApp(P2mApp(store: store));
+  runApp(LacreApp(store: store));
   await store.start();
 }
 
-class P2mApp extends StatelessWidget {
-  const P2mApp({super.key, required this.store});
+class LacreApp extends StatelessWidget {
+  const LacreApp({super.key, required this.store});
 
   final Store store;
 
@@ -34,7 +34,7 @@ class P2mApp extends StatelessWidget {
       dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
     ).copyWith(primary: brand, onPrimary: Colors.white);
     return MaterialApp(
-      title: 'p2message',
+      title: 'Lacre',
       debugShowCheckedModeBanner: false,
       // Sin `locale`: Flutter sigue el idioma del sistema; si no está
       // traducido, el primero de la lista (inglés, ver l10n.yaml).

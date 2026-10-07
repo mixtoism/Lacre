@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
-import '../src/rust/api/p2m.dart' as p2m;
+import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'common.dart';
 import 'scan.dart';
@@ -43,7 +43,7 @@ class _MembersPageState extends State<MembersPage> {
     setState(() => _removing = handle);
     await guard(
       context,
-      () => p2m.removeMember(index: widget.index, handle: handle),
+      () => lacre.removeMember(index: widget.index, handle: handle),
     );
     if (mounted) setState(() => _removing = null);
   }
@@ -53,7 +53,7 @@ class _MembersPageState extends State<MembersPage> {
     return ListenableBuilder(
       listenable: widget.store,
       builder: (context, _) {
-        final members = p2m.chatMembers(index: widget.index);
+        final members = lacre.chatMembers(index: widget.index);
         return Scaffold(
           appBar: AppBar(title: Text(context.l.members)),
           floatingActionButton: members.canEdit
@@ -135,7 +135,7 @@ class _AddMembersDialogState extends State<AddMembersDialog> {
     if (targets.isEmpty) return;
     setState(() => _busy = true);
     final ok = await guard(context, () async {
-      await p2m.addMembers(index: widget.index, targets: targets);
+      await lacre.addMembers(index: widget.index, targets: targets);
       return true;
     });
     if (!mounted) return;

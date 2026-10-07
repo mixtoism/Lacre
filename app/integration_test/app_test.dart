@@ -1,5 +1,5 @@
 // Alta en la app y conversación con un nodo de la CLI en el mismo equipo
-// (se encuentran por mDNS). Requiere `cargo build -p p2m-node`.
+// (se encuentran por mDNS). Requiere `cargo build -p lacre-node`.
 //
 // Todo va en un solo test: la app tiene un único nodo por proceso.
 import 'dart:convert';
@@ -8,17 +8,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:p2message/main.dart';
-import 'package:p2message/src/rust/frb_generated.dart';
-import 'package:p2message/store.dart';
+import 'package:lacre/main.dart';
+import 'package:lacre/src/rust/frb_generated.dart';
+import 'package:lacre/store.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async => await RustLib.init());
 
   testWidgets('alta y chat con un nodo de la CLI', (tester) async {
-    final tmp = await Directory.systemTemp.createTemp('p2m-interop');
-    final bin = '${Directory.current.parent.path}/target/debug/p2m-node';
+    final tmp = await Directory.systemTemp.createTemp('lacre-interop');
+    final bin = '${Directory.current.parent.path}/target/debug/lacre-node';
     final cli = await Process.start(bin, [
       '--data',
       '${tmp.path}/cli',
@@ -51,7 +51,7 @@ void main() {
     final bob = await waitOut(RegExp(r'identidad creada: (\S+)'));
 
     final store = Store();
-    await tester.pumpWidget(P2mApp(store: store));
+    await tester.pumpWidget(LacreApp(store: store));
     await store.start(dataDir: '${tmp.path}/app');
     // Sin la pregunta de los avisos, que taparía la pantalla.
     await store.setNoticeContent(NoticeContent.full);

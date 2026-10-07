@@ -5,15 +5,15 @@
 // El móvil y el PC no tienen por qué estar en la misma red: los códigos
 // `p2m:` llevan la dirección onion de cada nodo (D-020, D-021).
 //
-// Coordinación: el móvil escribe líneas `P2M_E2E …` en la salida del test,
+// Coordinación: el móvil escribe líneas `LACRE_E2E …` en la salida del test,
 // y el script reacciona a ellas.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:p2message/main.dart';
-import 'package:p2message/src/rust/api/p2m.dart' as p2m;
-import 'package:p2message/src/rust/frb_generated.dart';
-import 'package:p2message/store.dart';
+import 'package:lacre/main.dart';
+import 'package:lacre/src/rust/api/lacre.dart' as lacre;
+import 'package:lacre/src/rust/frb_generated.dart';
+import 'package:lacre/store.dart';
 import 'package:path_provider/path_provider.dart';
 
 const pcA = String.fromEnvironment('PC_A');
@@ -31,7 +31,7 @@ void main() {
     'móvil ↔ PC: chats, grupo, buzones y vinculación',
     (tester) async {
       await RustLib.init();
-      void marca(String s) => debugPrint('P2M_E2E $s');
+      void marca(String s) => debugPrint('LACRE_E2E $s');
 
       Future<void> waitFor(Finder f, {Duration max = paso}) async {
         final end = DateTime.now().add(max);
@@ -85,7 +85,7 @@ void main() {
       final tmp = await getTemporaryDirectory();
       final dir = '${tmp.path}/e2e-${DateTime.now().millisecondsSinceEpoch}';
       final store = Store();
-      await tester.pumpWidget(P2mApp(store: store));
+      await tester.pumpWidget(LacreApp(store: store));
       await store.start(dataDir: dir);
       // Sin la pregunta de los avisos, que taparía la pantalla.
       await store.setNoticeContent(NoticeContent.full);
@@ -117,7 +117,7 @@ void main() {
       final qr = await esperar(() async {
         // El onion tarda en publicarse; hasta entonces el código no lo lleva.
         for (;;) {
-          final q = await p2m.qrPayload();
+          final q = await lacre.qrPayload();
           if (q.contains('/onion3/')) return q;
           await Future<void>.delayed(const Duration(seconds: 5));
         }
@@ -146,8 +146,8 @@ void main() {
       // 6. Vincular C como segundo dispositivo del móvil. El script espera a
       //    que C entre en el grupo y hace que B escriba en él; tienen que
       //    recibirlo el móvil y C.
-      await esperar(p2m.linkDevice(code: pcCLink, label: 'pc'));
-      expect(p2m.devices().length, 2);
+      await esperar(lacre.linkDevice(code: pcCLink, label: 'pc'));
+      expect(lacre.devices().length, 2);
       marca('vinculado');
       await waitFor(
         find.text('pong vinculado desde B'),

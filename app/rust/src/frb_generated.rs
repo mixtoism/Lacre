@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1437427075;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1480781094;
 
 // Section: executor
 
@@ -47,7 +47,7 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
-fn wire__crate__api__p2m__accept_chat_impl(
+fn wire__crate__api__lacre__accept_chat_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -74,7 +74,7 @@ fn wire__crate__api__p2m__accept_chat_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::accept_chat(api_index).await?;
+                        let output_ok = crate::api::lacre::accept_chat(api_index).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -83,7 +83,7 @@ fn wire__crate__api__p2m__accept_chat_impl(
         },
     )
 }
-fn wire__crate__api__p2m__add_members_impl(
+fn wire__crate__api__lacre__add_members_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -112,7 +112,7 @@ fn wire__crate__api__p2m__add_members_impl(
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
                         let output_ok =
-                            crate::api::p2m::add_members(api_index, api_targets).await?;
+                            crate::api::lacre::add_members(api_index, api_targets).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -121,7 +121,7 @@ fn wire__crate__api__p2m__add_members_impl(
         },
     )
 }
-fn wire__crate__api__p2m__add_sticker_impl(
+fn wire__crate__api__lacre__add_sticker_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -146,14 +146,14 @@ fn wire__crate__api__p2m__add_sticker_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::add_sticker(api_bytes)?;
+                    let output_ok = crate::api::lacre::add_sticker(api_bytes)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__avatar_path_impl(
+fn wire__crate__api__lacre__avatar_path_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -178,14 +178,14 @@ fn wire__crate__api__p2m__avatar_path_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::avatar_path(api_handle)?;
+                    let output_ok = crate::api::lacre::avatar_path(api_handle)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__block_impl(
+fn wire__crate__api__lacre__block_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -210,14 +210,14 @@ fn wire__crate__api__p2m__block_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::block(api_handle)?;
+                    let output_ok = crate::api::lacre::block(api_handle)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__blocked_impl(
+fn wire__crate__api__lacre__blocked_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -241,14 +241,14 @@ fn wire__crate__api__p2m__blocked_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::blocked()?;
+                    let output_ok = crate::api::lacre::blocked()?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__chat_members_impl(
+fn wire__crate__api__lacre__chat_members_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -273,14 +273,14 @@ fn wire__crate__api__p2m__chat_members_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::chat_members(api_index)?;
+                    let output_ok = crate::api::lacre::chat_members(api_index)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__chats_impl(
+fn wire__crate__api__lacre__chats_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -304,14 +304,14 @@ fn wire__crate__api__p2m__chats_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::chats()?;
+                    let output_ok = crate::api::lacre::chats()?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__create_chat_impl(
+fn wire__crate__api__lacre__create_chat_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -340,7 +340,7 @@ fn wire__crate__api__p2m__create_chat_impl(
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
                         let output_ok =
-                            crate::api::p2m::create_chat(api_title, api_targets).await?;
+                            crate::api::lacre::create_chat(api_title, api_targets).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -349,7 +349,7 @@ fn wire__crate__api__p2m__create_chat_impl(
         },
     )
 }
-fn wire__crate__api__p2m__create_identity_impl(
+fn wire__crate__api__lacre__create_identity_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -376,7 +376,7 @@ fn wire__crate__api__p2m__create_identity_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::create_identity(api_name).await?;
+                        let output_ok = crate::api::lacre::create_identity(api_name).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -385,7 +385,7 @@ fn wire__crate__api__p2m__create_identity_impl(
         },
     )
 }
-fn wire__crate__api__p2m__delete_chat_impl(
+fn wire__crate__api__lacre__delete_chat_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -410,14 +410,14 @@ fn wire__crate__api__p2m__delete_chat_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::delete_chat(api_index)?;
+                    let output_ok = crate::api::lacre::delete_chat(api_index)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__devices_impl(
+fn wire__crate__api__lacre__devices_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -441,14 +441,14 @@ fn wire__crate__api__p2m__devices_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::devices()?;
+                    let output_ok = crate::api::lacre::devices()?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__download_file_impl(
+fn wire__crate__api__lacre__download_file_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -475,7 +475,7 @@ fn wire__crate__api__p2m__download_file_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::download_file(api_id).await?;
+                        let output_ok = crate::api::lacre::download_file(api_id).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -484,7 +484,7 @@ fn wire__crate__api__p2m__download_file_impl(
         },
     )
 }
-fn wire__crate__api__p2m__event_stream_impl(
+fn wire__crate__api__lacre__event_stream_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -507,14 +507,14 @@ fn wire__crate__api__p2m__event_stream_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_sink = <StreamSink<
-                crate::api::p2m::UiEvent,
+                crate::api::lacre::UiEvent,
                 flutter_rust_bridge::for_generated::SseCodec,
             >>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || {
-                        let output_ok = crate::api::p2m::event_stream(api_sink)?;
+                        let output_ok = crate::api::lacre::event_stream(api_sink)?;
                         std::result::Result::Ok(output_ok)
                     })(),
                 )
@@ -522,7 +522,7 @@ fn wire__crate__api__p2m__event_stream_impl(
         },
     )
 }
-fn wire__crate__api__p2m__init_app_impl(
+fn wire__crate__api__lacre__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -548,7 +548,7 @@ fn wire__crate__api__p2m__init_app_impl(
             move |context| {
                 transform_result_sse::<_, ()>((move || {
                     let output_ok = Ok::<_, ()>({
-                        crate::api::p2m::init_app();
+                        crate::api::lacre::init_app();
                     })?;
                     std::result::Result::Ok(output_ok)
                 })())
@@ -556,7 +556,7 @@ fn wire__crate__api__p2m__init_app_impl(
         },
     )
 }
-fn wire__crate__api__p2m__is_blocked_impl(
+fn wire__crate__api__lacre__is_blocked_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -581,14 +581,14 @@ fn wire__crate__api__p2m__is_blocked_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::is_blocked(api_handle)?;
+                    let output_ok = crate::api::lacre::is_blocked(api_handle)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__keep_sticker_impl(
+fn wire__crate__api__lacre__keep_sticker_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -613,14 +613,14 @@ fn wire__crate__api__p2m__keep_sticker_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::keep_sticker(api_id)?;
+                    let output_ok = crate::api::lacre::keep_sticker(api_id)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__link_device_impl(
+fn wire__crate__api__lacre__link_device_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -648,7 +648,7 @@ fn wire__crate__api__p2m__link_device_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::link_device(api_code, api_label).await?;
+                        let output_ok = crate::api::lacre::link_device(api_code, api_label).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -657,7 +657,7 @@ fn wire__crate__api__p2m__link_device_impl(
         },
     )
 }
-fn wire__crate__api__p2m__max_file_bytes_impl(
+fn wire__crate__api__lacre__max_file_bytes_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -680,13 +680,13 @@ fn wire__crate__api__p2m__max_file_bytes_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Ok::<_, ()>(crate::api::p2m::max_file_bytes())?;
+                let output_ok = Ok::<_, ()>(crate::api::lacre::max_file_bytes())?;
                 std::result::Result::Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__p2m__max_sticker_bytes_impl(
+fn wire__crate__api__lacre__max_sticker_bytes_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -709,13 +709,13 @@ fn wire__crate__api__p2m__max_sticker_bytes_impl(
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             deserializer.end();
             transform_result_sse::<_, ()>((move || {
-                let output_ok = Ok::<_, ()>(crate::api::p2m::max_sticker_bytes())?;
+                let output_ok = Ok::<_, ()>(crate::api::lacre::max_sticker_bytes())?;
                 std::result::Result::Ok(output_ok)
             })())
         },
     )
 }
-fn wire__crate__api__p2m__messages_impl(
+fn wire__crate__api__lacre__messages_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -740,14 +740,14 @@ fn wire__crate__api__p2m__messages_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::messages(api_index)?;
+                    let output_ok = crate::api::lacre::messages(api_index)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__profile_impl(
+fn wire__crate__api__lacre__profile_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -771,14 +771,14 @@ fn wire__crate__api__p2m__profile_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::profile()?;
+                    let output_ok = crate::api::lacre::profile()?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__qr_payload_impl(
+fn wire__crate__api__lacre__qr_payload_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -804,7 +804,7 @@ fn wire__crate__api__p2m__qr_payload_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::qr_payload().await?;
+                        let output_ok = crate::api::lacre::qr_payload().await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -813,7 +813,7 @@ fn wire__crate__api__p2m__qr_payload_impl(
         },
     )
 }
-fn wire__crate__api__p2m__remove_member_impl(
+fn wire__crate__api__lacre__remove_member_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -842,7 +842,7 @@ fn wire__crate__api__p2m__remove_member_impl(
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
                         let output_ok =
-                            crate::api::p2m::remove_member(api_index, api_handle).await?;
+                            crate::api::lacre::remove_member(api_index, api_handle).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -851,7 +851,7 @@ fn wire__crate__api__p2m__remove_member_impl(
         },
     )
 }
-fn wire__crate__api__p2m__remove_sticker_impl(
+fn wire__crate__api__lacre__remove_sticker_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -876,14 +876,14 @@ fn wire__crate__api__p2m__remove_sticker_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::remove_sticker(api_id)?;
+                    let output_ok = crate::api::lacre::remove_sticker(api_id)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__search_impl(
+fn wire__crate__api__lacre__search_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -909,14 +909,14 @@ fn wire__crate__api__p2m__search_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::search(api_query, api_index)?;
+                    let output_ok = crate::api::lacre::search(api_query, api_index)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__send_impl(
+fn wire__crate__api__lacre__send_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -944,7 +944,7 @@ fn wire__crate__api__p2m__send_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::send(api_index, api_text).await?;
+                        let output_ok = crate::api::lacre::send(api_index, api_text).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -953,7 +953,7 @@ fn wire__crate__api__p2m__send_impl(
         },
     )
 }
-fn wire__crate__api__p2m__send_file_impl(
+fn wire__crate__api__lacre__send_file_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -981,7 +981,7 @@ fn wire__crate__api__p2m__send_file_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::send_file(api_index, api_path).await?;
+                        let output_ok = crate::api::lacre::send_file(api_index, api_path).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -990,7 +990,7 @@ fn wire__crate__api__p2m__send_file_impl(
         },
     )
 }
-fn wire__crate__api__p2m__send_sticker_impl(
+fn wire__crate__api__lacre__send_sticker_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1018,7 +1018,7 @@ fn wire__crate__api__p2m__send_sticker_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::send_sticker(api_index, api_id).await?;
+                        let output_ok = crate::api::lacre::send_sticker(api_index, api_id).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -1027,7 +1027,7 @@ fn wire__crate__api__p2m__send_sticker_impl(
         },
     )
 }
-fn wire__crate__api__p2m__set_avatar_impl(
+fn wire__crate__api__lacre__set_avatar_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1054,7 +1054,7 @@ fn wire__crate__api__p2m__set_avatar_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::set_avatar(api_image).await?;
+                        let output_ok = crate::api::lacre::set_avatar(api_image).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -1063,7 +1063,7 @@ fn wire__crate__api__p2m__set_avatar_impl(
         },
     )
 }
-fn wire__crate__api__p2m__set_power_impl(
+fn wire__crate__api__lacre__set_power_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -1089,14 +1089,14 @@ fn wire__crate__api__p2m__set_power_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::set_power(api_background, api_wifi)?;
+                    let output_ok = crate::api::lacre::set_power(api_background, api_wifi)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__start_impl(
+fn wire__crate__api__lacre__start_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1126,7 +1126,7 @@ fn wire__crate__api__p2m__start_impl(
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || {
                         let output_ok =
-                            crate::api::p2m::start(api_data_dir, api_lan_only, api_data_key)?;
+                            crate::api::lacre::start(api_data_dir, api_lan_only, api_data_key)?;
                         std::result::Result::Ok(output_ok)
                     })(),
                 )
@@ -1134,7 +1134,7 @@ fn wire__crate__api__p2m__start_impl(
         },
     )
 }
-fn wire__crate__api__p2m__status_impl(
+fn wire__crate__api__lacre__status_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1160,7 +1160,7 @@ fn wire__crate__api__p2m__status_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::status().await?;
+                        let output_ok = crate::api::lacre::status().await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -1169,7 +1169,7 @@ fn wire__crate__api__p2m__status_impl(
         },
     )
 }
-fn wire__crate__api__p2m__stickers_impl(
+fn wire__crate__api__lacre__stickers_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -1193,14 +1193,14 @@ fn wire__crate__api__p2m__stickers_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::stickers()?;
+                    let output_ok = crate::api::lacre::stickers()?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__unblock_impl(
+fn wire__crate__api__lacre__unblock_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
@@ -1225,14 +1225,14 @@ fn wire__crate__api__p2m__unblock_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::p2m::unblock(api_handle)?;
+                    let output_ok = crate::api::lacre::unblock(api_handle)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
         },
     )
 }
-fn wire__crate__api__p2m__unlink_device_impl(
+fn wire__crate__api__lacre__unlink_device_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1259,7 +1259,7 @@ fn wire__crate__api__p2m__unlink_device_impl(
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || async move {
-                        let output_ok = crate::api::p2m::unlink_device(api_code).await?;
+                        let output_ok = crate::api::lacre::unlink_device(api_code).await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -1280,7 +1280,7 @@ impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
 }
 
 impl SseDecode
-    for StreamSink<crate::api::p2m::UiEvent, flutter_rust_bridge::for_generated::SseCodec>
+    for StreamSink<crate::api::lacre::UiEvent, flutter_rust_bridge::for_generated::SseCodec>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1304,18 +1304,18 @@ impl SseDecode for bool {
     }
 }
 
-impl SseDecode for crate::api::p2m::ChatInfo {
+impl SseDecode for crate::api::lacre::ChatInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_index = <u32>::sse_decode(deserializer);
         let mut var_name = <String>::sse_decode(deserializer);
         let mut var_devices = <u32>::sse_decode(deserializer);
         let mut var_active = <bool>::sse_decode(deserializer);
-        let mut var_last = <Option<crate::api::p2m::Message>>::sse_decode(deserializer);
+        let mut var_last = <Option<crate::api::lacre::Message>>::sse_decode(deserializer);
         let mut var_request = <bool>::sse_decode(deserializer);
         let mut var_peer = <Option<String>>::sse_decode(deserializer);
         let mut var_avatar = <Option<String>>::sse_decode(deserializer);
-        return crate::api::p2m::ChatInfo {
+        return crate::api::lacre::ChatInfo {
             index: var_index,
             name: var_name,
             devices: var_devices,
@@ -1328,13 +1328,13 @@ impl SseDecode for crate::api::p2m::ChatInfo {
     }
 }
 
-impl SseDecode for crate::api::p2m::ChatMembers {
+impl SseDecode for crate::api::lacre::ChatMembers {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_participants = <Vec<String>>::sse_decode(deserializer);
         let mut var_canEdit = <bool>::sse_decode(deserializer);
         let mut var_me = <Option<String>>::sse_decode(deserializer);
-        return crate::api::p2m::ChatMembers {
+        return crate::api::lacre::ChatMembers {
             participants: var_participants,
             can_edit: var_canEdit,
             me: var_me,
@@ -1342,13 +1342,13 @@ impl SseDecode for crate::api::p2m::ChatMembers {
     }
 }
 
-impl SseDecode for crate::api::p2m::Device {
+impl SseDecode for crate::api::lacre::Device {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_code = <String>::sse_decode(deserializer);
         let mut var_label = <String>::sse_decode(deserializer);
         let mut var_thisDevice = <bool>::sse_decode(deserializer);
-        return crate::api::p2m::Device {
+        return crate::api::lacre::Device {
             code: var_code,
             label: var_label,
             this_device: var_thisDevice,
@@ -1356,14 +1356,14 @@ impl SseDecode for crate::api::p2m::Device {
     }
 }
 
-impl SseDecode for crate::api::p2m::FileAttachment {
+impl SseDecode for crate::api::lacre::FileAttachment {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_id = <String>::sse_decode(deserializer);
         let mut var_name = <String>::sse_decode(deserializer);
         let mut var_size = <u64>::sse_decode(deserializer);
         let mut var_path = <Option<String>>::sse_decode(deserializer);
-        return crate::api::p2m::FileAttachment {
+        return crate::api::lacre::FileAttachment {
             id: var_id,
             name: var_name,
             size: var_size,
@@ -1372,13 +1372,13 @@ impl SseDecode for crate::api::p2m::FileAttachment {
     }
 }
 
-impl SseDecode for crate::api::p2m::Hit {
+impl SseDecode for crate::api::lacre::Hit {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_index = <u32>::sse_decode(deserializer);
         let mut var_position = <u32>::sse_decode(deserializer);
-        let mut var_message = <crate::api::p2m::Message>::sse_decode(deserializer);
-        return crate::api::p2m::Hit {
+        let mut var_message = <crate::api::lacre::Message>::sse_decode(deserializer);
+        return crate::api::lacre::Hit {
             index: var_index,
             position: var_position,
             message: var_message,
@@ -1405,49 +1405,49 @@ impl SseDecode for Vec<String> {
     }
 }
 
-impl SseDecode for Vec<crate::api::p2m::ChatInfo> {
+impl SseDecode for Vec<crate::api::lacre::ChatInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::p2m::ChatInfo>::sse_decode(deserializer));
+            ans_.push(<crate::api::lacre::ChatInfo>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::api::p2m::Device> {
+impl SseDecode for Vec<crate::api::lacre::Device> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::p2m::Device>::sse_decode(deserializer));
+            ans_.push(<crate::api::lacre::Device>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::api::p2m::Hit> {
+impl SseDecode for Vec<crate::api::lacre::Hit> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::p2m::Hit>::sse_decode(deserializer));
+            ans_.push(<crate::api::lacre::Hit>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::api::p2m::Message> {
+impl SseDecode for Vec<crate::api::lacre::Message> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::p2m::Message>::sse_decode(deserializer));
+            ans_.push(<crate::api::lacre::Message>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -1465,19 +1465,19 @@ impl SseDecode for Vec<u8> {
     }
 }
 
-impl SseDecode for Vec<crate::api::p2m::Sticker> {
+impl SseDecode for Vec<crate::api::lacre::Sticker> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::p2m::Sticker>::sse_decode(deserializer));
+            ans_.push(<crate::api::lacre::Sticker>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for crate::api::p2m::Message {
+impl SseDecode for crate::api::lacre::Message {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_from = <String>::sse_decode(deserializer);
@@ -1485,9 +1485,9 @@ impl SseDecode for crate::api::p2m::Message {
         let mut var_sentAt = <i64>::sse_decode(deserializer);
         let mut var_mine = <bool>::sse_decode(deserializer);
         let mut var_notice = <bool>::sse_decode(deserializer);
-        let mut var_sticker = <Option<crate::api::p2m::Sticker>>::sse_decode(deserializer);
-        let mut var_file = <Option<crate::api::p2m::FileAttachment>>::sse_decode(deserializer);
-        return crate::api::p2m::Message {
+        let mut var_sticker = <Option<crate::api::lacre::Sticker>>::sse_decode(deserializer);
+        let mut var_file = <Option<crate::api::lacre::FileAttachment>>::sse_decode(deserializer);
+        return crate::api::lacre::Message {
             from: var_from,
             text: var_text,
             sent_at: var_sentAt,
@@ -1510,33 +1510,35 @@ impl SseDecode for Option<String> {
     }
 }
 
-impl SseDecode for Option<crate::api::p2m::FileAttachment> {
+impl SseDecode for Option<crate::api::lacre::FileAttachment> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::api::p2m::FileAttachment>::sse_decode(deserializer));
+            return Some(<crate::api::lacre::FileAttachment>::sse_decode(
+                deserializer,
+            ));
         } else {
             return None;
         }
     }
 }
 
-impl SseDecode for Option<crate::api::p2m::Message> {
+impl SseDecode for Option<crate::api::lacre::Message> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::api::p2m::Message>::sse_decode(deserializer));
+            return Some(<crate::api::lacre::Message>::sse_decode(deserializer));
         } else {
             return None;
         }
     }
 }
 
-impl SseDecode for Option<crate::api::p2m::Sticker> {
+impl SseDecode for Option<crate::api::lacre::Sticker> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
-            return Some(<crate::api::p2m::Sticker>::sse_decode(deserializer));
+            return Some(<crate::api::lacre::Sticker>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -1565,14 +1567,14 @@ impl SseDecode for Option<Vec<u8>> {
     }
 }
 
-impl SseDecode for crate::api::p2m::Profile {
+impl SseDecode for crate::api::lacre::Profile {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_handle = <Option<String>>::sse_decode(deserializer);
         let mut var_deviceCode = <String>::sse_decode(deserializer);
         let mut var_primary = <bool>::sse_decode(deserializer);
         let mut var_encrypted = <bool>::sse_decode(deserializer);
-        return crate::api::p2m::Profile {
+        return crate::api::lacre::Profile {
             handle: var_handle,
             device_code: var_deviceCode,
             primary: var_primary,
@@ -1581,36 +1583,36 @@ impl SseDecode for crate::api::p2m::Profile {
     }
 }
 
-impl SseDecode for crate::api::p2m::SendResult {
+impl SseDecode for crate::api::lacre::SendResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_stored = <u32>::sse_decode(deserializer);
         let mut var_failed = <u32>::sse_decode(deserializer);
-        return crate::api::p2m::SendResult {
+        return crate::api::lacre::SendResult {
             stored: var_stored,
             failed: var_failed,
         };
     }
 }
 
-impl SseDecode for crate::api::p2m::Status {
+impl SseDecode for crate::api::lacre::Status {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_peers = <u32>::sse_decode(deserializer);
         let mut var_onion = <Option<String>>::sse_decode(deserializer);
-        return crate::api::p2m::Status {
+        return crate::api::lacre::Status {
             peers: var_peers,
             onion: var_onion,
         };
     }
 }
 
-impl SseDecode for crate::api::p2m::Sticker {
+impl SseDecode for crate::api::lacre::Sticker {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_id = <String>::sse_decode(deserializer);
         let mut var_path = <String>::sse_decode(deserializer);
-        return crate::api::p2m::Sticker {
+        return crate::api::lacre::Sticker {
             id: var_id,
             path: var_path,
         };
@@ -1638,20 +1640,20 @@ impl SseDecode for u8 {
     }
 }
 
-impl SseDecode for crate::api::p2m::UiEvent {
+impl SseDecode for crate::api::lacre::UiEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut tag_ = <i32>::sse_decode(deserializer);
         match tag_ {
             0 => {
                 let mut var_handle = <String>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::Linked { handle: var_handle };
+                return crate::api::lacre::UiEvent::Linked { handle: var_handle };
             }
             1 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
                 let mut var_name = <String>::sse_decode(deserializer);
                 let mut var_request = <bool>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::NewChat {
+                return crate::api::lacre::UiEvent::NewChat {
                     index: var_index,
                     name: var_name,
                     request: var_request,
@@ -1659,16 +1661,16 @@ impl SseDecode for crate::api::p2m::UiEvent {
             }
             2 => {
                 let mut var_handle = <String>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::Avatar { handle: var_handle };
+                return crate::api::lacre::UiEvent::Avatar { handle: var_handle };
             }
             3 => {
-                return crate::api::p2m::UiEvent::ChatsChanged;
+                return crate::api::lacre::UiEvent::ChatsChanged;
             }
             4 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
-                let mut var_message = <crate::api::p2m::Message>::sse_decode(deserializer);
+                let mut var_message = <crate::api::lacre::Message>::sse_decode(deserializer);
                 let mut var_local = <bool>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::Message {
+                return crate::api::lacre::UiEvent::Message {
                     index: var_index,
                     message: var_message,
                     local: var_local,
@@ -1676,25 +1678,25 @@ impl SseDecode for crate::api::p2m::UiEvent {
             }
             5 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::Removed { index: var_index };
+                return crate::api::lacre::UiEvent::Removed { index: var_index };
             }
             6 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
                 let mut var_name = <String>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::UnverifiedMember {
+                return crate::api::lacre::UiEvent::UnverifiedMember {
                     index: var_index,
                     name: var_name,
                 };
             }
             7 => {
                 let mut var_addr = <String>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::RelayReady { addr: var_addr };
+                return crate::api::lacre::UiEvent::RelayReady { addr: var_addr };
             }
             8 => {
                 let mut var_id = <String>::sse_decode(deserializer);
                 let mut var_done = <u32>::sse_decode(deserializer);
                 let mut var_total = <u32>::sse_decode(deserializer);
-                return crate::api::p2m::UiEvent::FileProgress {
+                return crate::api::lacre::UiEvent::FileProgress {
                     id: var_id,
                     done: var_done,
                     total: var_total,
@@ -1728,23 +1730,23 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__p2m__accept_chat_impl(port, ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__p2m__add_members_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__p2m__create_chat_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__p2m__create_identity_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__p2m__download_file_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__p2m__event_stream_impl(port, ptr, rust_vec_len, data_len),
-        15 => wire__crate__api__p2m__init_app_impl(port, ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__p2m__link_device_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__p2m__qr_payload_impl(port, ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__p2m__remove_member_impl(port, ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__p2m__send_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__p2m__send_file_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__p2m__send_sticker_impl(port, ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__p2m__set_avatar_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__p2m__start_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__p2m__status_impl(port, ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__p2m__unlink_device_impl(port, ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__lacre__accept_chat_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__lacre__add_members_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__lacre__create_chat_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__lacre__create_identity_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__lacre__download_file_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__lacre__event_stream_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__lacre__init_app_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__lacre__link_device_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__lacre__qr_payload_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__lacre__remove_member_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__lacre__send_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__lacre__send_file_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__lacre__send_sticker_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__lacre__set_avatar_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__lacre__start_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__lacre__status_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__lacre__unlink_device_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1757,25 +1759,25 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        3 => wire__crate__api__p2m__add_sticker_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__p2m__avatar_path_impl(ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__p2m__block_impl(ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__p2m__blocked_impl(ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__p2m__chat_members_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__p2m__chats_impl(ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__p2m__delete_chat_impl(ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__p2m__devices_impl(ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__p2m__is_blocked_impl(ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__p2m__keep_sticker_impl(ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__p2m__max_file_bytes_impl(ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__p2m__max_sticker_bytes_impl(ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__p2m__messages_impl(ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__p2m__profile_impl(ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__p2m__remove_sticker_impl(ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__p2m__search_impl(ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__p2m__set_power_impl(ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__p2m__stickers_impl(ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__p2m__unblock_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__lacre__add_sticker_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__lacre__avatar_path_impl(ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__lacre__block_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__lacre__blocked_impl(ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__lacre__chat_members_impl(ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__lacre__chats_impl(ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__lacre__delete_chat_impl(ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__lacre__devices_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__lacre__is_blocked_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__lacre__keep_sticker_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__lacre__max_file_bytes_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__lacre__max_sticker_bytes_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__lacre__messages_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__lacre__profile_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__lacre__remove_sticker_impl(ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__lacre__search_impl(ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__lacre__set_power_impl(ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__lacre__stickers_impl(ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__lacre__unblock_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1783,7 +1785,7 @@ fn pde_ffi_dispatcher_sync_impl(
 // Section: rust2dart
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatInfo {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::ChatInfo {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.index.into_into_dart().into_dart(),
@@ -1798,14 +1800,16 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatInfo {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::ChatInfo {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::ChatInfo> for crate::api::p2m::ChatInfo {
-    fn into_into_dart(self) -> crate::api::p2m::ChatInfo {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::ChatInfo {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::ChatInfo>
+    for crate::api::lacre::ChatInfo
+{
+    fn into_into_dart(self) -> crate::api::lacre::ChatInfo {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatMembers {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::ChatMembers {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.participants.into_into_dart().into_dart(),
@@ -1815,16 +1819,19 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatMembers {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::ChatMembers {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::ChatMembers>
-    for crate::api::p2m::ChatMembers
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::lacre::ChatMembers
 {
-    fn into_into_dart(self) -> crate::api::p2m::ChatMembers {
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::ChatMembers>
+    for crate::api::lacre::ChatMembers
+{
+    fn into_into_dart(self) -> crate::api::lacre::ChatMembers {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::Device {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::Device {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.code.into_into_dart().into_dart(),
@@ -1834,14 +1841,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Device {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Device {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Device> for crate::api::p2m::Device {
-    fn into_into_dart(self) -> crate::api::p2m::Device {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Device {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Device> for crate::api::lacre::Device {
+    fn into_into_dart(self) -> crate::api::lacre::Device {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::FileAttachment {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::FileAttachment {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.id.into_into_dart().into_dart(),
@@ -1853,18 +1860,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::FileAttachment {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::p2m::FileAttachment
+    for crate::api::lacre::FileAttachment
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::FileAttachment>
-    for crate::api::p2m::FileAttachment
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::FileAttachment>
+    for crate::api::lacre::FileAttachment
 {
-    fn into_into_dart(self) -> crate::api::p2m::FileAttachment {
+    fn into_into_dart(self) -> crate::api::lacre::FileAttachment {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::Hit {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::Hit {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.index.into_into_dart().into_dart(),
@@ -1874,14 +1881,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Hit {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Hit {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Hit> for crate::api::p2m::Hit {
-    fn into_into_dart(self) -> crate::api::p2m::Hit {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Hit {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Hit> for crate::api::lacre::Hit {
+    fn into_into_dart(self) -> crate::api::lacre::Hit {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::Message {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::Message {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.from.into_into_dart().into_dart(),
@@ -1895,14 +1902,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Message {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Message {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Message> for crate::api::p2m::Message {
-    fn into_into_dart(self) -> crate::api::p2m::Message {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Message {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Message> for crate::api::lacre::Message {
+    fn into_into_dart(self) -> crate::api::lacre::Message {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::Profile {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::Profile {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.handle.into_into_dart().into_dart(),
@@ -1913,14 +1920,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Profile {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Profile {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Profile> for crate::api::p2m::Profile {
-    fn into_into_dart(self) -> crate::api::p2m::Profile {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Profile {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Profile> for crate::api::lacre::Profile {
+    fn into_into_dart(self) -> crate::api::lacre::Profile {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::SendResult {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::SendResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.stored.into_into_dart().into_dart(),
@@ -1929,16 +1936,16 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::SendResult {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::SendResult {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::SendResult>
-    for crate::api::p2m::SendResult
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::SendResult {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::SendResult>
+    for crate::api::lacre::SendResult
 {
-    fn into_into_dart(self) -> crate::api::p2m::SendResult {
+    fn into_into_dart(self) -> crate::api::lacre::SendResult {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::Status {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::Status {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.peers.into_into_dart().into_dart(),
@@ -1947,14 +1954,14 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Status {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Status {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Status> for crate::api::p2m::Status {
-    fn into_into_dart(self) -> crate::api::p2m::Status {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Status {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Status> for crate::api::lacre::Status {
+    fn into_into_dart(self) -> crate::api::lacre::Status {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::Sticker {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::Sticker {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.id.into_into_dart().into_dart(),
@@ -1963,20 +1970,20 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Sticker {
         .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Sticker {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Sticker> for crate::api::p2m::Sticker {
-    fn into_into_dart(self) -> crate::api::p2m::Sticker {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Sticker {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Sticker> for crate::api::lacre::Sticker {
+    fn into_into_dart(self) -> crate::api::lacre::Sticker {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::p2m::UiEvent {
+impl flutter_rust_bridge::IntoDart for crate::api::lacre::UiEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::p2m::UiEvent::Linked { handle } => {
+            crate::api::lacre::UiEvent::Linked { handle } => {
                 [0.into_dart(), handle.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::p2m::UiEvent::NewChat {
+            crate::api::lacre::UiEvent::NewChat {
                 index,
                 name,
                 request,
@@ -1987,11 +1994,11 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::UiEvent {
                 request.into_into_dart().into_dart(),
             ]
             .into_dart(),
-            crate::api::p2m::UiEvent::Avatar { handle } => {
+            crate::api::lacre::UiEvent::Avatar { handle } => {
                 [2.into_dart(), handle.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::p2m::UiEvent::ChatsChanged => [3.into_dart()].into_dart(),
-            crate::api::p2m::UiEvent::Message {
+            crate::api::lacre::UiEvent::ChatsChanged => [3.into_dart()].into_dart(),
+            crate::api::lacre::UiEvent::Message {
                 index,
                 message,
                 local,
@@ -2002,19 +2009,19 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::UiEvent {
                 local.into_into_dart().into_dart(),
             ]
             .into_dart(),
-            crate::api::p2m::UiEvent::Removed { index } => {
+            crate::api::lacre::UiEvent::Removed { index } => {
                 [5.into_dart(), index.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::p2m::UiEvent::UnverifiedMember { index, name } => [
+            crate::api::lacre::UiEvent::UnverifiedMember { index, name } => [
                 6.into_dart(),
                 index.into_into_dart().into_dart(),
                 name.into_into_dart().into_dart(),
             ]
             .into_dart(),
-            crate::api::p2m::UiEvent::RelayReady { addr } => {
+            crate::api::lacre::UiEvent::RelayReady { addr } => {
                 [7.into_dart(), addr.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::p2m::UiEvent::FileProgress { id, done, total } => [
+            crate::api::lacre::UiEvent::FileProgress { id, done, total } => [
                 8.into_dart(),
                 id.into_into_dart().into_dart(),
                 done.into_into_dart().into_dart(),
@@ -2027,9 +2034,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::UiEvent {
         }
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::UiEvent {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::UiEvent> for crate::api::p2m::UiEvent {
-    fn into_into_dart(self) -> crate::api::p2m::UiEvent {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::UiEvent {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::UiEvent> for crate::api::lacre::UiEvent {
+    fn into_into_dart(self) -> crate::api::lacre::UiEvent {
         self
     }
 }
@@ -2042,7 +2049,7 @@ impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
 }
 
 impl SseEncode
-    for StreamSink<crate::api::p2m::UiEvent, flutter_rust_bridge::for_generated::SseCodec>
+    for StreamSink<crate::api::lacre::UiEvent, flutter_rust_bridge::for_generated::SseCodec>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2064,21 +2071,21 @@ impl SseEncode for bool {
     }
 }
 
-impl SseEncode for crate::api::p2m::ChatInfo {
+impl SseEncode for crate::api::lacre::ChatInfo {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.index, serializer);
         <String>::sse_encode(self.name, serializer);
         <u32>::sse_encode(self.devices, serializer);
         <bool>::sse_encode(self.active, serializer);
-        <Option<crate::api::p2m::Message>>::sse_encode(self.last, serializer);
+        <Option<crate::api::lacre::Message>>::sse_encode(self.last, serializer);
         <bool>::sse_encode(self.request, serializer);
         <Option<String>>::sse_encode(self.peer, serializer);
         <Option<String>>::sse_encode(self.avatar, serializer);
     }
 }
 
-impl SseEncode for crate::api::p2m::ChatMembers {
+impl SseEncode for crate::api::lacre::ChatMembers {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<String>>::sse_encode(self.participants, serializer);
@@ -2087,7 +2094,7 @@ impl SseEncode for crate::api::p2m::ChatMembers {
     }
 }
 
-impl SseEncode for crate::api::p2m::Device {
+impl SseEncode for crate::api::lacre::Device {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.code, serializer);
@@ -2096,7 +2103,7 @@ impl SseEncode for crate::api::p2m::Device {
     }
 }
 
-impl SseEncode for crate::api::p2m::FileAttachment {
+impl SseEncode for crate::api::lacre::FileAttachment {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.id, serializer);
@@ -2106,12 +2113,12 @@ impl SseEncode for crate::api::p2m::FileAttachment {
     }
 }
 
-impl SseEncode for crate::api::p2m::Hit {
+impl SseEncode for crate::api::lacre::Hit {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.index, serializer);
         <u32>::sse_encode(self.position, serializer);
-        <crate::api::p2m::Message>::sse_encode(self.message, serializer);
+        <crate::api::lacre::Message>::sse_encode(self.message, serializer);
     }
 }
 
@@ -2132,42 +2139,42 @@ impl SseEncode for Vec<String> {
     }
 }
 
-impl SseEncode for Vec<crate::api::p2m::ChatInfo> {
+impl SseEncode for Vec<crate::api::lacre::ChatInfo> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::p2m::ChatInfo>::sse_encode(item, serializer);
+            <crate::api::lacre::ChatInfo>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::api::p2m::Device> {
+impl SseEncode for Vec<crate::api::lacre::Device> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::p2m::Device>::sse_encode(item, serializer);
+            <crate::api::lacre::Device>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::api::p2m::Hit> {
+impl SseEncode for Vec<crate::api::lacre::Hit> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::p2m::Hit>::sse_encode(item, serializer);
+            <crate::api::lacre::Hit>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::api::p2m::Message> {
+impl SseEncode for Vec<crate::api::lacre::Message> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::p2m::Message>::sse_encode(item, serializer);
+            <crate::api::lacre::Message>::sse_encode(item, serializer);
         }
     }
 }
@@ -2182,17 +2189,17 @@ impl SseEncode for Vec<u8> {
     }
 }
 
-impl SseEncode for Vec<crate::api::p2m::Sticker> {
+impl SseEncode for Vec<crate::api::lacre::Sticker> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::p2m::Sticker>::sse_encode(item, serializer);
+            <crate::api::lacre::Sticker>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for crate::api::p2m::Message {
+impl SseEncode for crate::api::lacre::Message {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.from, serializer);
@@ -2200,8 +2207,8 @@ impl SseEncode for crate::api::p2m::Message {
         <i64>::sse_encode(self.sent_at, serializer);
         <bool>::sse_encode(self.mine, serializer);
         <bool>::sse_encode(self.notice, serializer);
-        <Option<crate::api::p2m::Sticker>>::sse_encode(self.sticker, serializer);
-        <Option<crate::api::p2m::FileAttachment>>::sse_encode(self.file, serializer);
+        <Option<crate::api::lacre::Sticker>>::sse_encode(self.sticker, serializer);
+        <Option<crate::api::lacre::FileAttachment>>::sse_encode(self.file, serializer);
     }
 }
 
@@ -2215,32 +2222,32 @@ impl SseEncode for Option<String> {
     }
 }
 
-impl SseEncode for Option<crate::api::p2m::FileAttachment> {
+impl SseEncode for Option<crate::api::lacre::FileAttachment> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
-            <crate::api::p2m::FileAttachment>::sse_encode(value, serializer);
+            <crate::api::lacre::FileAttachment>::sse_encode(value, serializer);
         }
     }
 }
 
-impl SseEncode for Option<crate::api::p2m::Message> {
+impl SseEncode for Option<crate::api::lacre::Message> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
-            <crate::api::p2m::Message>::sse_encode(value, serializer);
+            <crate::api::lacre::Message>::sse_encode(value, serializer);
         }
     }
 }
 
-impl SseEncode for Option<crate::api::p2m::Sticker> {
+impl SseEncode for Option<crate::api::lacre::Sticker> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
-            <crate::api::p2m::Sticker>::sse_encode(value, serializer);
+            <crate::api::lacre::Sticker>::sse_encode(value, serializer);
         }
     }
 }
@@ -2265,7 +2272,7 @@ impl SseEncode for Option<Vec<u8>> {
     }
 }
 
-impl SseEncode for crate::api::p2m::Profile {
+impl SseEncode for crate::api::lacre::Profile {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Option<String>>::sse_encode(self.handle, serializer);
@@ -2275,7 +2282,7 @@ impl SseEncode for crate::api::p2m::Profile {
     }
 }
 
-impl SseEncode for crate::api::p2m::SendResult {
+impl SseEncode for crate::api::lacre::SendResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.stored, serializer);
@@ -2283,7 +2290,7 @@ impl SseEncode for crate::api::p2m::SendResult {
     }
 }
 
-impl SseEncode for crate::api::p2m::Status {
+impl SseEncode for crate::api::lacre::Status {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.peers, serializer);
@@ -2291,7 +2298,7 @@ impl SseEncode for crate::api::p2m::Status {
     }
 }
 
-impl SseEncode for crate::api::p2m::Sticker {
+impl SseEncode for crate::api::lacre::Sticker {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.id, serializer);
@@ -2320,15 +2327,15 @@ impl SseEncode for u8 {
     }
 }
 
-impl SseEncode for crate::api::p2m::UiEvent {
+impl SseEncode for crate::api::lacre::UiEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::p2m::UiEvent::Linked { handle } => {
+            crate::api::lacre::UiEvent::Linked { handle } => {
                 <i32>::sse_encode(0, serializer);
                 <String>::sse_encode(handle, serializer);
             }
-            crate::api::p2m::UiEvent::NewChat {
+            crate::api::lacre::UiEvent::NewChat {
                 index,
                 name,
                 request,
@@ -2338,37 +2345,37 @@ impl SseEncode for crate::api::p2m::UiEvent {
                 <String>::sse_encode(name, serializer);
                 <bool>::sse_encode(request, serializer);
             }
-            crate::api::p2m::UiEvent::Avatar { handle } => {
+            crate::api::lacre::UiEvent::Avatar { handle } => {
                 <i32>::sse_encode(2, serializer);
                 <String>::sse_encode(handle, serializer);
             }
-            crate::api::p2m::UiEvent::ChatsChanged => {
+            crate::api::lacre::UiEvent::ChatsChanged => {
                 <i32>::sse_encode(3, serializer);
             }
-            crate::api::p2m::UiEvent::Message {
+            crate::api::lacre::UiEvent::Message {
                 index,
                 message,
                 local,
             } => {
                 <i32>::sse_encode(4, serializer);
                 <u32>::sse_encode(index, serializer);
-                <crate::api::p2m::Message>::sse_encode(message, serializer);
+                <crate::api::lacre::Message>::sse_encode(message, serializer);
                 <bool>::sse_encode(local, serializer);
             }
-            crate::api::p2m::UiEvent::Removed { index } => {
+            crate::api::lacre::UiEvent::Removed { index } => {
                 <i32>::sse_encode(5, serializer);
                 <u32>::sse_encode(index, serializer);
             }
-            crate::api::p2m::UiEvent::UnverifiedMember { index, name } => {
+            crate::api::lacre::UiEvent::UnverifiedMember { index, name } => {
                 <i32>::sse_encode(6, serializer);
                 <u32>::sse_encode(index, serializer);
                 <String>::sse_encode(name, serializer);
             }
-            crate::api::p2m::UiEvent::RelayReady { addr } => {
+            crate::api::lacre::UiEvent::RelayReady { addr } => {
                 <i32>::sse_encode(7, serializer);
                 <String>::sse_encode(addr, serializer);
             }
-            crate::api::p2m::UiEvent::FileProgress { id, done, total } => {
+            crate::api::lacre::UiEvent::FileProgress { id, done, total } => {
                 <i32>::sse_encode(8, serializer);
                 <String>::sse_encode(id, serializer);
                 <u32>::sse_encode(done, serializer);

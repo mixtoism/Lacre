@@ -11,11 +11,11 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 WORK=${1:-$(mktemp -d)}
-BIN=$ROOT/target/debug/p2m-node
+BIN=$ROOT/target/debug/lacre-node
 BASE_PORT=${BASE_PORT:-47100}
 TICK=6
 
-cargo build -q --manifest-path "$ROOT/Cargo.toml" -p p2m-node
+cargo build -q --manifest-path "$ROOT/Cargo.toml" -p lacre-node
 rm -rf "$WORK" && mkdir -p "$WORK" && cd "$WORK"
 echo "directorio de trabajo: $WORK"
 
@@ -34,7 +34,7 @@ start() { # nombre [opciones extra]
   [[ $port != "$BASE_PORT" ]] && boot=(--bootstrap "/ip4/127.0.0.1/tcp/$BASE_PORT")
   # Todos con el estado cifrado (D-033) salvo el relay, que se migra al final.
   local key=; [[ $name != relay ]] && key=$(key_of "$name")
-  env ${key:+P2M_DATA_KEY=$key} "$BIN" --data "$name" --port "$port" --tick "$TICK" --no-rendezvous --no-tor --no-mdns "${boot[@]}" "$@" < "$name.in" >> "$name.out" 2>> "$name.err" &
+  env ${key:+LACRE_DATA_KEY=$key} "$BIN" --data "$name" --port "$port" --tick "$TICK" --no-rendezvous --no-tor --no-mdns "${boot[@]}" "$@" < "$name.in" >> "$name.out" 2>> "$name.err" &
   PIDS+=($!); NODE_PID[$name]=$!
   port=$((port + 1))
 }
@@ -298,7 +298,7 @@ if grep -rqa "hola dan" alice1 dan; then echo "FALLO: texto de un mensaje en cla
 [[ $(stat -c %s relay/device.key) == 32 ]] || { echo "FALLO: el relay ya estaba cifrado"; exit 1; }
 stop relay
 RELAYKEY=$(key_of relay)
-P2M_DATA_KEY=$RELAYKEY "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay2.out 2>&1 & RP=$!; PIDS+=($RP)
+LACRE_DATA_KEY=$RELAYKEY "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay2.out 2>&1 & RP=$!; PIDS+=($RP)
 for _ in $(seq 40); do grep -q "dispositivo" relay2.out && break; sleep 0.25; done
 kill $RP; wait $RP 2>/dev/null || true
 head -c 8 relay/device.key | grep -q P2MVLT1 || { echo "FALLO: el relay no se migró"; cat relay2.out; exit 1; }
@@ -306,7 +306,7 @@ if "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > 
   echo "FALLO: arrancó sin la clave de datos"; exit 1
 fi
 grep -q "falta la clave de datos" relay3.out || { echo "FALLO: error inesperado"; cat relay3.out; exit 1; }
-P2M_DATA_KEY=$(key_of otra) "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay4.out 2>&1 && { echo "FALLO: arrancó con otra clave"; exit 1; }
+LACRE_DATA_KEY=$(key_of otra) "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay4.out 2>&1 && { echo "FALLO: arrancó con otra clave"; exit 1; }
 grep -q "no se pudo descifrar" relay4.out || { echo "FALLO: error inesperado con otra clave"; cat relay4.out; exit 1; }
 ok "estado cifrado en disco; un nodo en claro se migra; sin la clave (o con otra) no arranca"
 

@@ -1,4 +1,4 @@
-# p2message
+# Lacre
 
 Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
 servidores intermedios. Estado: **prueba de concepto** (CLI en Linux).
@@ -24,9 +24,9 @@ Las decisiones de diseño y sus motivos están en
 ## Estructura
 
 ```
-crates/p2m-core   identidad, registros firmados, MLS (sin red; reutilizable vía FFI)
-crates/p2m-node   red libp2p + lógica de chats + CLI
-app/              app Flutter (de momento Linux); app/rust es el puente p2m_api
+crates/lacre-core   identidad, registros firmados, MLS (sin red; reutilizable vía FFI)
+crates/lacre-node   red libp2p + lógica de chats + CLI
+app/              app Flutter (de momento Linux); app/rust es el puente lacre_api
 scripts/e2e.sh    prueba de extremo a extremo con varios nodos locales
 deploy/           servicio systemd y Dockerfile para un nodo siempre encendido
 ```
@@ -34,18 +34,18 @@ deploy/           servicio systemd y Dockerfile para un nodo siempre encendido
 ## Probarlo
 
 ```sh
-cargo test -p p2m-core     # pruebas unitarias del núcleo
+cargo test -p lacre-core     # pruebas unitarias del núcleo
 scripts/e2e.sh             # escenario completo en local
 ```
 
 A mano, en dos terminales (o dos máquinas de la misma red local):
 
 ```sh
-cargo run -p p2m-node -- --data /tmp/ana --port 4001
+cargo run -p lacre-node -- --data /tmp/ana --port 4001
 > init ana
 > whoami                       # muestra ana#xxxxxxxx y el QR
 
-cargo run -p p2m-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0.1/tcp/4001
+cargo run -p lacre-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0.1/tcp/4001
 > init beto
 > chat ana#xxxxxxxx
 > send 0 hola
@@ -61,12 +61,12 @@ compartiendo datos), Tor está activado por defecto:
 
 ```sh
 # máquina A
-cargo run -p p2m-node -- --data /tmp/ana
+cargo run -p lacre-node -- --data /tmp/ana
 > init ana
 > whoami      # espera a ver «servicio onion publicado»; el QR incluye /onion3/…
 
 # máquina B, en cualquier otra red
-cargo run -p p2m-node -- --data /tmp/beto
+cargo run -p lacre-node -- --data /tmp/beto
 > init beto
 > chat p2m:ana#…:…@/onion3/…     # pega el QR completo de A
 > send 0 hola
@@ -99,7 +99,7 @@ Rust se compila sola con Flutter.
 ```sh
 cd app
 flutter run -d linux
-P2M_DATA=/tmp/p2m-b flutter run -d linux     # segunda instancia independiente
+LACRE_DATA=/tmp/lacre-b flutter run -d linux     # segunda instancia independiente
 ```
 
 ## Limitaciones actuales

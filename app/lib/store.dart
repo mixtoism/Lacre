@@ -8,11 +8,11 @@ import 'package:flutter_local_notifications_linux/flutter_local_notifications_li
 import 'package:path_provider/path_provider.dart';
 
 import 'l10n/l10n.dart';
-import 'src/rust/api/p2m.dart' as p2m;
+import 'src/rust/api/lacre.dart' as lacre;
 
-/// Canal con el código nativo de Android (P2mApp.kt): clave de datos,
+/// Canal con el código nativo de Android (LacreApp.kt): clave de datos,
 /// servicio en segundo plano, avisos y abrir archivos.
-const sistema = MethodChannel('p2message/sistema');
+const sistema = MethodChannel('lacre/sistema');
 
 /// Qué dicen los avisos del sistema de un mensaje nuevo. Se ve en la
 /// pantalla, en la de bloqueo y en el historial de avisos (D-035).
@@ -35,9 +35,9 @@ enum NoticeContent {
 
 /// Estado de la app: perfil, chats y avisos del nodo.
 class Store extends ChangeNotifier {
-  p2m.Profile? profile;
-  List<p2m.ChatInfo> chats = [];
-  p2m.Status? status;
+  lacre.Profile? profile;
+  List<lacre.ChatInfo> chats = [];
+  lacre.Status? status;
   String? relay;
 
   /// Error al arrancar el nodo.
@@ -47,7 +47,7 @@ class Store extends ChangeNotifier {
   final notices = StreamController<String>.broadcast();
 
   /// Mensajes nuevos, para la pantalla del chat abierto.
-  final messages = StreamController<(int, p2m.Message)>.broadcast();
+  final messages = StreamController<(int, lacre.Message)>.broadcast();
 
   /// Descargas en curso: id del archivo → fracción descargada.
   final downloads = <String, double>{};
@@ -80,12 +80,12 @@ class Store extends ChangeNotifier {
   /// Id del aviso sin contenido: uno para todos los chats.
   static const _generalNotice = -1;
 
-  /// Con `lanOnly` (o `P2M_LAN=1`), sin Tor: solo red local, para pruebas.
+  /// Con `lanOnly` (o `LACRE_LAN=1`), sin Tor: solo red local, para pruebas.
   Future<void> start({String? dataDir, bool lanOnly = false}) async {
-    // P2M_DATA permite arrancar varias instancias en el mismo equipo.
+    // LACRE_DATA permite arrancar varias instancias en el mismo equipo.
     final dir =
         dataDir ??
-        Platform.environment['P2M_DATA'] ??
+        Platform.environment['LACRE_DATA'] ??
         '${(await getApplicationSupportDirectory()).path}/node';
     _noticeFile = File('$dir/avisos.txt');
     try {
@@ -101,18 +101,18 @@ class Store extends ChangeNotifier {
       if (Platform.isAndroid) {
         key = await sistema.invokeMethod<Uint8List>('claveDatos');
       }
-      profile = await p2m.start(
+      profile = await lacre.start(
         dataDir: dir,
-        lanOnly: lanOnly || Platform.environment['P2M_LAN'] == '1',
+        lanOnly: lanOnly || Platform.environment['LACRE_LAN'] == '1',
         dataKey: key,
       );
     } catch (e) {
-      debugPrint('p2m arranque: $e');
+      debugPrint('lacre arranque: $e');
       startError = '$e';
       notifyListeners();
       return;
     }
-    p2m.eventStream().listen(_onEvent);
+    lacre.eventStream().listen(_onEvent);
     if (Platform.isAndroid) {
       // El nodo sigue vivo con la app cerrada (D-032).
       sistema.setMethodCallHandler((call) async {
@@ -138,8 +138,8 @@ class Store extends ChangeNotifier {
       unawaited(
         sistema
             .invokeMethod('servicio')
-            .then((r) => debugPrint('p2m servicio: $r'))
-            .catchError((Object e) => debugPrint('p2m servicio: $e')),
+            .then((r) => debugPrint('lacre servicio: $r'))
+            .catchError((Object e) => debugPrint('lacre servicio: $e')),
       );
     }
     if (Platform.isLinux) {
@@ -158,7 +158,7 @@ class Store extends ChangeNotifier {
         _desktop = n;
       } catch (e) {
         // Sin servidor de avisos: solo los de dentro de la app.
-        debugPrint('p2m avisos: $e');
+        debugPrint('lacre avisos: $e');
       }
     }
     _refreshChats();
@@ -183,18 +183,18 @@ class Store extends ChangeNotifier {
       s == AppLifecycleState.detached;
 
   void _applyPower() {
-    debugPrint('p2m energía: segundo plano=$_background wifi=$_wifi');
+    debugPrint('lacre energía: segundo plano=$_background wifi=$_wifi');
     try {
-      p2m.setPower(background: _background, wifi: _wifi);
+      lacre.setPower(background: _background, wifi: _wifi);
     } catch (e) {
-      debugPrint('p2m energía: $e');
+      debugPrint('lacre energía: $e');
     }
     // El lock de multicast impide que el wifi filtre paquetes: solo
     // mientras mDNS esté activo.
     unawaited(
       sistema
           .invokeMethod('multicast', !_background && _wifi)
-          .catchError((Object e) => debugPrint('p2m multicast: $e')),
+          .catchError((Object e) => debugPrint('lacre multicast: $e')),
     );
     if (_background) {
       // Nadie mira el estado: no despertar al nodo cada 5 s.
@@ -205,37 +205,37 @@ class Store extends ChangeNotifier {
     }
   }
 
-  void _onEvent(p2m.UiEvent ev) {
+  void _onEvent(lacre.UiEvent ev) {
     switch (ev) {
-      case p2m.UiEvent_FileProgress(:final id, :final done, :final total):
+      case lacre.UiEvent_FileProgress(:final id, :final done, :final total):
         if (downloads.containsKey(id)) {
           downloads[id] = total == 0 ? 1 : done / total;
           notifyListeners();
         }
         return;
-      case p2m.UiEvent_Linked(:final handle):
+      case lacre.UiEvent_Linked(:final handle):
         notices.add(systemL10n.deviceLinked(handle));
-        profile = p2m.profile();
-      case p2m.UiEvent_NewChat(:final index, :final name, :final request):
+        profile = lacre.profile();
+      case lacre.UiEvent_NewChat(:final index, :final name, :final request):
         final text = request
             ? systemL10n.chatRequestFrom(name)
             : systemL10n.newChatWith(name);
         notices.add(text);
-        _notify(index, 'p2message', text);
-      case p2m.UiEvent_Avatar():
+        _notify(index, 'Lacre', text);
+      case lacre.UiEvent_Avatar():
         _avatars.clear();
-      case p2m.UiEvent_ChatsChanged():
+      case lacre.UiEvent_ChatsChanged():
         break;
-      case p2m.UiEvent_Message(:final index, :final message, :final local):
+      case lacre.UiEvent_Message(:final index, :final message, :final local):
         messages.add((index, message));
         if (!local && !message.mine && !message.notice) {
           _notifyMessage(index, message);
         }
-      case p2m.UiEvent_Removed():
+      case lacre.UiEvent_Removed():
         notices.add(systemL10n.expelled);
-      case p2m.UiEvent_UnverifiedMember(:final name):
+      case lacre.UiEvent_UnverifiedMember(:final name):
         notices.add(systemL10n.unverifiedMember(name));
-      case p2m.UiEvent_RelayReady(:final addr):
+      case lacre.UiEvent_RelayReady(:final addr):
         relay = addr;
     }
     _refreshChats();
@@ -263,7 +263,7 @@ class Store extends ChangeNotifier {
               category: LinuxNotificationCategory.imReceived,
             ),
           )
-          .catchError((Object e) => debugPrint('p2m aviso: $e'));
+          .catchError((Object e) => debugPrint('lacre aviso: $e'));
     }
   }
 
@@ -273,16 +273,16 @@ class Store extends ChangeNotifier {
     try {
       await _noticeFile?.writeAsString(c.name);
     } catch (e) {
-      debugPrint('p2m avisos: $e');
+      debugPrint('lacre avisos: $e');
     }
   }
 
-  void _notifyMessage(int index, p2m.Message m) {
-    final chat = p2m.chats().where((c) => c.index == index).firstOrNull;
+  void _notifyMessage(int index, lacre.Message m) {
+    final chat = lacre.chats().where((c) => c.index == index).firstOrNull;
     if (chat == null) return;
     final content = noticeContent ?? NoticeContent.none;
     if (content == NoticeContent.none) {
-      _notify(_generalNotice, 'p2message', systemL10n.youHaveNewMessages);
+      _notify(_generalNotice, 'Lacre', systemL10n.youHaveNewMessages);
       return;
     }
     final name = chat.peer != null ? m.from.split('#').first : chat.name;
@@ -296,7 +296,7 @@ class Store extends ChangeNotifier {
     }
     // De una solicitud no se enseña el contenido.
     if (chat.request) {
-      _notify(index, 'p2message', systemL10n.chatRequestFrom(chat.name));
+      _notify(index, 'Lacre', systemL10n.chatRequestFrom(chat.name));
       return;
     }
     final from = m.from.split('#').first;
@@ -339,7 +339,7 @@ class Store extends ChangeNotifier {
   void _refreshChats() {
     // Los más recientes primero; los que no tienen mensajes, por orden de
     // creación.
-    chats = p2m.chats()
+    chats = lacre.chats()
       ..sort((a, b) {
         final ta = a.last?.sentAt ?? 0, tb = b.last?.sentAt ?? 0;
         return ta != tb ? tb.compareTo(ta) : b.index.compareTo(a.index);
@@ -347,7 +347,7 @@ class Store extends ChangeNotifier {
     notifyListeners();
   }
 
-  p2m.ChatInfo? chat(int index) =>
+  lacre.ChatInfo? chat(int index) =>
       chats.where((c) => c.index == index).firstOrNull;
 
   /// Fotos de perfil por handle (`null`: sin foto). Se vacía cuando llega
@@ -355,44 +355,44 @@ class Store extends ChangeNotifier {
   final _avatars = <String, String?>{};
 
   String? avatar(String handle) =>
-      _avatars.putIfAbsent(handle, () => p2m.avatarPath(handle: handle));
+      _avatars.putIfAbsent(handle, () => lacre.avatarPath(handle: handle));
 
   Future<void> setAvatar(Uint8List? image) async {
-    await p2m.setAvatar(image: image);
+    await lacre.setAvatar(image: image);
     _avatars.clear();
     notifyListeners();
   }
 
   void deleteChat(int index) {
-    p2m.deleteChat(index: index);
+    lacre.deleteChat(index: index);
     _refreshChats();
   }
 
   Future<void> acceptChat(int index) async {
-    await p2m.acceptChat(index: index);
+    await lacre.acceptChat(index: index);
     _refreshChats();
   }
 
   void block(String handle) {
-    p2m.block(handle: handle);
+    lacre.block(handle: handle);
     _refreshChats();
   }
 
   void unblock(String handle) {
-    p2m.unblock(handle: handle);
+    lacre.unblock(handle: handle);
     _refreshChats();
   }
 
   Future<void> refreshStatus() async {
     try {
-      status = await p2m.status();
+      status = await lacre.status();
       notifyListeners();
     } catch (_) {}
   }
 
   Future<void> createIdentity(String name) async {
-    await p2m.createIdentity(name: name);
-    profile = p2m.profile();
+    await lacre.createIdentity(name: name);
+    profile = lacre.profile();
     notifyListeners();
   }
 
@@ -401,7 +401,7 @@ class Store extends ChangeNotifier {
     downloads[id] = 0;
     notifyListeners();
     try {
-      final path = await p2m.downloadFile(id: id);
+      final path = await lacre.downloadFile(id: id);
       downloaded[id] = path;
       return path;
     } finally {
@@ -411,7 +411,7 @@ class Store extends ChangeNotifier {
   }
 
   Future<int> createChat(String? title, List<String> targets) async {
-    final index = await p2m.createChat(title: title, targets: targets);
+    final index = await lacre.createChat(title: title, targets: targets);
     _refreshChats();
     return index;
   }

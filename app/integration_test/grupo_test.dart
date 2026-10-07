@@ -3,9 +3,9 @@
 // de Linux, abre una ventana por usuario del PC y después lo ejecuta en el
 // móvil.
 //
-// En el PC (P2M_ROLE=ana, bea…): crea la identidad, deja su código en
-// `$P2M_E2E_DIR/<rol>.qr`, espera a que el móvil lo meta en el grupo, escribe
-// «hola desde <rol>» y espera los mensajes de todos (`$P2M_E2E_DIR/<rol>.ok`).
+// En el PC (LACRE_ROLE=ana, bea…): crea la identidad, deja su código en
+// `$LACRE_E2E_DIR/<rol>.qr`, espera a que el móvil lo meta en el grupo, escribe
+// «hola desde <rol>» y espera los mensajes de todos (`$LACRE_E2E_DIR/<rol>.ok`).
 //
 // En el móvil (ROLE=movil, PCS=códigos): crea la identidad, abre el grupo con
 // los códigos de los PC, escribe «hola desde movil» y espera los de todos.
@@ -28,7 +28,7 @@
 // Para terminar (D-029, D-030): cada uno puso al empezar su foto de perfil y
 // espera las de los demás; busca dentro del chat (con anterior/siguiente),
 // busca en todos los chats y abre un resultado, y borra el chat.
-// Se coordina con el script por líneas `P2M_E2E …`.
+// Se coordina con el script por líneas `LACRE_E2E …`.
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -36,11 +36,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:p2message/main.dart';
-import 'package:p2message/src/rust/api/p2m.dart' as p2m;
-import 'package:p2message/src/rust/frb_generated.dart';
-import 'package:p2message/store.dart';
-import 'package:p2message/ui/stickers.dart';
+import 'package:lacre/main.dart';
+import 'package:lacre/src/rust/api/lacre.dart' as lacre;
+import 'package:lacre/src/rust/frb_generated.dart';
+import 'package:lacre/store.dart';
+import 'package:lacre/ui/stickers.dart';
 import 'package:path_provider/path_provider.dart';
 
 const _roleDefine = String.fromEnvironment('ROLE', defaultValue: 'movil');
@@ -75,12 +75,12 @@ Future<Uint8List> pegatina(String letra, Color color, {int lado = 256}) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   final env = Platform.environment;
-  final role = env['P2M_ROLE'] ?? _roleDefine;
-  final shared = env['P2M_E2E_DIR'];
-  final pcsCodes = env['P2M_PCS'] ?? _pcs;
+  final role = env['LACRE_ROLE'] ?? _roleDefine;
+  final shared = env['LACRE_E2E_DIR'];
+  final pcsCodes = env['LACRE_PCS'] ?? _pcs;
   // Solo red local (mDNS), sin Tor: mucho más rápido.
-  final lan = _lan || env['P2M_LAN'] == '1';
-  final users = (env['P2M_USERS'] ?? _users)
+  final lan = _lan || env['LACRE_LAN'] == '1';
+  final users = (env['LACRE_USERS'] ?? _users)
       .split(' ')
       .where((u) => u.isNotEmpty);
 
@@ -88,7 +88,7 @@ void main() {
     tester,
   ) async {
     await RustLib.init();
-    void marca(String s) => debugPrint('P2M_E2E $role $s');
+    void marca(String s) => debugPrint('LACRE_E2E $role $s');
     void fichero(String ext, String s) {
       if (shared != null) File('$shared/$role.$ext').writeAsStringSync(s);
     }
@@ -176,7 +176,7 @@ void main() {
     final base = shared ?? (await getTemporaryDirectory()).path;
     final dir = '$base/$role-${DateTime.now().millisecondsSinceEpoch}';
     final store = Store();
-    await tester.pumpWidget(P2mApp(store: store));
+    await tester.pumpWidget(LacreApp(store: store));
     await store.start(dataDir: dir, lanOnly: lan);
     // Sin la pregunta de los avisos, que taparía la pantalla.
     await store.setNoticeContent(NoticeContent.full);
@@ -236,7 +236,7 @@ void main() {
       // El PC publica su código (con el onion) y espera a que lo añadan.
       final qr = await esperar(() async {
         for (;;) {
-          final q = await p2m.qrPayload();
+          final q = await lacre.qrPayload();
           // En la red local se encuentran por mDNS: el código no
           // necesita direcciones.
           if (lan || q.contains('/onion3/')) return q;
@@ -328,7 +328,7 @@ void main() {
     }
 
     // --- Emojis y stickers.
-    final mio = p2m.addSticker(
+    final mio = lacre.addSticker(
       bytes: await esperar(
         pegatina(role.characters.first.toUpperCase(), color),
       ),
@@ -336,7 +336,7 @@ void main() {
 
     /// Remitentes de los stickers recibidos en el chat.
     Set<String> conSticker() => {
-      for (final m in p2m.messages(index: 0))
+      for (final m in lacre.messages(index: 0))
         if (m.sticker != null) m.from.split('#').first,
     };
     Future<void> hasta(bool Function() ok) async {
@@ -393,7 +393,7 @@ void main() {
       await waitFor(find.text('😀'));
       await hasta(() => conSticker().contains('movil'));
       await tester.pump(const Duration(seconds: 1));
-      final suyo = p2m
+      final suyo = lacre
           .messages(index: 0)
           .lastWhere((m) => m.from.startsWith('movil#') && m.sticker != null)
           .sticker!;
@@ -406,7 +406,7 @@ void main() {
       await tester.tap(find.text('Guardar en mis stickers'));
       await tester.pump();
       await waitFor(find.text('Guardado en tus stickers'));
-      expect(p2m.stickers().map((s) => s.id), contains(suyo.id));
+      expect(lacre.stickers().map((s) => s.id), contains(suyo.id));
       marca('sticker del móvil guardado');
       await enviarSticker(mio.id);
       marca('sticker enviado');
@@ -424,7 +424,7 @@ void main() {
       final tmp = await esperar(getTemporaryDirectory());
       final f = File('${tmp.path}/de-movil.bin');
       f.writeAsBytesSync(contenido);
-      await esperar(p2m.sendFile(index: 0, path: f.path));
+      await esperar(lacre.sendFile(index: 0, path: f.path));
       f.deleteSync();
       await waitFor(find.text('de-movil.bin'));
       await waitFor(find.byTooltip('Abrir'));
@@ -434,7 +434,7 @@ void main() {
       await tester.tap(find.byTooltip('Descargar'));
       await tester.pump();
       await waitFor(find.byTooltip('Abrir'));
-      final adjunto = p2m
+      final adjunto = lacre
           .messages(index: 0)
           .lastWhere((m) => m.file != null)
           .file!;
@@ -444,13 +444,13 @@ void main() {
     }
 
     // --- Fotos de perfil: llegan las de todos los del grupo.
-    final otros = p2m
+    final otros = lacre
         .chatMembers(index: 0)
         .participants
         .where((h) => h != store.profile!.handle)
         .toList();
     for (final h in otros) {
-      await hasta(() => p2m.avatarPath(handle: h) != null);
+      await hasta(() => lacre.avatarPath(handle: h) != null);
       marca('foto de ${h.split('#').first}');
     }
     await tester.pump(const Duration(seconds: 1));

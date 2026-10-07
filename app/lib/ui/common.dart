@@ -54,7 +54,7 @@ final List<String>? fontFallback = Platform.isLinux
     : null;
 
 /// Abre un archivo con la aplicación del sistema. En Android, a través del
-/// FileProvider de la app (ver P2mApp.kt).
+/// FileProvider de la app (ver LacreApp.kt).
 Future<void> openExternal(String path) async {
   if (Platform.isAndroid) {
     final ok = await sistema.invokeMethod<bool>('abrir', {'path': path});

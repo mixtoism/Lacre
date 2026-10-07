@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
-import '../src/rust/api/p2m.dart' as p2m;
+import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'chat.dart';
 import 'chat_actions.dart';
@@ -259,7 +259,7 @@ class _Header extends StatelessWidget {
 }
 
 /// Resumen del último mensaje para la lista.
-String preview(AppLocalizations l, p2m.Message m) {
+String preview(AppLocalizations l, lacre.Message m) {
   if (m.notice) return m.text;
   final body = m.sticker != null
       ? l.sticker
@@ -277,7 +277,7 @@ class _ChatTile extends StatelessWidget {
   });
 
   final Store store;
-  final p2m.ChatInfo chat;
+  final lacre.ChatInfo chat;
   final void Function(int index) onOpen;
 
   @override
@@ -366,7 +366,7 @@ class _SearchResults extends StatelessWidget {
           (c) => fold(c.name).contains(q) || fold(c.peer ?? '').contains(q),
         )
         .toList();
-    final hits = p2m.search(query: query);
+    final hits = lacre.search(query: query);
     if (chats.isEmpty && hits.isEmpty) {
       return Center(child: Text(context.l.noResults));
     }

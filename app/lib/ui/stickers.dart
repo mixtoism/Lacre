@@ -7,7 +7,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
-import '../src/rust/api/p2m.dart' as p2m;
+import '../src/rust/api/lacre.dart' as lacre;
 import 'common.dart';
 
 /// Panel bajo el campo de texto: emojis y stickers propios (D-025). Todo es
@@ -21,7 +21,7 @@ class ExpressionPanel extends StatelessWidget {
 
   /// Campo de texto donde se insertan los emojis.
   final TextEditingController input;
-  final ValueChanged<p2m.Sticker> onSticker;
+  final ValueChanged<lacre.Sticker> onSticker;
 
   @override
   Widget build(BuildContext context) {
@@ -95,14 +95,14 @@ class ExpressionPanel extends StatelessWidget {
 class StickerGrid extends StatefulWidget {
   const StickerGrid({super.key, required this.onSticker});
 
-  final ValueChanged<p2m.Sticker> onSticker;
+  final ValueChanged<lacre.Sticker> onSticker;
 
   @override
   State<StickerGrid> createState() => _StickerGridState();
 }
 
 class _StickerGridState extends State<StickerGrid> {
-  late List<p2m.Sticker> _stickers = p2m.stickers();
+  late List<lacre.Sticker> _stickers = lacre.stickers();
   bool _importing = false;
 
   Future<void> _import() async {
@@ -121,7 +121,7 @@ class _StickerGridState extends State<StickerGrid> {
     final errors = <String>[];
     for (final f in files) {
       try {
-        p2m.addSticker(bytes: await fitSticker(await f.readAsBytes()));
+        lacre.addSticker(bytes: await fitSticker(await f.readAsBytes()));
       } catch (e) {
         errors.add('${f.name}: ${e is ArgumentError ? e.message : e}');
       }
@@ -129,14 +129,14 @@ class _StickerGridState extends State<StickerGrid> {
     if (!mounted) return;
     setState(() {
       _importing = false;
-      _stickers = p2m.stickers();
+      _stickers = lacre.stickers();
     });
     if (errors.isNotEmpty) {
       messenger.showSnackBar(SnackBar(content: Text(errors.join('\n'))));
     }
   }
 
-  Future<void> _remove(p2m.Sticker s) async {
+  Future<void> _remove(lacre.Sticker s) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -155,8 +155,8 @@ class _StickerGridState extends State<StickerGrid> {
       ),
     );
     if (ok != true || !mounted) return;
-    await guard(context, () async => p2m.removeSticker(id: s.id));
-    if (mounted) setState(() => _stickers = p2m.stickers());
+    await guard(context, () async => lacre.removeSticker(id: s.id));
+    if (mounted) setState(() => _stickers = lacre.stickers());
   }
 
   @override
@@ -238,7 +238,7 @@ class StickerImage extends StatelessWidget {
 /// Ajusta una imagen al límite de los stickers: si ocupa o mide demasiado y
 /// no es animada, la reduce a 512 px (o menos) y la guarda como PNG.
 Future<Uint8List> fitSticker(Uint8List bytes) async {
-  final max = p2m.maxStickerBytes();
+  final max = lacre.maxStickerBytes();
   final ui.ImageDescriptor desc;
   try {
     desc = await ui.ImageDescriptor.encoded(

@@ -1,0 +1,32 @@
+[package]
+name = "lacre-node"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1.0.104"
+arti-client = { version = "0.47", default-features = false, features = ["tokio", "rustls", "compression", "onion-service-client", "onion-service-service", "static-sqlite"] }
+blake3 = "1.8.7"
+chacha20poly1305 = "0.10"
+clap = { version = "4.6.7", features = ["derive"] }
+data-encoding = "2.11.1"
+ed25519-dalek = "2"
+futures = "0.3.34"
+libp2p = { version = "0.57", features = ["tokio", "tcp", "quic", "noise", "yamux", "kad", "mdns", "identify", "request-response", "cbor", "macros", "ed25519", "relay", "dcutr", "upnp", "dns"] }
+# Misma versión que usa libp2p-dns, para leer la configuración DNS nosotros.
+hickory-resolver = { version = "0.26", default-features = false, features = ["system-config"] }
+mainline = "8"
+lacre-core = { version = "0.1.0", path = "../lacre-core" }
+rand = "0.8"
+safelog = "0.10"
+serde = { version = "1.0.229", features = ["derive"] }
+tokio = { version = "1.53.2", features = ["full"] }
+tor-cell = "0.47"
+tor-config = "0.47"
+tor-hsservice = "0.47"
+tor-proto = "0.47"
+tor-rtcompat = "0.47"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+serde_bytes = "0.11"

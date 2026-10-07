@@ -48,7 +48,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'p2message',
+                  'Lacre',
                   style: text.headlineMedium,
                   textAlign: TextAlign.center,
                 ),

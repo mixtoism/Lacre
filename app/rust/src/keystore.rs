@@ -16,7 +16,7 @@ pub async fn load_or_create(data: &Path, create: bool) -> Result<[u8; 32]> {
         .context("no hay llavero del sistema (Secret Service)")?;
     let dir = data.canonicalize().unwrap_or_else(|_| data.to_path_buf());
     let dir = dir.to_string_lossy();
-    let attrs = HashMap::from([("application", "p2message"), ("data-dir", dir.as_ref())]);
+    let attrs = HashMap::from([("application", "lacre"), ("data-dir", dir.as_ref())]);
     let found = ss.search_items(attrs.clone()).await?;
     if let Some(item) = found.unlocked.first().or(found.locked.first()) {
         item.ensure_unlocked().await.context("el llavero está bloqueado")?;
@@ -31,7 +31,7 @@ pub async fn load_or_create(data: &Path, create: bool) -> Result<[u8; 32]> {
     let collection = ss.get_default_collection().await.context("el llavero no tiene colección por defecto")?;
     collection.ensure_unlocked().await.context("el llavero está bloqueado")?;
     collection
-        .create_item(&format!("p2message ({dir})"), attrs, &key, true, "application/octet-stream")
+        .create_item(&format!("Lacre ({dir})"), attrs, &key, true, "application/octet-stream")
         .await?;
     Ok(key)
 }

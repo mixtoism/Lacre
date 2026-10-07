@@ -1,5 +1,5 @@
 [package]
-name = "p2m_api"
+name = "lacre_api"
 version = "0.1.0"
 edition = "2021"
 license.workspace = true
@@ -10,8 +10,8 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 anyhow = "1.0.104"
 flutter_rust_bridge = "=2.13.0"
-p2m-node = { path = "../../crates/p2m-node" }
-p2m-core = { path = "../../crates/p2m-core" }
+lacre-node = { path = "../../crates/lacre-node" }
+lacre-core = { path = "../../crates/lacre-core" }
 tokio = { version = "1.53.2", features = ["full"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 tracing = { version = "0.1.44", features = ["log"] }

@@ -1,2 +1,5 @@
 /target
-p2m-data/
+lacre-data/
+
+# Copias de trabajo y ajustes locales de Claude Code
+/.claude/

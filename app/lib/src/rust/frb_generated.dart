@@ -3,7 +3,7 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
-import 'api/p2m.dart';
+import 'api/lacre.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -58,7 +58,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 
   @override
   Future<void> executeRustInitializers() async {
-    await api.crateApiP2MInitApp();
+    await api.crateApiLacreInitApp();
   }
 
   @override
@@ -69,11 +69,11 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 1437427075;
+  int get rustContentHash => -1480781094;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
-        stem: 'p2m_api',
+        stem: 'lacre_api',
         ioDirectory: 'rust/target/release/',
         webPrefix: 'pkg/',
         wasmBindgenName: 'wasm_bindgen',
@@ -81,102 +81,102 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<void> crateApiP2MAcceptChat({required int index});
+  Future<void> crateApiLacreAcceptChat({required int index});
 
-  Future<void> crateApiP2MAddMembers({
+  Future<void> crateApiLacreAddMembers({
     required int index,
     required List<String> targets,
   });
 
-  Sticker crateApiP2MAddSticker({required List<int> bytes});
+  Sticker crateApiLacreAddSticker({required List<int> bytes});
 
-  String? crateApiP2MAvatarPath({required String handle});
+  String? crateApiLacreAvatarPath({required String handle});
 
-  void crateApiP2MBlock({required String handle});
+  void crateApiLacreBlock({required String handle});
 
-  List<String> crateApiP2MBlocked();
+  List<String> crateApiLacreBlocked();
 
-  ChatMembers crateApiP2MChatMembers({required int index});
+  ChatMembers crateApiLacreChatMembers({required int index});
 
-  List<ChatInfo> crateApiP2MChats();
+  List<ChatInfo> crateApiLacreChats();
 
-  Future<int> crateApiP2MCreateChat({
+  Future<int> crateApiLacreCreateChat({
     String? title,
     required List<String> targets,
   });
 
-  Future<String> crateApiP2MCreateIdentity({required String name});
+  Future<String> crateApiLacreCreateIdentity({required String name});
 
-  void crateApiP2MDeleteChat({required int index});
+  void crateApiLacreDeleteChat({required int index});
 
-  List<Device> crateApiP2MDevices();
+  List<Device> crateApiLacreDevices();
 
-  Future<String> crateApiP2MDownloadFile({required String id});
+  Future<String> crateApiLacreDownloadFile({required String id});
 
-  Stream<UiEvent> crateApiP2MEventStream();
+  Stream<UiEvent> crateApiLacreEventStream();
 
-  Future<void> crateApiP2MInitApp();
+  Future<void> crateApiLacreInitApp();
 
-  bool crateApiP2MIsBlocked({required String handle});
+  bool crateApiLacreIsBlocked({required String handle});
 
-  void crateApiP2MKeepSticker({required String id});
+  void crateApiLacreKeepSticker({required String id});
 
-  Future<void> crateApiP2MLinkDevice({
+  Future<void> crateApiLacreLinkDevice({
     required String code,
     required String label,
   });
 
-  BigInt crateApiP2MMaxFileBytes();
+  BigInt crateApiLacreMaxFileBytes();
 
-  int crateApiP2MMaxStickerBytes();
+  int crateApiLacreMaxStickerBytes();
 
-  List<Message> crateApiP2MMessages({required int index});
+  List<Message> crateApiLacreMessages({required int index});
 
-  Profile crateApiP2MProfile();
+  Profile crateApiLacreProfile();
 
-  Future<String> crateApiP2MQrPayload();
+  Future<String> crateApiLacreQrPayload();
 
-  Future<void> crateApiP2MRemoveMember({
+  Future<void> crateApiLacreRemoveMember({
     required int index,
     required String handle,
   });
 
-  void crateApiP2MRemoveSticker({required String id});
+  void crateApiLacreRemoveSticker({required String id});
 
-  List<Hit> crateApiP2MSearch({required String query, int? index});
+  List<Hit> crateApiLacreSearch({required String query, int? index});
 
-  Future<SendResult> crateApiP2MSend({
+  Future<SendResult> crateApiLacreSend({
     required int index,
     required String text,
   });
 
-  Future<SendResult> crateApiP2MSendFile({
+  Future<SendResult> crateApiLacreSendFile({
     required int index,
     required String path,
   });
 
-  Future<SendResult> crateApiP2MSendSticker({
+  Future<SendResult> crateApiLacreSendSticker({
     required int index,
     required String id,
   });
 
-  Future<void> crateApiP2MSetAvatar({Uint8List? image});
+  Future<void> crateApiLacreSetAvatar({Uint8List? image});
 
-  void crateApiP2MSetPower({required bool background, required bool wifi});
+  void crateApiLacreSetPower({required bool background, required bool wifi});
 
-  Future<Profile> crateApiP2MStart({
+  Future<Profile> crateApiLacreStart({
     required String dataDir,
     required bool lanOnly,
     Uint8List? dataKey,
   });
 
-  Future<Status> crateApiP2MStatus();
+  Future<Status> crateApiLacreStatus();
 
-  List<Sticker> crateApiP2MStickers();
+  List<Sticker> crateApiLacreStickers();
 
-  void crateApiP2MUnblock({required String handle});
+  void crateApiLacreUnblock({required String handle});
 
-  Future<void> crateApiP2MUnlinkDevice({required String code});
+  Future<void> crateApiLacreUnlinkDevice({required String code});
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -188,7 +188,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<void> crateApiP2MAcceptChat({required int index}) {
+  Future<void> crateApiLacreAcceptChat({required int index}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -205,18 +205,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MAcceptChatConstMeta,
+        constMeta: kCrateApiLacreAcceptChatConstMeta,
         argValues: [index],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MAcceptChatConstMeta =>
+  TaskConstMeta get kCrateApiLacreAcceptChatConstMeta =>
       const TaskConstMeta(debugName: "accept_chat", argNames: ["index"]);
 
   @override
-  Future<void> crateApiP2MAddMembers({
+  Future<void> crateApiLacreAddMembers({
     required int index,
     required List<String> targets,
   }) {
@@ -237,20 +237,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MAddMembersConstMeta,
+        constMeta: kCrateApiLacreAddMembersConstMeta,
         argValues: [index, targets],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MAddMembersConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiLacreAddMembersConstMeta => const TaskConstMeta(
     debugName: "add_members",
     argNames: ["index", "targets"],
   );
 
   @override
-  Sticker crateApiP2MAddSticker({required List<int> bytes}) {
+  Sticker crateApiLacreAddSticker({required List<int> bytes}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -262,18 +262,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_sticker,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MAddStickerConstMeta,
+        constMeta: kCrateApiLacreAddStickerConstMeta,
         argValues: [bytes],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MAddStickerConstMeta =>
+  TaskConstMeta get kCrateApiLacreAddStickerConstMeta =>
       const TaskConstMeta(debugName: "add_sticker", argNames: ["bytes"]);
 
   @override
-  String? crateApiP2MAvatarPath({required String handle}) {
+  String? crateApiLacreAvatarPath({required String handle}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -285,18 +285,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_opt_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MAvatarPathConstMeta,
+        constMeta: kCrateApiLacreAvatarPathConstMeta,
         argValues: [handle],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MAvatarPathConstMeta =>
+  TaskConstMeta get kCrateApiLacreAvatarPathConstMeta =>
       const TaskConstMeta(debugName: "avatar_path", argNames: ["handle"]);
 
   @override
-  void crateApiP2MBlock({required String handle}) {
+  void crateApiLacreBlock({required String handle}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -308,18 +308,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MBlockConstMeta,
+        constMeta: kCrateApiLacreBlockConstMeta,
         argValues: [handle],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MBlockConstMeta =>
+  TaskConstMeta get kCrateApiLacreBlockConstMeta =>
       const TaskConstMeta(debugName: "block", argNames: ["handle"]);
 
   @override
-  List<String> crateApiP2MBlocked() {
+  List<String> crateApiLacreBlocked() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -330,18 +330,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MBlockedConstMeta,
+        constMeta: kCrateApiLacreBlockedConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MBlockedConstMeta =>
+  TaskConstMeta get kCrateApiLacreBlockedConstMeta =>
       const TaskConstMeta(debugName: "blocked", argNames: []);
 
   @override
-  ChatMembers crateApiP2MChatMembers({required int index}) {
+  ChatMembers crateApiLacreChatMembers({required int index}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -353,18 +353,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_chat_members,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MChatMembersConstMeta,
+        constMeta: kCrateApiLacreChatMembersConstMeta,
         argValues: [index],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MChatMembersConstMeta =>
+  TaskConstMeta get kCrateApiLacreChatMembersConstMeta =>
       const TaskConstMeta(debugName: "chat_members", argNames: ["index"]);
 
   @override
-  List<ChatInfo> crateApiP2MChats() {
+  List<ChatInfo> crateApiLacreChats() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -375,18 +375,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_chat_info,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MChatsConstMeta,
+        constMeta: kCrateApiLacreChatsConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MChatsConstMeta =>
+  TaskConstMeta get kCrateApiLacreChatsConstMeta =>
       const TaskConstMeta(debugName: "chats", argNames: []);
 
   @override
-  Future<int> crateApiP2MCreateChat({
+  Future<int> crateApiLacreCreateChat({
     String? title,
     required List<String> targets,
   }) {
@@ -407,20 +407,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_u_32,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MCreateChatConstMeta,
+        constMeta: kCrateApiLacreCreateChatConstMeta,
         argValues: [title, targets],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MCreateChatConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiLacreCreateChatConstMeta => const TaskConstMeta(
     debugName: "create_chat",
     argNames: ["title", "targets"],
   );
 
   @override
-  Future<String> crateApiP2MCreateIdentity({required String name}) {
+  Future<String> crateApiLacreCreateIdentity({required String name}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -437,18 +437,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MCreateIdentityConstMeta,
+        constMeta: kCrateApiLacreCreateIdentityConstMeta,
         argValues: [name],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MCreateIdentityConstMeta =>
+  TaskConstMeta get kCrateApiLacreCreateIdentityConstMeta =>
       const TaskConstMeta(debugName: "create_identity", argNames: ["name"]);
 
   @override
-  void crateApiP2MDeleteChat({required int index}) {
+  void crateApiLacreDeleteChat({required int index}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -460,18 +460,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MDeleteChatConstMeta,
+        constMeta: kCrateApiLacreDeleteChatConstMeta,
         argValues: [index],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MDeleteChatConstMeta =>
+  TaskConstMeta get kCrateApiLacreDeleteChatConstMeta =>
       const TaskConstMeta(debugName: "delete_chat", argNames: ["index"]);
 
   @override
-  List<Device> crateApiP2MDevices() {
+  List<Device> crateApiLacreDevices() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -482,18 +482,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_device,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MDevicesConstMeta,
+        constMeta: kCrateApiLacreDevicesConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MDevicesConstMeta =>
+  TaskConstMeta get kCrateApiLacreDevicesConstMeta =>
       const TaskConstMeta(debugName: "devices", argNames: []);
 
   @override
-  Future<String> crateApiP2MDownloadFile({required String id}) {
+  Future<String> crateApiLacreDownloadFile({required String id}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -510,18 +510,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MDownloadFileConstMeta,
+        constMeta: kCrateApiLacreDownloadFileConstMeta,
         argValues: [id],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MDownloadFileConstMeta =>
+  TaskConstMeta get kCrateApiLacreDownloadFileConstMeta =>
       const TaskConstMeta(debugName: "download_file", argNames: ["id"]);
 
   @override
-  Stream<UiEvent> crateApiP2MEventStream() {
+  Stream<UiEvent> crateApiLacreEventStream() {
     final sink = RustStreamSink<UiEvent>();
     unawaited(
       handler.executeNormal(
@@ -540,7 +540,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeSuccessData: sse_decode_unit,
             decodeErrorData: sse_decode_AnyhowException,
           ),
-          constMeta: kCrateApiP2MEventStreamConstMeta,
+          constMeta: kCrateApiLacreEventStreamConstMeta,
           argValues: [sink],
           apiImpl: this,
         ),
@@ -549,11 +549,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return sink.stream;
   }
 
-  TaskConstMeta get kCrateApiP2MEventStreamConstMeta =>
+  TaskConstMeta get kCrateApiLacreEventStreamConstMeta =>
       const TaskConstMeta(debugName: "event_stream", argNames: ["sink"]);
 
   @override
-  Future<void> crateApiP2MInitApp() {
+  Future<void> crateApiLacreInitApp() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -569,18 +569,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiP2MInitAppConstMeta,
+        constMeta: kCrateApiLacreInitAppConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MInitAppConstMeta =>
+  TaskConstMeta get kCrateApiLacreInitAppConstMeta =>
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
-  bool crateApiP2MIsBlocked({required String handle}) {
+  bool crateApiLacreIsBlocked({required String handle}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -592,18 +592,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_bool,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MIsBlockedConstMeta,
+        constMeta: kCrateApiLacreIsBlockedConstMeta,
         argValues: [handle],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MIsBlockedConstMeta =>
+  TaskConstMeta get kCrateApiLacreIsBlockedConstMeta =>
       const TaskConstMeta(debugName: "is_blocked", argNames: ["handle"]);
 
   @override
-  void crateApiP2MKeepSticker({required String id}) {
+  void crateApiLacreKeepSticker({required String id}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -615,18 +615,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MKeepStickerConstMeta,
+        constMeta: kCrateApiLacreKeepStickerConstMeta,
         argValues: [id],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MKeepStickerConstMeta =>
+  TaskConstMeta get kCrateApiLacreKeepStickerConstMeta =>
       const TaskConstMeta(debugName: "keep_sticker", argNames: ["id"]);
 
   @override
-  Future<void> crateApiP2MLinkDevice({
+  Future<void> crateApiLacreLinkDevice({
     required String code,
     required String label,
   }) {
@@ -647,20 +647,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MLinkDeviceConstMeta,
+        constMeta: kCrateApiLacreLinkDeviceConstMeta,
         argValues: [code, label],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MLinkDeviceConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiLacreLinkDeviceConstMeta => const TaskConstMeta(
     debugName: "link_device",
     argNames: ["code", "label"],
   );
 
   @override
-  BigInt crateApiP2MMaxFileBytes() {
+  BigInt crateApiLacreMaxFileBytes() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -671,18 +671,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_u_64,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiP2MMaxFileBytesConstMeta,
+        constMeta: kCrateApiLacreMaxFileBytesConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MMaxFileBytesConstMeta =>
+  TaskConstMeta get kCrateApiLacreMaxFileBytesConstMeta =>
       const TaskConstMeta(debugName: "max_file_bytes", argNames: []);
 
   @override
-  int crateApiP2MMaxStickerBytes() {
+  int crateApiLacreMaxStickerBytes() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -693,18 +693,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_u_32,
           decodeErrorData: null,
         ),
-        constMeta: kCrateApiP2MMaxStickerBytesConstMeta,
+        constMeta: kCrateApiLacreMaxStickerBytesConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MMaxStickerBytesConstMeta =>
+  TaskConstMeta get kCrateApiLacreMaxStickerBytesConstMeta =>
       const TaskConstMeta(debugName: "max_sticker_bytes", argNames: []);
 
   @override
-  List<Message> crateApiP2MMessages({required int index}) {
+  List<Message> crateApiLacreMessages({required int index}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -716,18 +716,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_message,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MMessagesConstMeta,
+        constMeta: kCrateApiLacreMessagesConstMeta,
         argValues: [index],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MMessagesConstMeta =>
+  TaskConstMeta get kCrateApiLacreMessagesConstMeta =>
       const TaskConstMeta(debugName: "messages", argNames: ["index"]);
 
   @override
-  Profile crateApiP2MProfile() {
+  Profile crateApiLacreProfile() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -738,18 +738,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_profile,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MProfileConstMeta,
+        constMeta: kCrateApiLacreProfileConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MProfileConstMeta =>
+  TaskConstMeta get kCrateApiLacreProfileConstMeta =>
       const TaskConstMeta(debugName: "profile", argNames: []);
 
   @override
-  Future<String> crateApiP2MQrPayload() {
+  Future<String> crateApiLacreQrPayload() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -765,18 +765,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_String,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MQrPayloadConstMeta,
+        constMeta: kCrateApiLacreQrPayloadConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MQrPayloadConstMeta =>
+  TaskConstMeta get kCrateApiLacreQrPayloadConstMeta =>
       const TaskConstMeta(debugName: "qr_payload", argNames: []);
 
   @override
-  Future<void> crateApiP2MRemoveMember({
+  Future<void> crateApiLacreRemoveMember({
     required int index,
     required String handle,
   }) {
@@ -797,20 +797,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MRemoveMemberConstMeta,
+        constMeta: kCrateApiLacreRemoveMemberConstMeta,
         argValues: [index, handle],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MRemoveMemberConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiLacreRemoveMemberConstMeta => const TaskConstMeta(
     debugName: "remove_member",
     argNames: ["index", "handle"],
   );
 
   @override
-  void crateApiP2MRemoveSticker({required String id}) {
+  void crateApiLacreRemoveSticker({required String id}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -822,18 +822,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MRemoveStickerConstMeta,
+        constMeta: kCrateApiLacreRemoveStickerConstMeta,
         argValues: [id],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MRemoveStickerConstMeta =>
+  TaskConstMeta get kCrateApiLacreRemoveStickerConstMeta =>
       const TaskConstMeta(debugName: "remove_sticker", argNames: ["id"]);
 
   @override
-  List<Hit> crateApiP2MSearch({required String query, int? index}) {
+  List<Hit> crateApiLacreSearch({required String query, int? index}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -846,18 +846,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_hit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MSearchConstMeta,
+        constMeta: kCrateApiLacreSearchConstMeta,
         argValues: [query, index],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MSearchConstMeta =>
+  TaskConstMeta get kCrateApiLacreSearchConstMeta =>
       const TaskConstMeta(debugName: "search", argNames: ["query", "index"]);
 
   @override
-  Future<SendResult> crateApiP2MSend({
+  Future<SendResult> crateApiLacreSend({
     required int index,
     required String text,
   }) {
@@ -878,18 +878,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_send_result,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MSendConstMeta,
+        constMeta: kCrateApiLacreSendConstMeta,
         argValues: [index, text],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MSendConstMeta =>
+  TaskConstMeta get kCrateApiLacreSendConstMeta =>
       const TaskConstMeta(debugName: "send", argNames: ["index", "text"]);
 
   @override
-  Future<SendResult> crateApiP2MSendFile({
+  Future<SendResult> crateApiLacreSendFile({
     required int index,
     required String path,
   }) {
@@ -910,18 +910,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_send_result,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MSendFileConstMeta,
+        constMeta: kCrateApiLacreSendFileConstMeta,
         argValues: [index, path],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MSendFileConstMeta =>
+  TaskConstMeta get kCrateApiLacreSendFileConstMeta =>
       const TaskConstMeta(debugName: "send_file", argNames: ["index", "path"]);
 
   @override
-  Future<SendResult> crateApiP2MSendSticker({
+  Future<SendResult> crateApiLacreSendSticker({
     required int index,
     required String id,
   }) {
@@ -942,18 +942,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_send_result,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MSendStickerConstMeta,
+        constMeta: kCrateApiLacreSendStickerConstMeta,
         argValues: [index, id],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MSendStickerConstMeta =>
+  TaskConstMeta get kCrateApiLacreSendStickerConstMeta =>
       const TaskConstMeta(debugName: "send_sticker", argNames: ["index", "id"]);
 
   @override
-  Future<void> crateApiP2MSetAvatar({Uint8List? image}) {
+  Future<void> crateApiLacreSetAvatar({Uint8List? image}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -970,18 +970,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MSetAvatarConstMeta,
+        constMeta: kCrateApiLacreSetAvatarConstMeta,
         argValues: [image],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MSetAvatarConstMeta =>
+  TaskConstMeta get kCrateApiLacreSetAvatarConstMeta =>
       const TaskConstMeta(debugName: "set_avatar", argNames: ["image"]);
 
   @override
-  void crateApiP2MSetPower({required bool background, required bool wifi}) {
+  void crateApiLacreSetPower({required bool background, required bool wifi}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -994,20 +994,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MSetPowerConstMeta,
+        constMeta: kCrateApiLacreSetPowerConstMeta,
         argValues: [background, wifi],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MSetPowerConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiLacreSetPowerConstMeta => const TaskConstMeta(
     debugName: "set_power",
     argNames: ["background", "wifi"],
   );
 
   @override
-  Future<Profile> crateApiP2MStart({
+  Future<Profile> crateApiLacreStart({
     required String dataDir,
     required bool lanOnly,
     Uint8List? dataKey,
@@ -1030,20 +1030,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_profile,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MStartConstMeta,
+        constMeta: kCrateApiLacreStartConstMeta,
         argValues: [dataDir, lanOnly, dataKey],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MStartConstMeta => const TaskConstMeta(
+  TaskConstMeta get kCrateApiLacreStartConstMeta => const TaskConstMeta(
     debugName: "start",
     argNames: ["dataDir", "lanOnly", "dataKey"],
   );
 
   @override
-  Future<Status> crateApiP2MStatus() {
+  Future<Status> crateApiLacreStatus() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -1059,18 +1059,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_status,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MStatusConstMeta,
+        constMeta: kCrateApiLacreStatusConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MStatusConstMeta =>
+  TaskConstMeta get kCrateApiLacreStatusConstMeta =>
       const TaskConstMeta(debugName: "status", argNames: []);
 
   @override
-  List<Sticker> crateApiP2MStickers() {
+  List<Sticker> crateApiLacreStickers() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -1081,18 +1081,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_list_sticker,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MStickersConstMeta,
+        constMeta: kCrateApiLacreStickersConstMeta,
         argValues: [],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MStickersConstMeta =>
+  TaskConstMeta get kCrateApiLacreStickersConstMeta =>
       const TaskConstMeta(debugName: "stickers", argNames: []);
 
   @override
-  void crateApiP2MUnblock({required String handle}) {
+  void crateApiLacreUnblock({required String handle}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
@@ -1104,18 +1104,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MUnblockConstMeta,
+        constMeta: kCrateApiLacreUnblockConstMeta,
         argValues: [handle],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MUnblockConstMeta =>
+  TaskConstMeta get kCrateApiLacreUnblockConstMeta =>
       const TaskConstMeta(debugName: "unblock", argNames: ["handle"]);
 
   @override
-  Future<void> crateApiP2MUnlinkDevice({required String code}) {
+  Future<void> crateApiLacreUnlinkDevice({required String code}) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -1132,14 +1132,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiP2MUnlinkDeviceConstMeta,
+        constMeta: kCrateApiLacreUnlinkDeviceConstMeta,
         argValues: [code],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiP2MUnlinkDeviceConstMeta =>
+  TaskConstMeta get kCrateApiLacreUnlinkDeviceConstMeta =>
       const TaskConstMeta(debugName: "unlink_device", argNames: ["code"]);
 
   @protected

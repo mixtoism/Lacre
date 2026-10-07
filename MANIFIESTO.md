@@ -1,4 +1,4 @@
-# Manifiesto de p2message
+# Manifiesto de Lacre
 
 *Borrador*
 
@@ -11,12 +11,12 @@ obligados a mirar, pueden equivocarse, pueden ser atacados y pueden cambiar
 sus normas de un día para otro.
 
 Cuando las conversaciones dependen de un punto central, la privacidad depende
-de la buena voluntad de quien lo controla. p2message nace para que no tenga
+de la buena voluntad de quien lo controla. Lacre nace para que no tenga
 que ser así.
 
 ## Qué es
 
-p2message es un programa de mensajería entre iguales. No hay empresa, ni
+Lacre es un programa de mensajería entre iguales. No hay empresa, ni
 servidor central, ni cuenta que alguien pueda cerrar.
 
 - **Tu identidad es una clave que vive en tus dispositivos.** No es un número
@@ -50,7 +50,7 @@ servidor central, ni cuenta que alguien pueda cerrar.
 
 Somos honestos sobre los límites:
 
-- **p2message no hace a nadie invisible.** Los nodos que guardan o retransmiten
+- **Lacre no hace a nadie invisible.** Los nodos que guardan o retransmiten
   mensajes no ven el contenido, pero sí parte de los metadatos: quién escribe
   a quién, cuándo y cuánto. Seguimos trabajando para reducirlo.
 - **Es una prueba de concepto.** No ha pasado una auditoría independiente. No
@@ -65,7 +65,7 @@ no lo ignoramos. Rechazamos el abuso, y de forma especial la explotación de
 menores.
 
 Pero la respuesta no puede ser leer las conversaciones de todos. Por eso
-p2message quiere poner el control en manos de cada persona (son funciones
+Lacre quiere poner el control en manos de cada persona (son funciones
 previstas, aún no implementadas):
 
 - bloquear a quien quiera;
@@ -77,7 +77,7 @@ tercero que lo lea sin permiso.
 
 ## Únete
 
-p2message no pertenece a nadie, ni a quien escribió sus primeras líneas.
+Lacre no pertenece a nadie, ni a quien escribió sus primeras líneas.
 Ejecuta un nodo, lee el código, rompe lo que esté roto y cuéntalo. Traduce,
 documenta y comparte. Cuantos más nodos haya, más difícil será apagar la red.
 

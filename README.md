@@ -1,4 +1,4 @@
-# p2message
+# Lacre
 
 Peer-to-peer messaging with end-to-end encryption, multi-device support and
 no intermediary servers.
@@ -80,9 +80,9 @@ references below point to entries in that file.
 ## Architecture
 
 ```
-crates/p2m-core   identity, signed records, MLS, sealed envelopes (no networking; FFI-friendly)
-crates/p2m-node   libp2p networking, Tor transport, rendezvous, mailboxes, chat logic, CLI
-app/              Flutter app (Linux for now); app/rust is the p2m_api bridge crate
+crates/lacre-core   identity, signed records, MLS, sealed envelopes (no networking; FFI-friendly)
+crates/lacre-node   libp2p networking, Tor transport, rendezvous, mailboxes, chat logic, CLI
+app/              Flutter app (Linux for now); app/rust is the lacre_api bridge crate
 scripts/e2e.sh    end-to-end test with several local nodes
 deploy/           systemd unit and Dockerfile for an always-on node
 docs/             design decision log
@@ -90,20 +90,20 @@ docs/             design decision log
 
 | Module                     | Responsibility                                                   |
 | -------------------------- | ---------------------------------------------------------------- |
-| `p2m-core/identity.rs`     | Root/device keys, handles, Argon2id suffix derivation            |
-| `p2m-core/record.rs`       | Signed identity records, DHT key layout                          |
-| `p2m-core/mls.rs`          | MLS engine (openmls), credentials, KeyPackages                   |
-| `p2m-core/envelope.rs`     | Sealed and signed envelopes for offline delivery                 |
-| `p2m-node/net.rs`          | libp2p swarm: Kademlia, mDNS, identify, request-response, relay  |
-| `p2m-node/tor.rs`          | libp2p `Transport` over Tor onion services (Arti)                |
-| `p2m-node/rendezvous.rs`   | Relay discovery through Mainline DHT and UDP trackers            |
-| `p2m-node/mailbox.rs`      | Store-and-forward mailbox for other peers' envelopes             |
-| `p2m-node/peers.rs`        | On-disk peer cache                                               |
-| `p2m-node/app.rs`          | Chats, sync, delivery, linking: the application logic            |
-| `p2m-node/history.rs`      | Local message history                                            |
-| `p2m-node/proto.rs`        | Wire messages of `/p2m/msg/1`                                    |
-| `p2m-node/node.rs`         | Starts a full node; shared by the CLI and the app                |
-| `app/rust/src/api/p2m.rs`  | API exposed to Dart through flutter_rust_bridge                  |
+| `lacre-core/identity.rs`     | Root/device keys, handles, Argon2id suffix derivation            |
+| `lacre-core/record.rs`       | Signed identity records, DHT key layout                          |
+| `lacre-core/mls.rs`          | MLS engine (openmls), credentials, KeyPackages                   |
+| `lacre-core/envelope.rs`     | Sealed and signed envelopes for offline delivery                 |
+| `lacre-node/net.rs`          | libp2p swarm: Kademlia, mDNS, identify, request-response, relay  |
+| `lacre-node/tor.rs`          | libp2p `Transport` over Tor onion services (Arti)                |
+| `lacre-node/rendezvous.rs`   | Relay discovery through Mainline DHT and UDP trackers            |
+| `lacre-node/mailbox.rs`      | Store-and-forward mailbox for other peers' envelopes             |
+| `lacre-node/peers.rs`        | On-disk peer cache                                               |
+| `lacre-node/app.rs`          | Chats, sync, delivery, linking: the application logic            |
+| `lacre-node/history.rs`      | Local message history                                            |
+| `lacre-node/proto.rs`        | Wire messages of `/p2m/msg/1`                                    |
+| `lacre-node/node.rs`         | Starts a full node; shared by the CLI and the app                |
+| `app/rust/src/api/lacre.rs`  | API exposed to Dart through flutter_rust_bridge                  |
 
 ---
 
@@ -332,7 +332,7 @@ is 60 s to allow for Tor circuits.
   dials up to 8 of the relays it finds.
 - Only IP:port pairs are exchanged. Identity is checked by Noise on connect,
   so a bogus entry only costs one failed dial. Observers can tell that an IP
-  uses p2message, but not who it is.
+  uses Lacre, but not who it is.
 - Bootstrap nodes and trackers can be overridden without recompiling
   (`--dht-bootstrap`, `--tracker`, `<data>/trackers.txt`). IPv4 only for now.
 
@@ -357,7 +357,7 @@ p2m:<name>#<suffix>:<root_pk base32>[@<multiaddr>]…
 
 **Peer cache** (`<data>/peers.txt`): one multiaddr per line, up to 64 peers
 with up to 4 addresses each, most recent first. It is filled from identify
-data of peers that speak the p2message Kademlia protocol, using the same
+data of peers that speak the Lacre Kademlia protocol, using the same
 filter as the QR. On startup the node dials these addresses and any
 `--bootstrap` address, and keeps retrying every 30 s while it has no
 connections.
@@ -406,19 +406,19 @@ Requirements: a recent stable Rust toolchain (edition 2024). No system Tor or
 SQLite is needed; Arti is embedded and builds SQLite statically.
 
 ```sh
-cargo build --release -p p2m-node
+cargo build --release -p lacre-node
 ```
 
 ### Two nodes on the same machine or LAN
 
 ```sh
 # terminal 1
-cargo run -p p2m-node -- --data /tmp/ana --port 4001
+cargo run -p lacre-node -- --data /tmp/ana --port 4001
 > init ana
 > whoami                       # prints ana#xxxxxxxx and the QR payload
 
 # terminal 2
-cargo run -p p2m-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0.1/tcp/4001
+cargo run -p lacre-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0.1/tcp/4001
 > init beto
 > chat ana#xxxxxxxx
 > send 0 hello
@@ -428,12 +428,12 @@ cargo run -p p2m-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0.1
 
 ```sh
 # machine A
-cargo run -p p2m-node -- --data /tmp/ana
+cargo run -p lacre-node -- --data /tmp/ana
 > init ana
 > whoami      # wait for the onion service to be published; the QR then includes /onion3/…
 
 # machine B, on any other network
-cargo run -p p2m-node -- --data /tmp/beto
+cargo run -p lacre-node -- --data /tmp/beto
 > init beto
 > chat p2m:ana#…:…@/onion3/…   # paste A's full QR payload
 > send 0 hello
@@ -446,7 +446,7 @@ reconnect on restart.
 
 ```sh
 # on the new device: start without `init`; it prints a link code
-cargo run -p p2m-node -- --data /tmp/ana-laptop
+cargo run -p lacre-node -- --data /tmp/ana-laptop
 
 # on the primary device
 > link <code> laptop
@@ -471,8 +471,8 @@ toolchain. The Rust part is built automatically by the Flutter build.
 
 ```sh
 cd app
-flutter run -d linux                         # data in ~/.local/share/es.p2message.p2message/node
-P2M_DATA=/tmp/p2m-b flutter run -d linux     # a second, independent instance
+flutter run -d linux                         # data in ~/.local/share/org.lacre.app/node
+LACRE_DATA=/tmp/lacre-b flutter run -d linux     # a second, independent instance
 ```
 
 The app covers creating an identity or linking to an existing one, the chat
@@ -506,7 +506,7 @@ code, Tor/relay status and device management. Bindings are regenerated with
 
 | Flag                          | Default        | Description                                                        |
 | ----------------------------- | -------------- | ------------------------------------------------------------------ |
-| `--data <dir>`                | `./p2m-data`   | Data directory for this device (keys and state)                    |
+| `--data <dir>`                | `./lacre-data`   | Data directory for this device (keys and state)                    |
 | `--port <n>`                  | `0` (random)   | TCP/QUIC listen port                                               |
 | `--bootstrap <multiaddr>`     | —              | Node to connect to on startup (repeatable; `/onion3/…` works)      |
 | `--relay-server`              | off            | Offer relaying (for nodes with a public IP or open port)           |
@@ -532,14 +532,14 @@ An always-on node helps the network even without a public IP:
 - with a public IP and `--relay-server`, it acts as a **relay** and
   announces itself on Mainline and trackers.
 
-**systemd** (`deploy/p2m-node.service`):
+**systemd** (`deploy/lacre-node.service`):
 
 ```sh
-sudo useradd --system --home-dir /var/lib/p2m-node p2m
-sudo install -m755 target/release/p2m-node /usr/local/bin/
-sudo cp deploy/p2m-node.service /etc/systemd/system/
-sudo systemctl enable --now p2m-node
-journalctl -u p2m-node | grep 'escuchando en /onion3'   # your onion bootstrap address
+sudo useradd --system --home-dir /var/lib/lacre-node lacre
+sudo install -m755 target/release/lacre-node /usr/local/bin/
+sudo cp deploy/lacre-node.service /etc/systemd/system/
+sudo systemctl enable --now lacre-node
+journalctl -u lacre-node | grep 'escuchando en /onion3'   # your onion bootstrap address
 ```
 
 Open port 4001 (TCP and UDP) if you have a public IP. Behind NAT or CGNAT,
@@ -548,8 +548,8 @@ remove `--relay-server` from the unit.
 **Docker** (`deploy/Dockerfile`):
 
 ```sh
-docker build -f deploy/Dockerfile -t p2m-node .
-docker run -d --name p2m -p 4001:4001/tcp -p 4001:4001/udp -v p2m:/data p2m-node
+docker build -f deploy/Dockerfile -t lacre-node .
+docker run -d --name lacre -p 4001:4001/tcp -p 4001:4001/udp -v lacre:/data lacre-node
 ```
 
 ---
@@ -579,7 +579,7 @@ All files are written atomically with `0600` permissions.
 ## Testing
 
 ```sh
-cargo test -p p2m-core     # unit tests for identity, records, MLS and envelopes
+cargo test -p lacre-core     # unit tests for identity, records, MLS and envelopes
 scripts/e2e.sh             # full local scenario
 ```
 
@@ -610,7 +610,7 @@ Current limitations:
 Planned:
 
 - Flutter builds for Android, iOS, Windows and macOS (the app and its
-  `p2m_api` bridge already exist; Linux works), QR scanning with the camera.
+  `lacre_api` bridge already exist; Linux works), QR scanning with the camera.
 - 24-word recovery phrase and primary-role transfer.
 - QR-based mutual confirmation for device linking; history transfer between
   own devices.

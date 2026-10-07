@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../l10n/l10n.dart';
-import '../src/rust/api/p2m.dart' as p2m;
+import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'common.dart';
 import 'scan.dart';
@@ -24,12 +24,12 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   String? _qr;
-  late List<p2m.Device> _devices;
+  late List<lacre.Device> _devices;
 
   @override
   void initState() {
     super.initState();
-    _devices = p2m.devices();
+    _devices = lacre.devices();
     _loadQr();
     widget.store.addListener(_onStore);
     _loadBattery();
@@ -66,7 +66,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadQr() async {
     _qrOnion = widget.store.status?.onion;
-    final qr = await guard(context, p2m.qrPayload);
+    final qr = await guard(context, lacre.qrPayload);
     if (mounted) setState(() => _qr = qr);
   }
 
@@ -168,13 +168,13 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (ok != true || !mounted) return;
     final done = await guard(context, () async {
-      await p2m.linkDevice(code: code.text, label: label.text.trim());
+      await lacre.linkDevice(code: code.text, label: label.text.trim());
       return true;
     });
-    if (done == true && mounted) setState(() => _devices = p2m.devices());
+    if (done == true && mounted) setState(() => _devices = lacre.devices());
   }
 
-  Future<void> _unlink(p2m.Device d) async {
+  Future<void> _unlink(lacre.Device d) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -194,10 +194,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (ok != true || !mounted) return;
     final done = await guard(context, () async {
-      await p2m.unlinkDevice(code: d.code);
+      await lacre.unlinkDevice(code: d.code);
       return true;
     });
-    if (done == true && mounted) setState(() => _devices = p2m.devices());
+    if (done == true && mounted) setState(() => _devices = lacre.devices());
   }
 
   @override
@@ -210,7 +210,7 @@ class _ProfilePageState extends State<ProfilePage> {
         listenable: widget.store,
         builder: (context, _) {
           final status = widget.store.status;
-          final blocked = p2m.blocked();
+          final blocked = lacre.blocked();
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [

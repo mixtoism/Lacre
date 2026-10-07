@@ -19,12 +19,12 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 PATH=$PATH:$HOME/Android/Sdk/platform-tools
 DEVICE=${1:-$(adb devices | awk 'NR > 1 && $2 == "device" {print $1; exit}')}
 WORK=${2:-$(mktemp -d)}
-BIN=$ROOT/target/debug/p2m-node
+BIN=$ROOT/target/debug/lacre-node
 BASE_PORT=${BASE_PORT:-47200}
 TICK=10
 [[ -n $DEVICE ]] || { echo "no hay ningún móvil conectado por adb"; exit 1; }
 
-cargo build -q --manifest-path "$ROOT/Cargo.toml" -p p2m-node
+cargo build -q --manifest-path "$ROOT/Cargo.toml" -p lacre-node
 rm -rf "$WORK" && mkdir -p "$WORK" && cd "$WORK"
 echo "directorio de trabajo: $WORK · móvil: $DEVICE"
 
@@ -97,35 +97,35 @@ responder a A; responder b B
   > movil.log 2>&1 &
 TEST_PID=$!; PIDS+=($TEST_PID)
 
-wait_in movil.log "P2M_E2E identidad" 600
-ok "alta en el móvil: $(grep -o 'P2M_E2E identidad .*' movil.log | awk '{print $3}')"
-wait_in movil.log "P2M_E2E ok 1:1" 600
+wait_in movil.log "LACRE_E2E identidad" 600
+ok "alta en el móvil: $(grep -o 'LACRE_E2E identidad .*' movil.log | awk '{print $3}')"
+wait_in movil.log "LACRE_E2E ok 1:1" 600
 ok "chat 1:1 móvil → A → móvil"
-wait_in movil.log "P2M_E2E ok grupo" 600
+wait_in movil.log "LACRE_E2E ok grupo" 600
 ok "grupo móvil + A + B"
 
-wait_in movil.log "P2M_E2E qr=" 600
-QR_M=$(grep -o 'P2M_E2E qr=[^ ]*' movil.log | head -1 | cut -d= -f2-)
+wait_in movil.log "LACRE_E2E qr=" 600
+QR_M=$(grep -o 'LACRE_E2E qr=[^ ]*' movil.log | head -1 | cut -d= -f2-)
 say b "chat $QR_M"
 wait_for b "chat \[[0-9]*\] creado" 600
 say b "send $(last b 'chat \[[0-9]*\] creado' | grep -o '[0-9]*') hola movil desde B"
-wait_in movil.log "P2M_E2E ok chat desde B" 600
+wait_in movil.log "LACRE_E2E ok chat desde B" 600
 ok "chat abierto desde el PC con el código del móvil"
 
-wait_in movil.log "P2M_E2E apaga A" 120
+wait_in movil.log "LACRE_E2E apaga A" 120
 stop a
-wait_in movil.log "P2M_E2E enciende A" 120
+wait_in movil.log "LACRE_E2E enciende A" 120
 start a
-wait_in movil.log "P2M_E2E ok buzones" 900
+wait_in movil.log "LACRE_E2E ok buzones" 900
 ok "mensaje a A desconectado entregado al volver"
 
-wait_in movil.log "P2M_E2E vinculado" 300
+wait_in movil.log "LACRE_E2E vinculado" 300
 wait_for c "vinculado a movil#" 300
 wait_for c "nuevo chat .*prueba" 600
 GROUP_B=$(grep -o '\[[0-9]*\] prueba' b.out | head -1 | tr -dc 0-9)
 say b "send $GROUP_B pong vinculado desde B"
 wait_for c "pcbea#.*: pong vinculado desde B" 600
-wait_in movil.log "P2M_E2E ok vinculación" 600
+wait_in movil.log "LACRE_E2E ok vinculación" 600
 ok "C vinculado al móvil: entra en el grupo y recibe los mensajes"
 
 wait "$TEST_PID" || fail "el test del móvil falló"

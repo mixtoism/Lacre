@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../l10n/l10n.dart';
-import '../src/rust/api/p2m.dart' as p2m;
+import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'chat_actions.dart';
 import 'common.dart';
@@ -39,8 +39,8 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final _input = TextEditingController();
   final _focus = FocusNode();
-  late List<p2m.Message> _messages;
-  late StreamSubscription<(int, p2m.Message)> _sub;
+  late List<lacre.Message> _messages;
+  late StreamSubscription<(int, lacre.Message)> _sub;
 
   /// Panel de emojis y stickers abierto.
   bool _panel = false;
@@ -65,7 +65,7 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     widget.store.view(widget.index);
-    _messages = p2m.messages(index: widget.index);
+    _messages = lacre.messages(index: widget.index);
     final position = widget.position;
     if (position != null) {
       _marked = position;
@@ -85,7 +85,7 @@ class _ChatPageState extends State<ChatPage> {
 
   List<int> _find(String query) => query.trim().isEmpty
       ? []
-      : p2m
+      : lacre
             .search(query: query, index: widget.index)
             .map((h) => h.position)
             .toList();
@@ -149,11 +149,11 @@ class _ChatPageState extends State<ChatPage> {
     if (text.isEmpty) return;
     _input.clear();
     if (!_panel) _focus.requestFocus();
-    await _deliver(() => p2m.send(index: widget.index, text: text));
+    await _deliver(() => lacre.send(index: widget.index, text: text));
   }
 
-  Future<void> _sendSticker(p2m.Sticker s) =>
-      _deliver(() => p2m.sendSticker(index: widget.index, id: s.id));
+  Future<void> _sendSticker(lacre.Sticker s) =>
+      _deliver(() => lacre.sendSticker(index: widget.index, id: s.id));
 
   Future<void> _sendFile() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -161,7 +161,7 @@ class _ChatPageState extends State<ChatPage> {
     final picked = await openFile();
     if (picked == null) return;
     final size = await picked.length();
-    final max = p2m.maxFileBytes().toInt();
+    final max = lacre.maxFileBytes().toInt();
     if (size > max) {
       messenger.showSnackBar(
         SnackBar(content: Text(l.fileTooBig(fileSize(size), fileSize(max)))),
@@ -171,7 +171,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() => _preparing++);
     try {
       await _deliver(
-        () => p2m.sendFile(index: widget.index, path: picked.path),
+        () => lacre.sendFile(index: widget.index, path: picked.path),
       );
     } finally {
       if (mounted) setState(() => _preparing--);
@@ -202,7 +202,7 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _deliver(Future<p2m.SendResult> Function() send) async {
+  Future<void> _deliver(Future<lacre.SendResult> Function() send) async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l;
     final error = Theme.of(context).colorScheme.error;
@@ -326,7 +326,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  PreferredSizeWidget _appBar(BuildContext context, p2m.ChatInfo? chat) {
+  PreferredSizeWidget _appBar(BuildContext context, lacre.ChatInfo? chat) {
     final peer = chat?.peer;
     return AppBar(
       titleSpacing: 0,
@@ -519,7 +519,7 @@ class _RequestBanner extends StatelessWidget {
   const _RequestBanner({required this.store, required this.chat});
 
   final Store store;
-  final p2m.ChatInfo chat;
+  final lacre.ChatInfo chat;
 
   @override
   Widget build(BuildContext context) {
@@ -596,7 +596,7 @@ class _Line extends StatelessWidget {
   });
 
   final Store store;
-  final p2m.Message message;
+  final lacre.Message message;
   final bool showSender;
   final bool avatar;
   final bool first;
@@ -650,7 +650,7 @@ class _Line extends StatelessWidget {
 class _Notice extends StatelessWidget {
   const _Notice({required this.message});
 
-  final p2m.Message message;
+  final lacre.Message message;
 
   @override
   Widget build(BuildContext context) {
@@ -692,7 +692,7 @@ double _maxWidth(BuildContext context) =>
 class _Bubble extends StatelessWidget {
   const _Bubble({required this.message, required this.query});
 
-  final p2m.Message message;
+  final lacre.Message message;
 
   /// Texto buscado, para resaltarlo.
   final String query;
@@ -732,12 +732,12 @@ class _Bubble extends StatelessWidget {
 class _StickerBubble extends StatelessWidget {
   const _StickerBubble({required this.message, required this.hidden});
 
-  final p2m.Message message;
+  final lacre.Message message;
   final bool hidden;
 
   Future<void> _menu(BuildContext context) async {
     final sticker = message.sticker!;
-    final saved = p2m.stickers().any((s) => s.id == sticker.id);
+    final saved = lacre.stickers().any((s) => s.id == sticker.id);
     final keep = await showModalBottomSheet<bool>(
       context: context,
       builder: (context) => SafeArea(
@@ -753,7 +753,7 @@ class _StickerBubble extends StatelessWidget {
     );
     if (keep != true || !context.mounted) return;
     final ok = await guard(context, () async {
-      p2m.keepSticker(id: sticker.id);
+      lacre.keepSticker(id: sticker.id);
       return true;
     });
     if (ok == true && context.mounted) {
@@ -813,7 +813,7 @@ class _FileBubble extends StatelessWidget {
   });
 
   final Store store;
-  final p2m.Message message;
+  final lacre.Message message;
   final bool locked;
 
   Future<void> _download(BuildContext context, String id) =>

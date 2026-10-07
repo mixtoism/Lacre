@@ -2,7 +2,7 @@
 //!
 //! Algunas dependencias (el resolvedor DNS de libp2p, hickory) leen la
 //! configuración del sistema por JNI y necesitan la JVM y el `Context` de la
-//! app a través de `ndk-context`. `P2mApp` (la `Application`) la llama antes
+//! app a través de `ndk-context`. `LacreApp` (la `Application`) la llama antes
 //! de arrancar Flutter.
 
 use std::ffi::c_void;
@@ -12,9 +12,9 @@ use jni_sys::{JNIEnv, JavaVM, jobject};
 
 static INIT: Once = Once::new();
 
-/// `P2mApp.initAndroidContext(context)`.
+/// `LacreApp.initAndroidContext(context)`.
 #[no_mangle]
-pub unsafe extern "system" fn Java_es_p2message_p2message_P2mApp_initAndroidContext(
+pub unsafe extern "system" fn Java_org_lacre_app_LacreApp_initAndroidContext(
     env: *mut JNIEnv,
     _this: jobject,
     context: jobject,

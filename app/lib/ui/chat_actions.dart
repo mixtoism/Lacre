@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
-import '../src/rust/api/p2m.dart' as p2m;
+import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'common.dart';
 
@@ -12,13 +12,13 @@ import 'common.dart';
 Future<bool> deleteChat(
   BuildContext context,
   Store store,
-  p2m.ChatInfo chat,
+  lacre.ChatInfo chat,
 ) async {
   // En un grupo que no gestionamos, borrar es salir de él (D-031).
   var manager = false;
   if (chat.peer == null && chat.active) {
     try {
-      manager = p2m.chatMembers(index: chat.index).canEdit;
+      manager = lacre.chatMembers(index: chat.index).canEdit;
     } catch (_) {}
   }
   final l = context.l;
@@ -73,7 +73,7 @@ Future<void> acceptChat(BuildContext context, Store store, int index) =>
 Future<void> chatMenu(
   BuildContext context,
   Store store,
-  p2m.ChatInfo chat,
+  lacre.ChatInfo chat,
 ) async {
   final peer = chat.peer;
   final action = await showModalBottomSheet<String>(
@@ -122,7 +122,7 @@ Future<void> chatMenu(
 class ChatAvatar extends StatelessWidget {
   const ChatAvatar({super.key, required this.chat, this.radius = 24});
 
-  final p2m.ChatInfo chat;
+  final lacre.ChatInfo chat;
   final double radius;
 
   @override
