@@ -1,4 +1,15 @@
+<<<<<<< HEAD
 # Lacre
+=======
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lacre-logo-dark.svg">
+    <img src="docs/brand/lacre-logo.svg" alt="Lacre" width="320">
+  </picture>
+</p>
+
+# p2message
+>>>>>>> worktree-iconos-lacre
 
 Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
 servidores intermedios. Estado: **prueba de concepto** (CLI en Linux).
