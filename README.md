@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lacre-logo-dark.svg">
+    <img src="docs/brand/lacre-logo.svg" alt="Lacre" width="320">
+  </picture>
+</p>
+
 # p2message
 
 Peer-to-peer messaging with end-to-end encryption, multi-device support and
