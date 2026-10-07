@@ -10,6 +10,7 @@ use libp2p::Multiaddr;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use p2m_node::app::{App, Event, Target};
+use p2m_node::history::StoredMessage;
 use p2m_node::node::{self, Options};
 use p2m_node::rendezvous;
 
@@ -68,10 +69,23 @@ comandos:
   chat <handle|qr>             abre un chat 1:1
   group <título> <h1> <h2>...  crea un grupo
   chats                        lista tus chats
+  members <n>                  muestra quién participa en el chat n
+  add <n> <h1|qr> [h2…]        añade personas al chat n (solo quien lo creó)
+  remove <n> <handle>          quita a una persona del chat n (solo quien lo creó)
   send <n> <texto>             envía un mensaje al chat n
+  sticker <n> <archivo>        envía una imagen (PNG/GIF/WebP/JPEG, ≤200 KB) como sticker
+  file <n> <archivo>           envía un archivo (≤100 MB)
+  get <id>                     descarga un archivo recibido
   history <n>                  muestra los mensajes del chat n
+  search [n:]<texto>           busca en todos los chats (o solo en el n)
+  accept <n>                   acepta una solicitud de chat
+  delete <n>                   borra el chat n de este dispositivo
+  block <handle> | unblock <handle> | blocked
+                               bloquea, desbloquea o lista personas bloqueadas
+  avatar <archivo>|none        cambia o quita tu foto de perfil (≤128 KB, ≤512 px)
   dial <multiaddr>             conecta con un nodo concreto
   addrs                        muestra las direcciones por las que te pueden llamar
+  power low|full [wifi|mobile] modo de energía: reposo o normal (D-034)
   help | quit";
 
 #[tokio::main]
@@ -96,6 +110,7 @@ async fn main() -> Result<()> {
         trackers: (!args.tracker.is_empty())
             .then(|| args.tracker.iter().map(|t| rendezvous::normalize_tracker(t)).collect()),
         tick: Duration::from_secs(args.tick),
+        data_key: node::data_key_from_env()?,
         ..Options::new(args.data.clone())
     };
     let node::Node { app, peer_id, mut events } = node::start(opts)?;
@@ -139,15 +154,30 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// Texto del mensaje, el sticker (su nombre en `media/`) o el archivo.
+fn body(m: &StoredMessage) -> String {
+    if let Some(f) = &m.file {
+        return format!("[archivo {} · {} bytes · {}]", f.name, f.size, f.id);
+    }
+    match &m.sticker {
+        Some(id) => format!("[sticker {id}]"),
+        None => m.text.clone(),
+    }
+}
+
 fn print_event(ev: Event) {
     match ev {
         Event::Linked { handle } => println!("\n✔ dispositivo vinculado a {handle}"),
-        Event::NewChat { index, name } => println!("\n✉ nuevo chat [{index}] {name}"),
+        Event::NewChat { index, name, request: false } => println!("\n✉ nuevo chat [{index}] {name}"),
+        Event::NewChat { index, name, request: true } => println!("\n✉ solicitud de chat [{index}] {name}"),
+        Event::Avatar { handle } => println!("\n✔ foto de perfil de {handle}"),
         Event::Message { local: true, .. } => {}
-        Event::Message { index, message, .. } => println!("\n[{index}] {}: {}", message.from, message.text),
+        Event::Message { index, message, .. } if message.notice => println!("\n[{index}] · {}", message.text),
+        Event::Message { index, message, .. } => println!("\n[{index}] {}: {}", message.from, body(&message)),
         Event::Removed { .. } => println!("\n⚠ este dispositivo ha sido expulsado de un chat"),
         Event::UnverifiedMember { name, .. } => println!("\n⚠ miembro no verificado en el chat: {name}"),
         Event::RelayReady(addr) => println!("\n✔ alcanzable a través de relay: {addr}"),
+        Event::FileProgress { .. } | Event::ChatsChanged => {}
     }
 }
 
@@ -223,18 +253,58 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
         }
         "history" => {
             for m in app.messages(rest.parse()?)? {
-                println!("  {}: {}", m.from, m.text);
+                if m.notice {
+                    println!("  · {}", m.text);
+                    continue;
+                }
+                println!("  {}: {}", m.from, body(&m));
             }
         }
         "chats" => {
             for c in app.chats() {
-                let state = if c.active { "" } else { " (expulsado)" };
+                let state = match (c.active, c.request) {
+                    (false, _) => " (expulsado)",
+                    (_, true) => " (solicitud)",
+                    _ => "",
+                };
                 println!("  [{}] {} · {} dispositivo(s){state}", c.index, c.name, c.devices);
             }
         }
-        "send" => {
-            let (n, text) = rest.split_once(' ').context("uso: send <n> <texto>")?;
-            let r = app.send(n.parse()?, text).await?;
+        "members" => {
+            let (list, editable) = app.chat_members(rest.parse()?)?;
+            for p in list {
+                println!("  {p}");
+            }
+            if editable {
+                println!("  (puedes añadir y quitar personas: add / remove)");
+            }
+        }
+        "add" => {
+            let mut parts = rest.split_whitespace();
+            let n = parts.next().context("uso: add <n> <h1|qr> [h2…]")?.parse()?;
+            let targets = parts.map(str::parse).collect::<Result<Vec<Target>>>()?;
+            if targets.is_empty() {
+                anyhow::bail!("indica al menos una persona");
+            }
+            app.add_members(n, targets).await?;
+            println!("añadido(s) al chat [{n}]");
+        }
+        "remove" => {
+            let (n, handle) = rest.split_once(' ').context("uso: remove <n> <handle>")?;
+            app.remove_member(n.parse()?, handle).await?;
+            println!("{} quitado del chat [{n}]", handle.trim());
+        }
+        "send" | "sticker" | "file" => {
+            let (n, arg) =
+                rest.split_once(' ').context("uso: send <n> <texto> | sticker <n> <archivo> | file <n> <archivo>")?;
+            let r = match cmd {
+                "send" => app.send(n.parse()?, arg).await?,
+                "file" => app.send_file(n.parse()?, arg.trim().as_ref()).await?,
+                _ => {
+                    let bytes = std::fs::read(arg.trim()).with_context(|| format!("no se pudo leer {arg}"))?;
+                    app.send_sticker_bytes(n.parse()?, bytes).await?
+                }
+            };
             if r.stored > 0 {
                 println!("  ({} dispositivo(s) desconectado(s): guardado en buzones)", r.stored);
             }
@@ -242,11 +312,66 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
                 println!("  (no entregado a {} dispositivo(s))", r.failed);
             }
         }
+        "get" => {
+            let path = app.download(rest).await?;
+            println!("archivo descargado: {}", path.display());
+        }
+        "search" => {
+            let (index, query) = match rest.split_once(':') {
+                Some((n, q)) if n.parse::<usize>().is_ok() => (Some(n.parse()?), q),
+                _ => (None, rest),
+            };
+            let hits = app.search(query, index)?;
+            for h in &hits {
+                println!("  [{}#{}] {}: {}", h.index, h.position, h.message.from, body(&h.message));
+            }
+            println!("{} resultado(s)", hits.len());
+        }
+        "accept" => {
+            app.accept_chat(rest.parse()?)?;
+            println!("chat [{rest}] aceptado");
+        }
+        "delete" => {
+            app.delete_chat(rest.parse()?)?;
+            println!("chat [{rest}] borrado");
+        }
+        "block" => {
+            app.block(rest)?;
+            println!("{rest} bloqueado");
+        }
+        "unblock" => {
+            app.unblock(rest)?;
+            println!("{rest} desbloqueado");
+        }
+        "blocked" => {
+            for h in app.blocked() {
+                println!("  {h}");
+            }
+        }
+        "avatar" => {
+            let image = match rest {
+                "none" => None,
+                path => Some(std::fs::read(path).with_context(|| format!("no se pudo leer {path}"))?),
+            };
+            app.set_avatar(image).await?;
+            println!("foto de perfil actualizada");
+        }
         "dial" => app.net().dial(rest.parse()?).await,
         "addrs" => {
             for a in app.net().listen_addrs().await? {
                 println!("  {a}");
             }
+        }
+        "power" => {
+            let mut it = rest.split_whitespace();
+            let low = match it.next() {
+                Some("low") => true,
+                Some("full") => false,
+                _ => anyhow::bail!("uso: power low|full [wifi|mobile]"),
+            };
+            let wifi = it.next() != Some("mobile");
+            app.net().set_power(p2m_node::net::Power { low, wifi });
+            println!("modo de energía: {}", if low { "reposo" } else { "normal" });
         }
         _ => println!("comando desconocido; escribe `help`"),
     }

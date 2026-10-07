@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Por defecto (idiomas sin traducir): inglés. El español, en values-es. -->
+<resources>
+    <string name="servicio_texto">Connected to receive messages</string>
+    <string name="servicio_cerrar">Close</string>
+    <string name="canal_conexion">Connection</string>
+    <string name="canal_conexion_desc">Persistent notice while p2message receives messages in the background</string>
+    <string name="canal_mensajes">Messages</string>
+    <string name="canal_mensajes_desc">New messages and chat requests</string>
+    <string name="mensaje_nuevo">New message</string>
+</resources>

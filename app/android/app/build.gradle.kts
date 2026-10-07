@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider, para abrir con otra app los archivos de los chats.
+    implementation("androidx.core:core:1.13.1")
+}

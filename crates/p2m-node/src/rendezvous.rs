@@ -82,16 +82,29 @@ pub fn normalize_tracker(t: &str) -> String {
 
 pub fn spawn(cfg: Config, net: Client) {
     tokio::spawn(async move {
-        let dht = match start_dht(&cfg) {
-            Ok(d) => Some(d),
-            Err(e) => {
-                warn!("no se pudo arrancar Mainline: {e:#}");
-                None
-            }
-        };
+        let mut power = net.power();
+        let mut dht = None;
         let topic = topic();
         let mut last_announce: Option<tokio::time::Instant> = None;
         loop {
+            // En reposo (D-034) ni se busca ni se mantiene la DHT Mainline,
+            // que por sí sola despierta la radio cada poco.
+            if power.borrow_and_update().low {
+                if dht.take().is_some() {
+                    debug!("reposo: Mainline detenida");
+                }
+                let _ = power.changed().await;
+                continue;
+            }
+            if dht.is_none() {
+                dht = match start_dht(&cfg) {
+                    Ok(d) => Some(d),
+                    Err(e) => {
+                        warn!("no se pudo arrancar Mainline: {e:#}");
+                        None
+                    }
+                };
+            }
             if cfg.announce && last_announce.is_none_or(|t| t.elapsed() >= ANNOUNCE_EVERY) {
                 match tcp_port(&net).await {
                     Some(port) => {
@@ -117,7 +130,10 @@ pub fn spawn(cfg: Config, net: Client) {
                     net.dial(tcp_multiaddr(addr)).await;
                 }
             }
-            tokio::time::sleep(CHECK_EVERY).await;
+            tokio::select! {
+                _ = tokio::time::sleep(CHECK_EVERY) => {}
+                Ok(()) = power.changed() => {}
+            }
         }
     });
 }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="servicio_texto">Conectado para recibir mensajes</string>
+    <string name="servicio_cerrar">Cerrar</string>
+    <string name="canal_conexion">Conexión</string>
+    <string name="canal_conexion_desc">Aviso fijo mientras p2message recibe mensajes en segundo plano</string>
+    <string name="canal_mensajes">Mensajes</string>
+    <string name="canal_mensajes_desc">Mensajes y solicitudes de chat nuevos</string>
+    <string name="mensaje_nuevo">Mensaje nuevo</string>
+</resources>

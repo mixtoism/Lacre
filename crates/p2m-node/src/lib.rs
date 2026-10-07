@@ -2,11 +2,15 @@
 //! CLI (`main.rs`) y la app (`p2m-api`).
 
 pub mod app;
+pub mod courier;
+pub mod files;
 pub mod history;
 pub mod mailbox;
 pub mod net;
 pub mod node;
 pub mod peers;
+pub mod people;
 pub mod proto;
 pub mod rendezvous;
+pub mod sticker;
 pub mod tor;

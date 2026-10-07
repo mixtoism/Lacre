@@ -9,17 +9,38 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'p2m.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `app`, `on_rt`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`
+// These functions are ignored because they are not marked as `pub`: `app`, `desktop_key`, `forward_events`, `on_rt`, `parse_targets`, `sticker`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`, `from`
 
 /// Arranca el nodo con los datos de `data_dir`. Llamarla otra vez no hace
-/// nada (devuelve el perfil).
-Future<Profile> start({required String dataDir}) =>
-    RustLib.instance.api.crateApiP2MStart(dataDir: dataDir);
+/// nada (devuelve el perfil). Con `lan_only` no usa Tor ni busca relays en
+/// Internet: solo encuentra a otros por mDNS en la red local (para pruebas).
+///
+/// `data_key` es la clave para cifrar el estado en disco (D-033); en Android
+/// la da el Keystore. Sin ella se usa `P2M_DATA_KEY` o, en el escritorio, el
+/// llavero del sistema.
+Future<Profile> start({
+  required String dataDir,
+  required bool lanOnly,
+  Uint8List? dataKey,
+}) => RustLib.instance.api.crateApiP2MStart(
+  dataDir: dataDir,
+  lanOnly: lanOnly,
+  dataKey: dataKey,
+);
 
 Profile profile() => RustLib.instance.api.crateApiP2MProfile();
 
-/// Flujo de avisos. Solo puede haber un suscriptor.
+/// Modo de energía (D-034). Con `background` (app en segundo plano en el
+/// móvil) el nodo entra en reposo: solo se le llega por su servicio onion,
+/// Tor duerme y las tareas periódicas se agrupan cada ~12 min. mDNS solo
+/// funciona en primer plano y con `wifi`.
+void setPower({required bool background, required bool wifi}) => RustLib
+    .instance
+    .api
+    .crateApiP2MSetPower(background: background, wifi: wifi);
+
+/// Flujo de avisos. Un suscriptor nuevo sustituye al anterior.
 Stream<UiEvent> eventStream() => RustLib.instance.api.crateApiP2MEventStream();
 
 Future<Status> status() => RustLib.instance.api.crateApiP2MStatus();
@@ -49,8 +70,87 @@ List<Message> messages({required int index}) =>
 Future<int> createChat({String? title, required List<String> targets}) =>
     RustLib.instance.api.crateApiP2MCreateChat(title: title, targets: targets);
 
+ChatMembers chatMembers({required int index}) =>
+    RustLib.instance.api.crateApiP2MChatMembers(index: index);
+
+/// Añade personas (handles o contenidos de QR) a un chat que creamos.
+Future<void> addMembers({required int index, required List<String> targets}) =>
+    RustLib.instance.api.crateApiP2MAddMembers(index: index, targets: targets);
+
+/// Quita a una persona de un chat que creamos.
+Future<void> removeMember({required int index, required String handle}) =>
+    RustLib.instance.api.crateApiP2MRemoveMember(index: index, handle: handle);
+
+/// Tamaño máximo de un sticker, en bytes.
+int maxStickerBytes() => RustLib.instance.api.crateApiP2MMaxStickerBytes();
+
+/// Colección propia de stickers, del más reciente al más antiguo.
+List<Sticker> stickers() => RustLib.instance.api.crateApiP2MStickers();
+
+/// Añade una imagen a la colección.
+Sticker addSticker({required List<int> bytes}) =>
+    RustLib.instance.api.crateApiP2MAddSticker(bytes: bytes);
+
+/// Añade a la colección un sticker recibido.
+void keepSticker({required String id}) =>
+    RustLib.instance.api.crateApiP2MKeepSticker(id: id);
+
+void removeSticker({required String id}) =>
+    RustLib.instance.api.crateApiP2MRemoveSticker(id: id);
+
+Future<SendResult> sendSticker({required int index, required String id}) =>
+    RustLib.instance.api.crateApiP2MSendSticker(index: index, id: id);
+
+/// Tamaño máximo de un archivo, en bytes.
+BigInt maxFileBytes() => RustLib.instance.api.crateApiP2MMaxFileBytes();
+
+/// Envía un archivo (hasta [`max_file_bytes`]): se cifra y se copia a los
+/// datos de la app; los demás lo descargan de los dispositivos del grupo.
+Future<SendResult> sendFile({required int index, required String path}) =>
+    RustLib.instance.api.crateApiP2MSendFile(index: index, path: path);
+
+/// Descarga un archivo recibido y devuelve dónde quedó. El progreso llega
+/// como [`UiEvent::FileProgress`].
+Future<String> downloadFile({required String id}) =>
+    RustLib.instance.api.crateApiP2MDownloadFile(id: id);
+
 Future<SendResult> send({required int index, required String text}) =>
     RustLib.instance.api.crateApiP2MSend(index: index, text: text);
+
+/// Borra un chat de este dispositivo (su historial incluido). Si alguien
+/// vuelve a escribir en él, reaparece vacío.
+void deleteChat({required int index}) =>
+    RustLib.instance.api.crateApiP2MDeleteChat(index: index);
+
+/// Acepta una solicitud de chat (en todos nuestros dispositivos).
+Future<void> acceptChat({required int index}) =>
+    RustLib.instance.api.crateApiP2MAcceptChat(index: index);
+
+/// Busca mensajes en todos los chats (`index` nulo) o en uno, sin distinguir
+/// mayúsculas ni tildes. Los más recientes primero.
+List<Hit> search({required String query, int? index}) =>
+    RustLib.instance.api.crateApiP2MSearch(query: query, index: index);
+
+/// Bloquea a una persona: se ignoran sus mensajes e invitaciones.
+void block({required String handle}) =>
+    RustLib.instance.api.crateApiP2MBlock(handle: handle);
+
+void unblock({required String handle}) =>
+    RustLib.instance.api.crateApiP2MUnblock(handle: handle);
+
+List<String> blocked() => RustLib.instance.api.crateApiP2MBlocked();
+
+bool isBlocked({required String handle}) =>
+    RustLib.instance.api.crateApiP2MIsBlocked(handle: handle);
+
+/// Foto de perfil de una persona (o la nuestra), si la tenemos.
+String? avatarPath({required String handle}) =>
+    RustLib.instance.api.crateApiP2MAvatarPath(handle: handle);
+
+/// Pone (o quita, con `None`) nuestra foto de perfil: PNG, GIF, WebP o JPEG
+/// de hasta 128 KB y 512 px de lado.
+Future<void> setAvatar({Uint8List? image}) =>
+    RustLib.instance.api.crateApiP2MSetAvatar(image: image);
 
 class ChatInfo {
   final int index;
@@ -59,12 +159,25 @@ class ChatInfo {
   final bool active;
   final Message? last;
 
+  /// Solicitud de chat pendiente de aceptar (D-029): no se descargan sus
+  /// archivos ni se muestran sus stickers.
+  final bool request;
+
+  /// La otra persona, si es un chat 1:1.
+  final String? peer;
+
+  /// Foto de la otra persona (solo en chats aceptados).
+  final String? avatar;
+
   const ChatInfo({
     required this.index,
     required this.name,
     required this.devices,
     required this.active,
     this.last,
+    required this.request,
+    this.peer,
+    this.avatar,
   });
 
   @override
@@ -73,7 +186,10 @@ class ChatInfo {
       name.hashCode ^
       devices.hashCode ^
       active.hashCode ^
-      last.hashCode;
+      last.hashCode ^
+      request.hashCode ^
+      peer.hashCode ^
+      avatar.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -84,7 +200,39 @@ class ChatInfo {
           name == other.name &&
           devices == other.devices &&
           active == other.active &&
-          last == other.last;
+          last == other.last &&
+          request == other.request &&
+          peer == other.peer &&
+          avatar == other.avatar;
+}
+
+class ChatMembers {
+  /// Handles de las personas del chat.
+  final List<String> participants;
+
+  /// Este dispositivo puede añadir y quitar personas (creó el chat).
+  final bool canEdit;
+
+  /// Nuestro handle, para no ofrecer quitarnos.
+  final String? me;
+
+  const ChatMembers({
+    required this.participants,
+    required this.canEdit,
+    this.me,
+  });
+
+  @override
+  int get hashCode => participants.hashCode ^ canEdit.hashCode ^ me.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMembers &&
+          runtimeType == other.runtimeType &&
+          participants == other.participants &&
+          canEdit == other.canEdit &&
+          me == other.me;
 }
 
 class Device {
@@ -111,22 +259,98 @@ class Device {
           thisDevice == other.thisDevice;
 }
 
+/// Archivo enviado o recibido en un chat.
+class FileAttachment {
+  final String id;
+  final String name;
+  final BigInt size;
+
+  /// Dónde está en este dispositivo, si ya se descargó.
+  final String? path;
+
+  const FileAttachment({
+    required this.id,
+    required this.name,
+    required this.size,
+    this.path,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^ name.hashCode ^ size.hashCode ^ path.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FileAttachment &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          size == other.size &&
+          path == other.path;
+}
+
+/// Mensaje encontrado por `search`.
+class Hit {
+  final int index;
+
+  /// Posición del mensaje en `messages(index)`.
+  final int position;
+  final Message message;
+
+  const Hit({
+    required this.index,
+    required this.position,
+    required this.message,
+  });
+
+  @override
+  int get hashCode => index.hashCode ^ position.hashCode ^ message.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Hit &&
+          runtimeType == other.runtimeType &&
+          index == other.index &&
+          position == other.position &&
+          message == other.message;
+}
+
 class Message {
   final String from;
   final String text;
   final PlatformInt64 sentAt;
   final bool mine;
 
+  /// Aviso del chat («ana añadió a carl»), no un mensaje escrito.
+  final bool notice;
+
+  /// Sticker (D-025); en ese caso `text` va vacío.
+  final Sticker? sticker;
+
+  /// Archivo adjunto (D-026); en ese caso `text` va vacío.
+  final FileAttachment? file;
+
   const Message({
     required this.from,
     required this.text,
     required this.sentAt,
     required this.mine,
+    required this.notice,
+    this.sticker,
+    this.file,
   });
 
   @override
   int get hashCode =>
-      from.hashCode ^ text.hashCode ^ sentAt.hashCode ^ mine.hashCode;
+      from.hashCode ^
+      text.hashCode ^
+      sentAt.hashCode ^
+      mine.hashCode ^
+      notice.hashCode ^
+      sticker.hashCode ^
+      file.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -136,7 +360,10 @@ class Message {
           from == other.from &&
           text == other.text &&
           sentAt == other.sentAt &&
-          mine == other.mine;
+          mine == other.mine &&
+          notice == other.notice &&
+          sticker == other.sticker &&
+          file == other.file;
 }
 
 class Profile {
@@ -149,10 +376,22 @@ class Profile {
   /// Tiene la clave raíz (puede vincular y revocar dispositivos).
   final bool primary;
 
-  const Profile({this.handle, required this.deviceCode, required this.primary});
+  /// El estado se guarda cifrado en disco (D-033).
+  final bool encrypted;
+
+  const Profile({
+    this.handle,
+    required this.deviceCode,
+    required this.primary,
+    required this.encrypted,
+  });
 
   @override
-  int get hashCode => handle.hashCode ^ deviceCode.hashCode ^ primary.hashCode;
+  int get hashCode =>
+      handle.hashCode ^
+      deviceCode.hashCode ^
+      primary.hashCode ^
+      encrypted.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -161,7 +400,8 @@ class Profile {
           runtimeType == other.runtimeType &&
           handle == other.handle &&
           deviceCode == other.deviceCode &&
-          primary == other.primary;
+          primary == other.primary &&
+          encrypted == other.encrypted;
 }
 
 class SendResult {
@@ -202,13 +442,46 @@ class Status {
           onion == other.onion;
 }
 
+/// Sticker guardado en el dispositivo.
+class Sticker {
+  final String id;
+
+  /// Archivo de la imagen (PNG, GIF, WebP o JPEG).
+  final String path;
+
+  const Sticker({required this.id, required this.path});
+
+  @override
+  int get hashCode => id.hashCode ^ path.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Sticker &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          path == other.path;
+}
+
 @freezed
 sealed class UiEvent with _$UiEvent {
   const UiEvent._();
 
   const factory UiEvent.linked({required String handle}) = UiEvent_Linked;
-  const factory UiEvent.newChat({required int index, required String name}) =
-      UiEvent_NewChat;
+
+  /// `request`: de alguien con quien aún no hablamos; hay que aceptarlo.
+  const factory UiEvent.newChat({
+    required int index,
+    required String name,
+    required bool request,
+  }) = UiEvent_NewChat;
+
+  /// Ha cambiado la foto de perfil de alguien (o la nuestra).
+  const factory UiEvent.avatar({required String handle}) = UiEvent_Avatar;
+
+  /// Ha cambiado la lista de chats (p. ej. otro dispositivo aceptó una
+  /// solicitud).
+  const factory UiEvent.chatsChanged() = UiEvent_ChatsChanged;
   const factory UiEvent.message({
     required int index,
     required Message message,
@@ -220,4 +493,11 @@ sealed class UiEvent with _$UiEvent {
     required String name,
   }) = UiEvent_UnverifiedMember;
   const factory UiEvent.relayReady({required String addr}) = UiEvent_RelayReady;
+
+  /// Progreso de una descarga: trozos que ya están de `total`.
+  const factory UiEvent.fileProgress({
+    required String id,
+    required int done,
+    required int total,
+  }) = UiEvent_FileProgress;
 }

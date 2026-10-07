@@ -8,11 +8,13 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use futures::StreamExt;
-use libp2p::core::transport::OptionalTransport;
+use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+use libp2p::core::transport::{ListenerId, OptionalTransport};
 use libp2p::core::{ConnectedPoint, Transport, upgrade};
 use libp2p::kad::{self, Mode, QueryId, Quorum, Record, RecordKey, StoreInserts, store::RecordStore};
 use libp2p::multiaddr::Protocol;
@@ -23,15 +25,15 @@ use libp2p::{
 };
 use p2m_core::mls::verify_key_package;
 use p2m_core::record::{SignedRecord, dht_key, key_package_key};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, watch};
 use tracing::{debug, info, warn};
 
 use crate::peers::PeerCache;
 use crate::proto::{Request, Response};
-use crate::tor::TorTransport;
+use crate::tor::{TorDialer, TorTransport};
 
 const KAD_PROTOCOL: StreamProtocol = StreamProtocol::new("/p2m/kad/1.0.0");
-const MSG_PROTOCOL: StreamProtocol = StreamProtocol::new("/p2m/msg/1");
+pub(crate) const MSG_PROTOCOL: StreamProtocol = StreamProtocol::new("/p2m/msg/1");
 /// Reservas simultáneas en relays (D-018).
 const MAX_RELAYS: usize = 2;
 /// Tras encontrar el primer valor de una clave, cuánto más se espera por
@@ -42,6 +44,23 @@ const RECORD_GRACE: Duration = Duration::from_millis(1500);
 /// arranque. Al arrancar Tor aún no está listo y el primer intento por onion
 /// suele fallar.
 const REDIAL_EVERY: Duration = Duration::from_secs(30);
+/// En reposo (D-034), las tareas periódicas se agrupan en este intervalo.
+pub const LOW_POWER_EVERY: Duration = Duration::from_secs(12 * 60);
+
+/// Modo de energía (D-034). En reposo (app en segundo plano en el móvil)
+/// solo se entra por el servicio onion: sin mDNS, sin reservas en relays,
+/// Tor dormido y las tareas periódicas espaciadas. mDNS además solo con wifi.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Power {
+    pub low: bool,
+    pub wifi: bool,
+}
+
+impl Default for Power {
+    fn default() -> Self {
+        Self { low: false, wifi: true }
+    }
+}
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
@@ -81,6 +100,7 @@ enum Command {
     ClosestPeers { key: Vec<u8>, reply: oneshot::Sender<Vec<PeerId>> },
     ConnectedPeers { reply: oneshot::Sender<Vec<PeerId>> },
     ListenAddrs { reply: oneshot::Sender<Vec<Multiaddr>> },
+    PeerAddrs { peers: Vec<PeerId>, reply: oneshot::Sender<Vec<(PeerId, Vec<Multiaddr>)>> },
     Dial(Multiaddr),
     /// Registro entrante ya validado (la validación usa Argon2 y va aparte).
     StoreValidated(Record),
@@ -106,6 +126,9 @@ pub enum NetEvent {
 #[derive(Clone)]
 pub struct Client {
     tx: mpsc::Sender<Command>,
+    power: Arc<watch::Sender<Power>>,
+    /// Para el mensajero (D-034).
+    tor: Option<Arc<TorDialer>>,
 }
 
 impl Client {
@@ -158,6 +181,21 @@ impl Client {
         let _ = self.tx.send(Command::Respond { channel, resp }).await;
     }
 
+    /// Envía `req` a varios peers desde una identidad de un solo uso
+    /// (ver [`crate::courier`]). Devuelve los que contestaron.
+    pub async fn send_anonymously(&self, peers: Vec<PeerId>, req: Request) -> Result<HashMap<PeerId, Response>> {
+        let targets = self.call(|reply| Command::PeerAddrs { peers, reply }).await?;
+        crate::courier::send(self.tor.as_deref().map(TorDialer::isolated), targets, req).await
+    }
+
+    pub fn set_power(&self, p: Power) {
+        self.power.send_if_modified(|cur| std::mem::replace(cur, p) != p);
+    }
+
+    pub fn power(&self) -> watch::Receiver<Power> {
+        self.power.subscribe()
+    }
+
     pub async fn dial(&self, addr: Multiaddr) {
         let _ = self.tx.send(Command::Dial(addr)).await;
     }
@@ -190,12 +228,26 @@ fn relay_server_config() -> relay::Config {
     }
 }
 
+/// Configuración DNS del sistema. En Android se lee por JNI y falla si no
+/// hay red activa en ese momento; entonces se usa Quad9 en lugar de no
+/// arrancar el nodo.
+pub(crate) fn dns_config() -> (ResolverConfig, ResolverOpts) {
+    hickory_resolver::system_conf::read_system_conf().unwrap_or_else(|e| {
+        warn!("sin configuración DNS del sistema ({e}); se usa Quad9");
+        (ResolverConfig::udp_and_tcp(&hickory_resolver::config::QUAD9), ResolverOpts::default())
+    })
+}
+
 /// Arranca la red. La identidad libp2p del nodo es la clave del dispositivo,
 /// así que `PeerId` == dispositivo (D-008).
 pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::Receiver<NetEvent>, PeerId)> {
     let keypair = identity::Keypair::ed25519_from_bytes(device_secret)?;
     let tor = cfg.tor.as_deref().map(TorTransport::new).transpose()?;
     let onion = tor.as_ref().map(TorTransport::address);
+    let courier_tor = tor.as_ref().map(|t| Arc::new(t.isolated_dialer()));
+    let tor_client = tor.as_ref().map(TorTransport::client);
+    let (power, power_rx) = watch::channel(Power::default());
+    let (dns_cfg, dns_opts) = dns_config();
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
         .with_tcp(tcp::Config::default(), noise::Config::new, yamux::Config::default)?
@@ -210,7 +262,7 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
                 .authenticate(noise::Config::new(key)?)
                 .multiplex(yamux::Config::default()))
         })?
-        .with_dns()?
+        .with_dns_config(dns_cfg, dns_opts)
         .with_relay_client(noise::Config::new, yamux::Config::default)?
         .with_behaviour(|key, relay_client| {
             let peer_id = key.public().to_peer_id();
@@ -282,13 +334,18 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
         requests: HashMap::new(),
         closest: HashMap::new(),
         dialed: HashMap::new(),
-        relays: HashSet::new(),
+        relays: HashMap::new(),
+        hops: HashSet::new(),
         bootstrap,
         cache,
         relay_server: cfg.relay_server,
+        mdns: cfg.mdns,
+        tor: tor_client,
+        onion_ready: false,
+        power: power_rx,
     };
     tokio::spawn(net.run(rx));
-    Ok((Client { tx }, ev_rx, peer_id))
+    Ok((Client { tx, power: Arc::new(power), tor: courier_tor }, ev_rx, peer_id))
 }
 
 struct Network {
@@ -303,10 +360,18 @@ struct Network {
     /// relay a través de ella).
     dialed: HashMap<PeerId, Multiaddr>,
     /// Relays en los que tenemos (o hemos pedido) reserva.
-    relays: HashSet<PeerId>,
+    relays: HashMap<PeerId, ListenerId>,
+    /// Peers que ofrecen relay (para volver a reservar al salir del reposo).
+    hops: HashSet<PeerId>,
     bootstrap: Vec<Multiaddr>,
     cache: Option<PeerCache>,
     relay_server: bool,
+    /// mDNS permitido por configuración.
+    mdns: bool,
+    tor: Option<Arc<arti_client::TorClient<tor_rtcompat::PreferredRuntime>>>,
+    /// El servicio onion está publicado.
+    onion_ready: bool,
+    power: watch::Receiver<Power>,
 }
 
 /// No toma `&self`: el swarm no es `Sync` y no puede quedar prestado
@@ -322,20 +387,67 @@ fn is_relayed(addr: &Multiaddr) -> bool {
 impl Network {
     async fn run(mut self, mut commands: mpsc::Receiver<Command>) {
         let mut redial = tokio::time::interval(REDIAL_EVERY);
+        let mut last_redial: Option<tokio::time::Instant> = None;
+        self.apply_power();
         loop {
             tokio::select! {
                 _ = redial.tick() => {
-                    if self.swarm.connected_peers().next().is_none() {
+                    let every = if self.power.borrow().low { LOW_POWER_EVERY } else { REDIAL_EVERY };
+                    if self.swarm.connected_peers().next().is_none()
+                        && last_redial.is_none_or(|t| t.elapsed() + Duration::from_secs(1) >= every)
+                    {
+                        last_redial = Some(tokio::time::Instant::now());
                         for addr in self.bootstrap.clone() {
                             self.dial(addr);
                         }
                     }
                 }
+                Ok(()) = self.power.changed() => self.apply_power(),
                 ev = self.swarm.select_next_some() => self.on_event(ev).await,
                 cmd = commands.recv() => match cmd {
                     Some(cmd) => self.on_command(cmd),
                     None => return,
                 },
+            }
+        }
+    }
+
+    /// Aplica el modo de energía actual (D-034).
+    fn apply_power(&mut self) {
+        let p = *self.power.borrow_and_update();
+        info!(reposo = p.low, wifi = p.wifi, "modo de energía");
+        let want_mdns = self.mdns && !p.low && p.wifi;
+        if want_mdns != self.swarm.behaviour().mdns.is_enabled() {
+            let me = *self.swarm.local_peer_id();
+            self.swarm.behaviour_mut().mdns = match want_mdns {
+                true => match mdns::tokio::Behaviour::new(mdns::Config::default(), me) {
+                    Ok(b) => Some(b),
+                    Err(e) => {
+                        warn!("no se pudo activar mDNS: {e}");
+                        None
+                    }
+                },
+                false => None,
+            }
+            .into();
+        }
+        if let Some(tor) = &self.tor {
+            tor.set_dormant(if p.low { arti_client::DormantMode::Soft } else { arti_client::DormantMode::Normal });
+        }
+        if p.low {
+            // Con el servicio onion publicado, se nos llega por él: las
+            // reservas en relays solo cuestan conexiones vivas.
+            if self.onion_ready {
+                for (relay, id) in std::mem::take(&mut self.relays) {
+                    debug!(%relay, "reposo: se suelta la reserva");
+                    self.swarm.remove_listener(id);
+                }
+            }
+        } else {
+            for relay in self.hops.clone() {
+                if self.swarm.is_connected(&relay) {
+                    self.reserve_relay(relay);
+                }
             }
         }
     }
@@ -391,6 +503,24 @@ impl Network {
                     .collect();
                 let _ = reply.send(addrs);
             }
+            Command::PeerAddrs { peers, reply } => {
+                let mut out: Vec<(PeerId, Vec<Multiaddr>)> = peers.into_iter().map(|p| (p, Vec::new())).collect();
+                for bucket in self.kad().kbuckets() {
+                    for e in bucket.iter() {
+                        if let Some((_, addrs)) = out.iter_mut().find(|(p, _)| p == e.node.key.preimage()) {
+                            addrs.extend(e.node.value.iter().cloned());
+                        }
+                    }
+                }
+                for (p, addrs) in &mut out {
+                    if let Some(a) = self.dialed.get(p)
+                        && !addrs.contains(a)
+                    {
+                        addrs.push(a.clone());
+                    }
+                }
+                let _ = reply.send(out);
+            }
             Command::Dial(addr) => self.dial(addr),
             Command::StoreValidated(record) => self.store_if_newer(record),
             Command::FinishQuery(id) => {
@@ -430,6 +560,9 @@ impl Network {
                 } else {
                     // Con `/p2p/`, lista para usar como `--bootstrap` de otro nodo.
                     info!("escuchando en {}", address.clone().with(Protocol::P2p(*self.swarm.local_peer_id())));
+                }
+                if matches!(address.iter().next(), Some(Protocol::Onion3(_))) {
+                    self.onion_ready = true;
                 }
                 if is_relayed(&address) {
                     emit(&self.events, NetEvent::RelayReady(address)).await;
@@ -487,7 +620,10 @@ impl Network {
                     }
                 }
                 if info.protocols.contains(&relay::HOP_PROTOCOL_NAME) {
-                    self.reserve_relay(peer_id);
+                    self.hops.insert(peer_id);
+                    if !(self.power.borrow().low && self.onion_ready) {
+                        self.reserve_relay(peer_id);
+                    }
                 }
             }
             SwarmEvent::Behaviour(BehaviourEvent::RelayClient(ev)) => debug!("relay: {ev:?}"),
@@ -505,15 +641,15 @@ impl Network {
     /// Reserva un hueco en un relay para que nos puedan llamar aunque
     /// estemos tras NAT (D-018). Solo a través de una conexión directa.
     fn reserve_relay(&mut self, relay: PeerId) {
-        if self.relays.len() >= MAX_RELAYS || self.relays.contains(&relay) {
+        if self.relays.len() >= MAX_RELAYS || self.relays.contains_key(&relay) {
             return;
         }
         let Some(addr) = self.dialed.get(&relay).cloned() else { return };
         let circuit = addr.with(Protocol::P2p(relay)).with(Protocol::P2pCircuit);
         match self.swarm.listen_on(circuit.clone()) {
-            Ok(_) => {
+            Ok(id) => {
                 debug!(%circuit, "pidiendo reserva en relay");
-                self.relays.insert(relay);
+                self.relays.insert(relay, id);
             }
             Err(e) => warn!(%circuit, "no se pudo pedir reserva: {e}"),
         }

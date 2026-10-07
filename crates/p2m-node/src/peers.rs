@@ -12,7 +12,7 @@ use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
 use tracing::warn;
 
-use crate::app::write_private;
+use crate::app::{read_private, write_private};
 
 /// Peers distintos que se recuerdan.
 const MAX_PEERS: usize = 64;
@@ -28,7 +28,8 @@ pub struct PeerCache {
 impl PeerCache {
     pub fn open(path: PathBuf) -> Self {
         let mut peers: Vec<(PeerId, Vec<Multiaddr>)> = Vec::new();
-        for addr in std::fs::read_to_string(&path).unwrap_or_default().lines().filter_map(|l| l.trim().parse().ok()) {
+        let text = read_private(&path).ok().flatten().map(|b| String::from_utf8_lossy(&b).into_owned());
+        for addr in text.unwrap_or_default().lines().filter_map(|l| l.trim().parse().ok()) {
             let Some((peer, addr)) = split_peer(addr) else { continue };
             match peers.iter_mut().find(|(p, _)| *p == peer) {
                 Some((_, addrs)) => addrs.push(addr),

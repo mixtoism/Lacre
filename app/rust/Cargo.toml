@@ -11,8 +11,22 @@ crate-type = ["cdylib", "staticlib"]
 anyhow = "1.0.104"
 flutter_rust_bridge = "=2.13.0"
 p2m-node = { path = "../../crates/p2m-node" }
+p2m-core = { path = "../../crates/p2m-core" }
 tokio = { version = "1.53.2", features = ["full"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+tracing = { version = "0.1.44", features = ["log"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni-sys = "0.4.1"
+ndk-context = "0.1.1"
+android_logger = "0.15.1"
+# En Android, tracing → log → logcat (el logger lo instala frb).
+log = "0.4.34"
+
+# Clave de datos del escritorio en el Secret Service (D-033).
+[target.'cfg(target_os = "linux")'.dependencies]
+secret-service = { version = "5.2.0", features = ["rt-tokio-crypto-rust"] }
+rand = "0.8"

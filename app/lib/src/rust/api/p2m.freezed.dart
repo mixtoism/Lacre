@@ -56,16 +56,19 @@ extension UiEventPatterns on UiEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UiEvent_Linked value)?  linked,TResult Function( UiEvent_NewChat value)?  newChat,TResult Function( UiEvent_Message value)?  message,TResult Function( UiEvent_Removed value)?  removed,TResult Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult Function( UiEvent_RelayReady value)?  relayReady,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UiEvent_Linked value)?  linked,TResult Function( UiEvent_NewChat value)?  newChat,TResult Function( UiEvent_Avatar value)?  avatar,TResult Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult Function( UiEvent_Message value)?  message,TResult Function( UiEvent_Removed value)?  removed,TResult Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult Function( UiEvent_RelayReady value)?  relayReady,TResult Function( UiEvent_FileProgress value)?  fileProgress,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
 return linked(_that);case UiEvent_NewChat() when newChat != null:
-return newChat(_that);case UiEvent_Message() when message != null:
+return newChat(_that);case UiEvent_Avatar() when avatar != null:
+return avatar(_that);case UiEvent_ChatsChanged() when chatsChanged != null:
+return chatsChanged(_that);case UiEvent_Message() when message != null:
 return message(_that);case UiEvent_Removed() when removed != null:
 return removed(_that);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that);case UiEvent_RelayReady() when relayReady != null:
-return relayReady(_that);case _:
+return relayReady(_that);case UiEvent_FileProgress() when fileProgress != null:
+return fileProgress(_that);case _:
   return orElse();
 
 }
@@ -83,16 +86,19 @@ return relayReady(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UiEvent_Linked value)  linked,required TResult Function( UiEvent_NewChat value)  newChat,required TResult Function( UiEvent_Message value)  message,required TResult Function( UiEvent_Removed value)  removed,required TResult Function( UiEvent_UnverifiedMember value)  unverifiedMember,required TResult Function( UiEvent_RelayReady value)  relayReady,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UiEvent_Linked value)  linked,required TResult Function( UiEvent_NewChat value)  newChat,required TResult Function( UiEvent_Avatar value)  avatar,required TResult Function( UiEvent_ChatsChanged value)  chatsChanged,required TResult Function( UiEvent_Message value)  message,required TResult Function( UiEvent_Removed value)  removed,required TResult Function( UiEvent_UnverifiedMember value)  unverifiedMember,required TResult Function( UiEvent_RelayReady value)  relayReady,required TResult Function( UiEvent_FileProgress value)  fileProgress,}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked():
 return linked(_that);case UiEvent_NewChat():
-return newChat(_that);case UiEvent_Message():
+return newChat(_that);case UiEvent_Avatar():
+return avatar(_that);case UiEvent_ChatsChanged():
+return chatsChanged(_that);case UiEvent_Message():
 return message(_that);case UiEvent_Removed():
 return removed(_that);case UiEvent_UnverifiedMember():
 return unverifiedMember(_that);case UiEvent_RelayReady():
-return relayReady(_that);}
+return relayReady(_that);case UiEvent_FileProgress():
+return fileProgress(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -106,16 +112,19 @@ return relayReady(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UiEvent_Linked value)?  linked,TResult? Function( UiEvent_NewChat value)?  newChat,TResult? Function( UiEvent_Message value)?  message,TResult? Function( UiEvent_Removed value)?  removed,TResult? Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult? Function( UiEvent_RelayReady value)?  relayReady,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UiEvent_Linked value)?  linked,TResult? Function( UiEvent_NewChat value)?  newChat,TResult? Function( UiEvent_Avatar value)?  avatar,TResult? Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult? Function( UiEvent_Message value)?  message,TResult? Function( UiEvent_Removed value)?  removed,TResult? Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult? Function( UiEvent_RelayReady value)?  relayReady,TResult? Function( UiEvent_FileProgress value)?  fileProgress,}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
 return linked(_that);case UiEvent_NewChat() when newChat != null:
-return newChat(_that);case UiEvent_Message() when message != null:
+return newChat(_that);case UiEvent_Avatar() when avatar != null:
+return avatar(_that);case UiEvent_ChatsChanged() when chatsChanged != null:
+return chatsChanged(_that);case UiEvent_Message() when message != null:
 return message(_that);case UiEvent_Removed() when removed != null:
 return removed(_that);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that);case UiEvent_RelayReady() when relayReady != null:
-return relayReady(_that);case _:
+return relayReady(_that);case UiEvent_FileProgress() when fileProgress != null:
+return fileProgress(_that);case _:
   return null;
 
 }
@@ -132,15 +141,18 @@ return relayReady(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle)?  linked,TResult Function( int index,  String name)?  newChat,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle)?  linked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
 return linked(_that.handle);case UiEvent_NewChat() when newChat != null:
-return newChat(_that.index,_that.name);case UiEvent_Message() when message != null:
+return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar() when avatar != null:
+return avatar(_that.handle);case UiEvent_ChatsChanged() when chatsChanged != null:
+return chatsChanged();case UiEvent_Message() when message != null:
 return message(_that.index,_that.message,_that.local);case UiEvent_Removed() when removed != null:
 return removed(_that.index);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that.index,_that.name);case UiEvent_RelayReady() when relayReady != null:
-return relayReady(_that.addr);case _:
+return relayReady(_that.addr);case UiEvent_FileProgress() when fileProgress != null:
+return fileProgress(_that.id,_that.done,_that.total);case _:
   return orElse();
 
 }
@@ -158,15 +170,18 @@ return relayReady(_that.addr);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle)  linked,required TResult Function( int index,  String name)  newChat,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle)  linked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked():
 return linked(_that.handle);case UiEvent_NewChat():
-return newChat(_that.index,_that.name);case UiEvent_Message():
+return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar():
+return avatar(_that.handle);case UiEvent_ChatsChanged():
+return chatsChanged();case UiEvent_Message():
 return message(_that.index,_that.message,_that.local);case UiEvent_Removed():
 return removed(_that.index);case UiEvent_UnverifiedMember():
 return unverifiedMember(_that.index,_that.name);case UiEvent_RelayReady():
-return relayReady(_that.addr);}
+return relayReady(_that.addr);case UiEvent_FileProgress():
+return fileProgress(_that.id,_that.done,_that.total);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -180,15 +195,18 @@ return relayReady(_that.addr);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle)?  linked,TResult? Function( int index,  String name)?  newChat,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle)?  linked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
 return linked(_that.handle);case UiEvent_NewChat() when newChat != null:
-return newChat(_that.index,_that.name);case UiEvent_Message() when message != null:
+return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar() when avatar != null:
+return avatar(_that.handle);case UiEvent_ChatsChanged() when chatsChanged != null:
+return chatsChanged();case UiEvent_Message() when message != null:
 return message(_that.index,_that.message,_that.local);case UiEvent_Removed() when removed != null:
 return removed(_that.index);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that.index,_that.name);case UiEvent_RelayReady() when relayReady != null:
-return relayReady(_that.addr);case _:
+return relayReady(_that.addr);case UiEvent_FileProgress() when fileProgress != null:
+return fileProgress(_that.id,_that.done,_that.total);case _:
   return null;
 
 }
@@ -268,11 +286,12 @@ as String,
 
 
 class UiEvent_NewChat extends UiEvent {
-  const UiEvent_NewChat({required this.index, required this.name}): super._();
+  const UiEvent_NewChat({required this.index, required this.name, required this.request}): super._();
   
 
  final  int index;
  final  String name;
+ final  bool request;
 
 /// Create a copy of UiEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -284,18 +303,18 @@ $UiEvent_NewChatCopyWith<UiEvent_NewChat> get copyWith => _$UiEvent_NewChatCopyW
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_NewChat&&(identical(other.index, index) || other.index == index)&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_NewChat&&(identical(other.index, index) || other.index == index)&&(identical(other.name, name) || other.name == name)&&(identical(other.request, request) || other.request == request));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,index,name);
+    return Object.hash(runtimeType,index,name,request);
 }
 
 @override
 String toString() {
-    return 'UiEvent.newChat(index: $index, name: $name)';
+    return 'UiEvent.newChat(index: $index, name: $name, request: $request)';
 }
 
 
@@ -306,7 +325,7 @@ abstract mixin class $UiEvent_NewChatCopyWith<$Res> implements $UiEventCopyWith<
   factory $UiEvent_NewChatCopyWith(UiEvent_NewChat value, $Res Function(UiEvent_NewChat) _then) = _$UiEvent_NewChatCopyWithImpl;
 @useResult
 $Res call({
- int index, String name
+ int index, String name, bool request
 });
 
 
@@ -323,16 +342,117 @@ class _$UiEvent_NewChatCopyWithImpl<$Res>
 
 /// Create a copy of UiEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? index = null,Object? name = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? index = null,Object? name = null,Object? request = null,}) {
   return _then(UiEvent_NewChat(
 index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,request: null == request ? _self.request : request // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class UiEvent_Avatar extends UiEvent {
+  const UiEvent_Avatar({required this.handle}): super._();
+  
+
+ final  String handle;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UiEvent_AvatarCopyWith<UiEvent_Avatar> get copyWith => _$UiEvent_AvatarCopyWithImpl<UiEvent_Avatar>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_Avatar&&(identical(other.handle, handle) || other.handle == handle));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,handle);
+}
+
+@override
+String toString() {
+    return 'UiEvent.avatar(handle: $handle)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UiEvent_AvatarCopyWith<$Res> implements $UiEventCopyWith<$Res> {
+  factory $UiEvent_AvatarCopyWith(UiEvent_Avatar value, $Res Function(UiEvent_Avatar) _then) = _$UiEvent_AvatarCopyWithImpl;
+@useResult
+$Res call({
+ String handle
+});
+
+
+
+
+}
+/// @nodoc
+class _$UiEvent_AvatarCopyWithImpl<$Res>
+    implements $UiEvent_AvatarCopyWith<$Res> {
+  _$UiEvent_AvatarCopyWithImpl(this._self, this._then);
+
+  final UiEvent_Avatar _self;
+  final $Res Function(UiEvent_Avatar) _then;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? handle = null,}) {
+  return _then(UiEvent_Avatar(
+handle: null == handle ? _self.handle : handle // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
 
 
 }
+
+/// @nodoc
+
+
+class UiEvent_ChatsChanged extends UiEvent {
+  const UiEvent_ChatsChanged(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_ChatsChanged);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'UiEvent.chatsChanged()';
+}
+
+
+}
+
+
+
 
 /// @nodoc
 
@@ -606,6 +726,78 @@ class _$UiEvent_RelayReadyCopyWithImpl<$Res>
   return _then(UiEvent_RelayReady(
 addr: null == addr ? _self.addr : addr // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class UiEvent_FileProgress extends UiEvent {
+  const UiEvent_FileProgress({required this.id, required this.done, required this.total}): super._();
+  
+
+ final  String id;
+ final  int done;
+ final  int total;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UiEvent_FileProgressCopyWith<UiEvent_FileProgress> get copyWith => _$UiEvent_FileProgressCopyWithImpl<UiEvent_FileProgress>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_FileProgress&&(identical(other.id, id) || other.id == id)&&(identical(other.done, done) || other.done == done)&&(identical(other.total, total) || other.total == total));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id,done,total);
+}
+
+@override
+String toString() {
+    return 'UiEvent.fileProgress(id: $id, done: $done, total: $total)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UiEvent_FileProgressCopyWith<$Res> implements $UiEventCopyWith<$Res> {
+  factory $UiEvent_FileProgressCopyWith(UiEvent_FileProgress value, $Res Function(UiEvent_FileProgress) _then) = _$UiEvent_FileProgressCopyWithImpl;
+@useResult
+$Res call({
+ String id, int done, int total
+});
+
+
+
+
+}
+/// @nodoc
+class _$UiEvent_FileProgressCopyWithImpl<$Res>
+    implements $UiEvent_FileProgressCopyWith<$Res> {
+  _$UiEvent_FileProgressCopyWithImpl(this._self, this._then);
+
+  final UiEvent_FileProgress _self;
+  final $Res Function(UiEvent_FileProgress) _then;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? done = null,Object? total = null,}) {
+  return _then(UiEvent_FileProgress(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,done: null == done ? _self.done : done // ignore: cast_nullable_to_non_nullable
+as int,total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

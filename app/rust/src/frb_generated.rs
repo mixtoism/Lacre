@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 769608022;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1437427075;
 
 // Section: executor
 
@@ -47,6 +47,239 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__p2m__accept_chat_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "accept_chat",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::p2m::accept_chat(api_index).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__p2m__add_members_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "add_members",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            let api_targets = <Vec<String>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::p2m::add_members(api_index, api_targets).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__p2m__add_sticker_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "add_sticker",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::add_sticker(api_bytes)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__avatar_path_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "avatar_path",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::avatar_path(api_handle)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__block_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "block",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::block(api_handle)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__blocked_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "blocked",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::blocked()?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__chat_members_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "chat_members",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::chat_members(api_index)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__p2m__chats_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -152,6 +385,38 @@ fn wire__crate__api__p2m__create_identity_impl(
         },
     )
 }
+fn wire__crate__api__p2m__delete_chat_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "delete_chat",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::delete_chat(api_index)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__p2m__devices_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -180,6 +445,42 @@ fn wire__crate__api__p2m__devices_impl(
                     std::result::Result::Ok(output_ok)
                 })(),
             )
+        },
+    )
+}
+fn wire__crate__api__p2m__download_file_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "download_file",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::p2m::download_file(api_id).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
         },
     )
 }
@@ -255,6 +556,70 @@ fn wire__crate__api__p2m__init_app_impl(
         },
     )
 }
+fn wire__crate__api__p2m__is_blocked_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "is_blocked",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::is_blocked(api_handle)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__keep_sticker_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "keep_sticker",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::keep_sticker(api_id)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__p2m__link_device_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -289,6 +654,64 @@ fn wire__crate__api__p2m__link_device_impl(
                     .await,
                 )
             }
+        },
+    )
+}
+fn wire__crate__api__p2m__max_file_bytes_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "max_file_bytes",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::api::p2m::max_file_bytes())?;
+                std::result::Result::Ok(output_ok)
+            })())
+        },
+    )
+}
+fn wire__crate__api__p2m__max_sticker_bytes_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "max_sticker_bytes",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::api::p2m::max_sticker_bytes())?;
+                std::result::Result::Ok(output_ok)
+            })())
         },
     )
 }
@@ -390,6 +813,109 @@ fn wire__crate__api__p2m__qr_payload_impl(
         },
     )
 }
+fn wire__crate__api__p2m__remove_member_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "remove_member",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            let api_handle = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::p2m::remove_member(api_index, api_handle).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__p2m__remove_sticker_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "remove_sticker",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::remove_sticker(api_id)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__search_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "search",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_query = <String>::sse_decode(&mut deserializer);
+            let api_index = <Option<u32>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::search(api_query, api_index)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__p2m__send_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -427,6 +953,149 @@ fn wire__crate__api__p2m__send_impl(
         },
     )
 }
+fn wire__crate__api__p2m__send_file_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "send_file",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            let api_path = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::p2m::send_file(api_index, api_path).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__p2m__send_sticker_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "send_sticker",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_index = <u32>::sse_decode(&mut deserializer);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::p2m::send_sticker(api_index, api_id).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__p2m__set_avatar_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_avatar",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_image = <Option<Vec<u8>>>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::p2m::set_avatar(api_image).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__p2m__set_power_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "set_power",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_background = <bool>::sse_decode(&mut deserializer);
+            let api_wifi = <bool>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::set_power(api_background, api_wifi)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__p2m__start_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -450,11 +1119,14 @@ fn wire__crate__api__p2m__start_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_data_dir = <String>::sse_decode(&mut deserializer);
+            let api_lan_only = <bool>::sse_decode(&mut deserializer);
+            let api_data_key = <Option<Vec<u8>>>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || {
-                        let output_ok = crate::api::p2m::start(api_data_dir)?;
+                        let output_ok =
+                            crate::api::p2m::start(api_data_dir, api_lan_only, api_data_key)?;
                         std::result::Result::Ok(output_ok)
                     })(),
                 )
@@ -494,6 +1166,69 @@ fn wire__crate__api__p2m__status_impl(
                     .await,
                 )
             }
+        },
+    )
+}
+fn wire__crate__api__p2m__stickers_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "stickers",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::stickers()?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__p2m__unblock_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "unblock",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::p2m::unblock(api_handle)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
         },
     )
 }
@@ -577,12 +1312,32 @@ impl SseDecode for crate::api::p2m::ChatInfo {
         let mut var_devices = <u32>::sse_decode(deserializer);
         let mut var_active = <bool>::sse_decode(deserializer);
         let mut var_last = <Option<crate::api::p2m::Message>>::sse_decode(deserializer);
+        let mut var_request = <bool>::sse_decode(deserializer);
+        let mut var_peer = <Option<String>>::sse_decode(deserializer);
+        let mut var_avatar = <Option<String>>::sse_decode(deserializer);
         return crate::api::p2m::ChatInfo {
             index: var_index,
             name: var_name,
             devices: var_devices,
             active: var_active,
             last: var_last,
+            request: var_request,
+            peer: var_peer,
+            avatar: var_avatar,
+        };
+    }
+}
+
+impl SseDecode for crate::api::p2m::ChatMembers {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_participants = <Vec<String>>::sse_decode(deserializer);
+        let mut var_canEdit = <bool>::sse_decode(deserializer);
+        let mut var_me = <Option<String>>::sse_decode(deserializer);
+        return crate::api::p2m::ChatMembers {
+            participants: var_participants,
+            can_edit: var_canEdit,
+            me: var_me,
         };
     }
 }
@@ -597,6 +1352,36 @@ impl SseDecode for crate::api::p2m::Device {
             code: var_code,
             label: var_label,
             this_device: var_thisDevice,
+        };
+    }
+}
+
+impl SseDecode for crate::api::p2m::FileAttachment {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_size = <u64>::sse_decode(deserializer);
+        let mut var_path = <Option<String>>::sse_decode(deserializer);
+        return crate::api::p2m::FileAttachment {
+            id: var_id,
+            name: var_name,
+            size: var_size,
+            path: var_path,
+        };
+    }
+}
+
+impl SseDecode for crate::api::p2m::Hit {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_index = <u32>::sse_decode(deserializer);
+        let mut var_position = <u32>::sse_decode(deserializer);
+        let mut var_message = <crate::api::p2m::Message>::sse_decode(deserializer);
+        return crate::api::p2m::Hit {
+            index: var_index,
+            position: var_position,
+            message: var_message,
         };
     }
 }
@@ -644,6 +1429,18 @@ impl SseDecode for Vec<crate::api::p2m::Device> {
     }
 }
 
+impl SseDecode for Vec<crate::api::p2m::Hit> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::p2m::Hit>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<crate::api::p2m::Message> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -668,6 +1465,18 @@ impl SseDecode for Vec<u8> {
     }
 }
 
+impl SseDecode for Vec<crate::api::p2m::Sticker> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::p2m::Sticker>::sse_decode(deserializer));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for crate::api::p2m::Message {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -675,11 +1484,17 @@ impl SseDecode for crate::api::p2m::Message {
         let mut var_text = <String>::sse_decode(deserializer);
         let mut var_sentAt = <i64>::sse_decode(deserializer);
         let mut var_mine = <bool>::sse_decode(deserializer);
+        let mut var_notice = <bool>::sse_decode(deserializer);
+        let mut var_sticker = <Option<crate::api::p2m::Sticker>>::sse_decode(deserializer);
+        let mut var_file = <Option<crate::api::p2m::FileAttachment>>::sse_decode(deserializer);
         return crate::api::p2m::Message {
             from: var_from,
             text: var_text,
             sent_at: var_sentAt,
             mine: var_mine,
+            notice: var_notice,
+            sticker: var_sticker,
+            file: var_file,
         };
     }
 }
@@ -689,6 +1504,17 @@ impl SseDecode for Option<String> {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
             return Some(<String>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<crate::api::p2m::FileAttachment> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::p2m::FileAttachment>::sse_decode(deserializer));
         } else {
             return None;
         }
@@ -706,16 +1532,51 @@ impl SseDecode for Option<crate::api::p2m::Message> {
     }
 }
 
+impl SseDecode for Option<crate::api::p2m::Sticker> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<crate::api::p2m::Sticker>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u32>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<Vec<u8>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<Vec<u8>>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for crate::api::p2m::Profile {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_handle = <Option<String>>::sse_decode(deserializer);
         let mut var_deviceCode = <String>::sse_decode(deserializer);
         let mut var_primary = <bool>::sse_decode(deserializer);
+        let mut var_encrypted = <bool>::sse_decode(deserializer);
         return crate::api::p2m::Profile {
             handle: var_handle,
             device_code: var_deviceCode,
             primary: var_primary,
+            encrypted: var_encrypted,
         };
     }
 }
@@ -744,10 +1605,29 @@ impl SseDecode for crate::api::p2m::Status {
     }
 }
 
+impl SseDecode for crate::api::p2m::Sticker {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_id = <String>::sse_decode(deserializer);
+        let mut var_path = <String>::sse_decode(deserializer);
+        return crate::api::p2m::Sticker {
+            id: var_id,
+            path: var_path,
+        };
+    }
+}
+
 impl SseDecode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_u32::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u64::<NativeEndian>().unwrap()
     }
 }
 
@@ -770,12 +1650,21 @@ impl SseDecode for crate::api::p2m::UiEvent {
             1 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
                 let mut var_name = <String>::sse_decode(deserializer);
+                let mut var_request = <bool>::sse_decode(deserializer);
                 return crate::api::p2m::UiEvent::NewChat {
                     index: var_index,
                     name: var_name,
+                    request: var_request,
                 };
             }
             2 => {
+                let mut var_handle = <String>::sse_decode(deserializer);
+                return crate::api::p2m::UiEvent::Avatar { handle: var_handle };
+            }
+            3 => {
+                return crate::api::p2m::UiEvent::ChatsChanged;
+            }
+            4 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
                 let mut var_message = <crate::api::p2m::Message>::sse_decode(deserializer);
                 let mut var_local = <bool>::sse_decode(deserializer);
@@ -785,11 +1674,11 @@ impl SseDecode for crate::api::p2m::UiEvent {
                     local: var_local,
                 };
             }
-            3 => {
+            5 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
                 return crate::api::p2m::UiEvent::Removed { index: var_index };
             }
-            4 => {
+            6 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
                 let mut var_name = <String>::sse_decode(deserializer);
                 return crate::api::p2m::UiEvent::UnverifiedMember {
@@ -797,9 +1686,19 @@ impl SseDecode for crate::api::p2m::UiEvent {
                     name: var_name,
                 };
             }
-            5 => {
+            7 => {
                 let mut var_addr = <String>::sse_decode(deserializer);
                 return crate::api::p2m::UiEvent::RelayReady { addr: var_addr };
+            }
+            8 => {
+                let mut var_id = <String>::sse_decode(deserializer);
+                let mut var_done = <u32>::sse_decode(deserializer);
+                let mut var_total = <u32>::sse_decode(deserializer);
+                return crate::api::p2m::UiEvent::FileProgress {
+                    id: var_id,
+                    done: var_done,
+                    total: var_total,
+                };
             }
             _ => {
                 unimplemented!("");
@@ -829,16 +1728,23 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        2 => wire__crate__api__p2m__create_chat_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__p2m__create_identity_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__p2m__event_stream_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__p2m__init_app_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__p2m__link_device_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__p2m__qr_payload_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__p2m__send_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__p2m__start_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__p2m__status_impl(port, ptr, rust_vec_len, data_len),
-        14 => wire__crate__api__p2m__unlink_device_impl(port, ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__p2m__accept_chat_impl(port, ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__p2m__add_members_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__p2m__create_chat_impl(port, ptr, rust_vec_len, data_len),
+        10 => wire__crate__api__p2m__create_identity_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__p2m__download_file_impl(port, ptr, rust_vec_len, data_len),
+        14 => wire__crate__api__p2m__event_stream_impl(port, ptr, rust_vec_len, data_len),
+        15 => wire__crate__api__p2m__init_app_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__p2m__link_device_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__p2m__qr_payload_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__p2m__remove_member_impl(port, ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__p2m__send_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__p2m__send_file_impl(port, ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__p2m__send_sticker_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__p2m__set_avatar_impl(port, ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__p2m__start_impl(port, ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__p2m__status_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__p2m__unlink_device_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -851,10 +1757,25 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__p2m__chats_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__p2m__devices_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__p2m__messages_impl(ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__p2m__profile_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__p2m__add_sticker_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__p2m__avatar_path_impl(ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__p2m__block_impl(ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__p2m__blocked_impl(ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__p2m__chat_members_impl(ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__p2m__chats_impl(ptr, rust_vec_len, data_len),
+        11 => wire__crate__api__p2m__delete_chat_impl(ptr, rust_vec_len, data_len),
+        12 => wire__crate__api__p2m__devices_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__p2m__is_blocked_impl(ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__p2m__keep_sticker_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__p2m__max_file_bytes_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__p2m__max_sticker_bytes_impl(ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__p2m__messages_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__p2m__profile_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__p2m__remove_sticker_impl(ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__p2m__search_impl(ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__p2m__set_power_impl(ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__p2m__stickers_impl(ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__p2m__unblock_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -870,6 +1791,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatInfo {
             self.devices.into_into_dart().into_dart(),
             self.active.into_into_dart().into_dart(),
             self.last.into_into_dart().into_dart(),
+            self.request.into_into_dart().into_dart(),
+            self.peer.into_into_dart().into_dart(),
+            self.avatar.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -877,6 +1801,25 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatInfo {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::ChatInfo {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::ChatInfo> for crate::api::p2m::ChatInfo {
     fn into_into_dart(self) -> crate::api::p2m::ChatInfo {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::p2m::ChatMembers {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.participants.into_into_dart().into_dart(),
+            self.can_edit.into_into_dart().into_dart(),
+            self.me.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::ChatMembers {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::ChatMembers>
+    for crate::api::p2m::ChatMembers
+{
+    fn into_into_dart(self) -> crate::api::p2m::ChatMembers {
         self
     }
 }
@@ -898,6 +1841,46 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Device> for crate::api::
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::p2m::FileAttachment {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.name.into_into_dart().into_dart(),
+            self.size.into_into_dart().into_dart(),
+            self.path.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::p2m::FileAttachment
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::FileAttachment>
+    for crate::api::p2m::FileAttachment
+{
+    fn into_into_dart(self) -> crate::api::p2m::FileAttachment {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::p2m::Hit {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.index.into_into_dart().into_dart(),
+            self.position.into_into_dart().into_dart(),
+            self.message.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Hit {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Hit> for crate::api::p2m::Hit {
+    fn into_into_dart(self) -> crate::api::p2m::Hit {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::p2m::Message {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -905,6 +1888,9 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Message {
             self.text.into_into_dart().into_dart(),
             self.sent_at.into_into_dart().into_dart(),
             self.mine.into_into_dart().into_dart(),
+            self.notice.into_into_dart().into_dart(),
+            self.sticker.into_into_dart().into_dart(),
+            self.file.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -922,6 +1908,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::p2m::Profile {
             self.handle.into_into_dart().into_dart(),
             self.device_code.into_into_dart().into_dart(),
             self.primary.into_into_dart().into_dart(),
+            self.encrypted.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -967,41 +1954,73 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Status> for crate::api::
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::p2m::Sticker {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.id.into_into_dart().into_dart(),
+            self.path.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::p2m::Sticker {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::p2m::Sticker> for crate::api::p2m::Sticker {
+    fn into_into_dart(self) -> crate::api::p2m::Sticker {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::p2m::UiEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
             crate::api::p2m::UiEvent::Linked { handle } => {
                 [0.into_dart(), handle.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::p2m::UiEvent::NewChat { index, name } => [
+            crate::api::p2m::UiEvent::NewChat {
+                index,
+                name,
+                request,
+            } => [
                 1.into_dart(),
                 index.into_into_dart().into_dart(),
                 name.into_into_dart().into_dart(),
+                request.into_into_dart().into_dart(),
             ]
             .into_dart(),
+            crate::api::p2m::UiEvent::Avatar { handle } => {
+                [2.into_dart(), handle.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::p2m::UiEvent::ChatsChanged => [3.into_dart()].into_dart(),
             crate::api::p2m::UiEvent::Message {
                 index,
                 message,
                 local,
             } => [
-                2.into_dart(),
+                4.into_dart(),
                 index.into_into_dart().into_dart(),
                 message.into_into_dart().into_dart(),
                 local.into_into_dart().into_dart(),
             ]
             .into_dart(),
             crate::api::p2m::UiEvent::Removed { index } => {
-                [3.into_dart(), index.into_into_dart().into_dart()].into_dart()
+                [5.into_dart(), index.into_into_dart().into_dart()].into_dart()
             }
             crate::api::p2m::UiEvent::UnverifiedMember { index, name } => [
-                4.into_dart(),
+                6.into_dart(),
                 index.into_into_dart().into_dart(),
                 name.into_into_dart().into_dart(),
             ]
             .into_dart(),
             crate::api::p2m::UiEvent::RelayReady { addr } => {
-                [5.into_dart(), addr.into_into_dart().into_dart()].into_dart()
+                [7.into_dart(), addr.into_into_dart().into_dart()].into_dart()
             }
+            crate::api::p2m::UiEvent::FileProgress { id, done, total } => [
+                8.into_dart(),
+                id.into_into_dart().into_dart(),
+                done.into_into_dart().into_dart(),
+                total.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
             _ => {
                 unimplemented!("");
             }
@@ -1053,6 +2072,18 @@ impl SseEncode for crate::api::p2m::ChatInfo {
         <u32>::sse_encode(self.devices, serializer);
         <bool>::sse_encode(self.active, serializer);
         <Option<crate::api::p2m::Message>>::sse_encode(self.last, serializer);
+        <bool>::sse_encode(self.request, serializer);
+        <Option<String>>::sse_encode(self.peer, serializer);
+        <Option<String>>::sse_encode(self.avatar, serializer);
+    }
+}
+
+impl SseEncode for crate::api::p2m::ChatMembers {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <Vec<String>>::sse_encode(self.participants, serializer);
+        <bool>::sse_encode(self.can_edit, serializer);
+        <Option<String>>::sse_encode(self.me, serializer);
     }
 }
 
@@ -1062,6 +2093,25 @@ impl SseEncode for crate::api::p2m::Device {
         <String>::sse_encode(self.code, serializer);
         <String>::sse_encode(self.label, serializer);
         <bool>::sse_encode(self.this_device, serializer);
+    }
+}
+
+impl SseEncode for crate::api::p2m::FileAttachment {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.name, serializer);
+        <u64>::sse_encode(self.size, serializer);
+        <Option<String>>::sse_encode(self.path, serializer);
+    }
+}
+
+impl SseEncode for crate::api::p2m::Hit {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u32>::sse_encode(self.index, serializer);
+        <u32>::sse_encode(self.position, serializer);
+        <crate::api::p2m::Message>::sse_encode(self.message, serializer);
     }
 }
 
@@ -1102,6 +2152,16 @@ impl SseEncode for Vec<crate::api::p2m::Device> {
     }
 }
 
+impl SseEncode for Vec<crate::api::p2m::Hit> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::p2m::Hit>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<crate::api::p2m::Message> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1122,6 +2182,16 @@ impl SseEncode for Vec<u8> {
     }
 }
 
+impl SseEncode for Vec<crate::api::p2m::Sticker> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::p2m::Sticker>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::p2m::Message {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1129,6 +2199,9 @@ impl SseEncode for crate::api::p2m::Message {
         <String>::sse_encode(self.text, serializer);
         <i64>::sse_encode(self.sent_at, serializer);
         <bool>::sse_encode(self.mine, serializer);
+        <bool>::sse_encode(self.notice, serializer);
+        <Option<crate::api::p2m::Sticker>>::sse_encode(self.sticker, serializer);
+        <Option<crate::api::p2m::FileAttachment>>::sse_encode(self.file, serializer);
     }
 }
 
@@ -1138,6 +2211,16 @@ impl SseEncode for Option<String> {
         <bool>::sse_encode(self.is_some(), serializer);
         if let Some(value) = self {
             <String>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<crate::api::p2m::FileAttachment> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::p2m::FileAttachment>::sse_encode(value, serializer);
         }
     }
 }
@@ -1152,12 +2235,43 @@ impl SseEncode for Option<crate::api::p2m::Message> {
     }
 }
 
+impl SseEncode for Option<crate::api::p2m::Sticker> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <crate::api::p2m::Sticker>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u32>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<Vec<u8>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <Vec<u8>>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for crate::api::p2m::Profile {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Option<String>>::sse_encode(self.handle, serializer);
         <String>::sse_encode(self.device_code, serializer);
         <bool>::sse_encode(self.primary, serializer);
+        <bool>::sse_encode(self.encrypted, serializer);
     }
 }
 
@@ -1177,10 +2291,25 @@ impl SseEncode for crate::api::p2m::Status {
     }
 }
 
+impl SseEncode for crate::api::p2m::Sticker {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.id, serializer);
+        <String>::sse_encode(self.path, serializer);
+    }
+}
+
 impl SseEncode for u32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_u32::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for u64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u64::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -1199,33 +2328,51 @@ impl SseEncode for crate::api::p2m::UiEvent {
                 <i32>::sse_encode(0, serializer);
                 <String>::sse_encode(handle, serializer);
             }
-            crate::api::p2m::UiEvent::NewChat { index, name } => {
+            crate::api::p2m::UiEvent::NewChat {
+                index,
+                name,
+                request,
+            } => {
                 <i32>::sse_encode(1, serializer);
                 <u32>::sse_encode(index, serializer);
                 <String>::sse_encode(name, serializer);
+                <bool>::sse_encode(request, serializer);
+            }
+            crate::api::p2m::UiEvent::Avatar { handle } => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(handle, serializer);
+            }
+            crate::api::p2m::UiEvent::ChatsChanged => {
+                <i32>::sse_encode(3, serializer);
             }
             crate::api::p2m::UiEvent::Message {
                 index,
                 message,
                 local,
             } => {
-                <i32>::sse_encode(2, serializer);
+                <i32>::sse_encode(4, serializer);
                 <u32>::sse_encode(index, serializer);
                 <crate::api::p2m::Message>::sse_encode(message, serializer);
                 <bool>::sse_encode(local, serializer);
             }
             crate::api::p2m::UiEvent::Removed { index } => {
-                <i32>::sse_encode(3, serializer);
+                <i32>::sse_encode(5, serializer);
                 <u32>::sse_encode(index, serializer);
             }
             crate::api::p2m::UiEvent::UnverifiedMember { index, name } => {
-                <i32>::sse_encode(4, serializer);
+                <i32>::sse_encode(6, serializer);
                 <u32>::sse_encode(index, serializer);
                 <String>::sse_encode(name, serializer);
             }
             crate::api::p2m::UiEvent::RelayReady { addr } => {
-                <i32>::sse_encode(5, serializer);
+                <i32>::sse_encode(7, serializer);
                 <String>::sse_encode(addr, serializer);
+            }
+            crate::api::p2m::UiEvent::FileProgress { id, done, total } => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(id, serializer);
+                <u32>::sse_encode(done, serializer);
+                <u32>::sse_encode(total, serializer);
             }
             _ => {
                 unimplemented!("");

@@ -7,6 +7,7 @@ pub mod envelope;
 pub mod identity;
 pub mod mls;
 pub mod record;
+pub mod vault;
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;

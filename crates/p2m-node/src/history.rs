@@ -11,7 +11,7 @@ use anyhow::Result;
 use p2m_core::{cbor_from, cbor_to};
 use serde::{Deserialize, Serialize};
 
-use crate::app::write_private;
+use crate::app::{read_private, write_private};
 
 /// Mensajes que se conservan por chat (se descartan los más antiguos).
 const MAX_PER_CHAT: usize = 5000;
@@ -25,6 +25,23 @@ pub struct StoredMessage {
     pub sent_at: u64,
     /// Enviado por esta persona (desde este u otro de sus dispositivos).
     pub mine: bool,
+    /// Aviso del chat (p. ej. «ana añadió a carl»), no un mensaje escrito.
+    #[serde(default)]
+    pub notice: bool,
+    /// Sticker (nombre en el almacén de stickers, D-025); `text` va vacío.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sticker: Option<String>,
+    /// Archivo adjunto (D-026); `text` va vacío.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<FileRef>,
+}
+
+/// Archivo de un mensaje. Los bytes se descargan aparte, cuando se piden.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FileRef {
+    pub id: String,
+    pub name: String,
+    pub size: u64,
 }
 
 pub struct History {
@@ -34,9 +51,9 @@ pub struct History {
 
 impl History {
     pub fn open(path: PathBuf) -> Result<Self> {
-        let chats = match std::fs::read(&path) {
-            Ok(b) => cbor_from(&b)?,
-            Err(_) => HashMap::new(),
+        let chats = match read_private(&path)? {
+            Some(b) => cbor_from(&b)?,
+            None => HashMap::new(),
         };
         Ok(Self { path, chats })
     }
@@ -48,6 +65,14 @@ impl History {
             list.drain(..list.len() - MAX_PER_CHAT);
         }
         write_private(&self.path, &cbor_to(&self.chats)?)
+    }
+
+    /// Borra los mensajes de un chat.
+    pub fn clear(&mut self, group_id: &[u8]) -> Result<()> {
+        if self.chats.remove(group_id).is_some() {
+            write_private(&self.path, &cbor_to(&self.chats)?)?;
+        }
+        Ok(())
     }
 
     pub fn get(&self, group_id: &[u8]) -> Vec<StoredMessage> {

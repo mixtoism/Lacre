@@ -1,0 +1,64 @@
+# Hoja de ruta
+
+Lo que queda por hacer, sacado de los «Pendiente» y «Limitaciones» de
+[DECISIONES.md](DECISIONES.md). Cada punto indica la decisión de la que
+viene. Cuando se haga algo, se marca aquí y se apunta la decisión nueva en
+DECISIONES.md.
+
+## Imprescindible para el uso diario
+
+1. **Android en segundo plano** (D-023): ahora el nodo solo vive con la app
+   abierta. Servicio en primer plano con notificación fija y avisos de
+   mensajes nuevos. → **Hecho (D-032).** Queda: escritorio en segundo
+   plano (punto 16).
+2. **Cifrado en disco** (D-012, D-022): historial, estado MLS, claves y
+   demás estado en claro en el disco. Cifrarlo con una clave guardada en el
+   almacén del sistema (Keystore en Android, Secret Service en Linux).
+   → **Hecho (D-033)**, salvo fotos, stickers, archivos y Tor (punto 8)
+   y macOS/Windows/iOS.
+3. **Frase de recuperación** (D-004): 24 palabras para la clave raíz. Sin
+   ella, si se pierde el dispositivo primario no se pueden vincular
+   dispositivos nuevos. También: transferir el rol de primario.
+4. **Transferir el rol de committer** (D-007, D-031): si el committer de un
+   grupo desaparece, no se puede añadir, quitar ni salir. También:
+   administradores múltiples y resolución de bifurcaciones.
+
+## Seguridad
+
+5. **Vinculación segura** (D-011): QR bidireccional con secreto de un solo
+   uso y confirmación visual en los dos dispositivos.
+6. **Historial al vincular** (D-011): un dispositivo nuevo solo ve los
+   mensajes posteriores a su entrada.
+7. **Límite de escrituras en la DHT** (D-005): validar un registro cuesta un
+   Argon2; limitar la tasa por peer. Probar en redes grandes.
+8. **Fotos, stickers y archivos cifrados en disco** (D-033): quedan en claro
+   porque la interfaz los abre directamente. También el estado de Tor
+   (claves del servicio onion).
+
+## Red
+
+9. **AutoNAT** (D-018, D-019): un `--relay-server` tras NAT se anuncia con
+   una dirección inalcanzable; anunciarse solo tras confirmar que se es
+   alcanzable.
+10. **IPv6** (D-019): en móvil suele haber IPv6 sin NAT, lo que facilita el
+    hole punching.
+11. **Tor en el móvil** (D-020, D-021, D-023): ~~coste de batería~~
+    **(modo de reposo, D-034)**. Queda: mostrar «conectando a Tor…» mientras
+    se publica el servicio onion; comprobar desde fuera que sigue publicado.
+12. ~~**mDNS en el móvil** (D-023): no lanzarlo en interfaces de datos
+    móviles.~~ **Hecho (D-034):** solo con wifi y en primer plano.
+13. **Archivos con el remitente desconectado** (D-026): solo se descarga de
+    dispositivos en línea. Buzones que guarden trozos cifrados un tiempo.
+
+## Funciones
+
+14. **Stickers** (D-025): paquetes compartibles, un paquete por defecto en
+    la app y convertir GIF a WebP animado.
+15. **iOS** (D-009): app y notificaciones con APNs (notificaciones vacías,
+    inevitable en iOS).
+16. **Escritorio en segundo plano**: en Linux el nodo se cierra con la
+    ventana (icono en la bandeja o servicio de usuario).
+
+## Por decidir
+
+17. **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

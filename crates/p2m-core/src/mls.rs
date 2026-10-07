@@ -5,7 +5,7 @@
 //! [`MemberId`] (clave raíz + clave de dispositivo) y la clave de firma de la
 //! hoja es la propia clave del dispositivo. Ver `docs/DECISIONES.md` (D-006).
 
-use std::fs::{self, File};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ed25519_dalek::SigningKey;
@@ -16,8 +16,9 @@ use openmls_rust_crypto::{MemoryStorage, RustCrypto};
 use openmls_traits::OpenMlsProvider;
 use openmls_traits::types::SignatureScheme;
 use serde::{Deserialize, Serialize};
+use serde_bytes::{ByteBuf, Bytes};
 
-use crate::{Error, cbor_from, cbor_to};
+use crate::{Error, cbor_from, cbor_to, vault};
 
 pub use openmls::prelude::KeyPackage;
 
@@ -111,6 +112,22 @@ fn member_of(credential: &Credential, signature_key: &[u8]) -> Result<MemberId, 
     Ok(id)
 }
 
+/// Estado MLS en el JSON de `openmls_memory_storage` (claves y valores en
+/// base64), el formato anterior a D-033.
+fn legacy_json(bytes: &[u8]) -> Result<HashMap<Vec<u8>, Vec<u8>>, Error> {
+    #[derive(Deserialize)]
+    struct Legacy {
+        values: HashMap<String, String>,
+    }
+    let legacy: Legacy = serde_json::from_slice(bytes).map_err(|e| Error::Storage(e.to_string()))?;
+    let b64 = |s: &str| {
+        data_encoding::BASE64
+            .decode(s.as_bytes())
+            .map_err(|e| Error::Storage(e.to_string()))
+    };
+    legacy.values.iter().map(|(k, v)| Ok((b64(k)?, b64(v)?))).collect()
+}
+
 fn mls_err(e: impl std::fmt::Debug) -> Error {
     Error::Mls(format!("{e:?}"))
 }
@@ -118,12 +135,19 @@ fn mls_err(e: impl std::fmt::Debug) -> Error {
 impl MlsEngine {
     /// Abre el motor de un dispositivo. Si `path` existe, carga el estado.
     pub fn open(device: &SigningKey, root_pk: [u8; 32], path: Option<PathBuf>) -> Result<Self, Error> {
-        let mut provider = Provider::default();
-        if let Some(p) = path.as_ref().filter(|p| p.exists()) {
-            provider
-                .storage
-                .load_from_file(&File::open(p)?)
-                .map_err(Error::Storage)?;
+        let provider = Provider::default();
+        if let Some(p) = &path
+            && let Some(bytes) = vault::read_opt(p)?
+        {
+            if bytes.first() == Some(&b'{') {
+                // Formato anterior: el JSON de openmls (en claro, o ya
+                // cifrado tal cual por la migración).
+                *provider.storage.values.write().unwrap() = legacy_json(&bytes)?;
+            } else {
+                let values: Vec<(ByteBuf, ByteBuf)> = cbor_from(&bytes)?;
+                *provider.storage.values.write().unwrap() =
+                    values.into_iter().map(|(k, v)| (k.into_vec(), v.into_vec())).collect();
+            }
         }
         let device_pk = device.verifying_key().to_bytes();
         let signer = SignatureKeyPair::from_raw(
@@ -145,12 +169,13 @@ impl MlsEngine {
 
     fn save(&self) -> Result<(), Error> {
         let Some(path) = &self.path else { return Ok(()) };
-        let tmp = path.with_extension("tmp");
-        self.provider
-            .storage
-            .save_to_file(&File::create(&tmp)?)
-            .map_err(Error::Storage)?;
-        fs::rename(tmp, path)?;
+        // CBOR, cifrado si hay clave de datos (D-033). El nombre mls.json
+        // es del formato anterior.
+        let bytes = {
+            let map = self.provider.storage.values.read().unwrap();
+            cbor_to(&map.iter().map(|(k, v)| (Bytes::new(k), Bytes::new(v))).collect::<Vec<_>>())?
+        };
+        vault::write(path, &bytes)?;
         Ok(())
     }
 
@@ -252,12 +277,25 @@ impl MlsEngine {
     }
 
     /// Entra en un grupo a partir de un Welcome. Devuelve el id del grupo.
-    pub fn join(&self, welcome: &[u8]) -> Result<Vec<u8>, Error> {
+    /// Entra en un grupo con un Welcome. Si ya teníamos un grupo con el
+    /// mismo id (nos expulsaron y vuelven a añadirnos), lo sustituye solo si
+    /// `may_replace(group_id)` lo permite.
+    pub fn join(&self, welcome: &[u8], may_replace: impl FnOnce(&[u8]) -> bool) -> Result<Vec<u8>, Error> {
         let msg = MlsMessageIn::tls_deserialize_exact(welcome).map_err(mls_err)?;
         let MlsMessageBodyIn::Welcome(welcome) = msg.extract() else {
             return Err(Error::Mls("se esperaba un Welcome".into()));
         };
-        let group = StagedWelcome::new_from_welcome(&self.provider, &Self::join_config(), welcome, None)
+        let mut builder =
+            StagedWelcome::build_from_welcome(&self.provider, &Self::join_config(), welcome).map_err(mls_err)?;
+        let group_id = builder.processed_welcome().unverified_group_info().group_id().clone();
+        if MlsGroup::load(self.provider.storage(), &group_id).map_err(mls_err)?.is_some() {
+            if !may_replace(group_id.as_slice()) {
+                return Err(Error::Mls("ya perteneces a ese grupo".into()));
+            }
+            builder = builder.replace_old_group();
+        }
+        let group = builder
+            .build()
             .map_err(mls_err)?
             .into_group(&self.provider)
             .map_err(mls_err)?;
@@ -343,6 +381,19 @@ mod tests {
         }
     }
 
+    /// El JSON anterior de openmls se lee desde los bytes (ya descifrados),
+    /// no desde el archivo, que tras migrar está cifrado.
+    #[test]
+    fn legacy_json_from_bytes() {
+        let storage = MemoryStorage::default();
+        storage.values.write().unwrap().insert(vec![1, 2, 255], vec![0, 9]);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("mls.json");
+        storage.save_to_file(&std::fs::File::create(&path).unwrap()).unwrap();
+        let values = legacy_json(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(values.get(&vec![1, 2, 255]), Some(&vec![0, 9]));
+    }
+
     /// Alicia (móvil + portátil) y Bob (un dispositivo) en un chat 1:1;
     /// luego Bob añade un segundo dispositivo y Alicia revoca el portátil.
     #[test]
@@ -356,8 +407,8 @@ mod tests {
             .map(|e| a1.validate_key_package(&e.key_package().unwrap()).unwrap().0)
             .collect();
         let (_commit, welcome) = a1.add(&gid, &kps).unwrap();
-        assert_eq!(a2.join(&welcome).unwrap(), gid);
-        assert_eq!(b1.join(&welcome).unwrap(), gid);
+        assert_eq!(a2.join(&welcome, |_| false).unwrap(), gid);
+        assert_eq!(b1.join(&welcome, |_| false).unwrap(), gid);
         assert_eq!(b1.members(&gid).unwrap().len(), 3);
 
         // Bob escribe; ambos dispositivos de Alicia lo leen.
@@ -375,7 +426,7 @@ mod tests {
         for dev in [&a2, &b1] {
             assert!(matches!(dev.process(&commit, &a1.me().device_pk).unwrap(), Incoming::Commit { removed_self: false, .. }));
         }
-        b2.join(&welcome).unwrap();
+        b2.join(&welcome, |_| false).unwrap();
 
         // Alicia revoca su portátil.
         let commit = a1.remove(&gid, &[a2.me()]).unwrap();
@@ -390,6 +441,36 @@ mod tests {
         assert!(a2.process(&m, &a1.me().device_pk).is_err());
     }
 
+    /// Bob sale del grupo y vuelve a entrar: el Welcome sustituye al grupo
+    /// viejo solo si se permite.
+    #[test]
+    fn rejoin_after_removal() {
+        let (alice, bob) = (generate_key(), generate_key());
+        let (a1, b1) = (engine(&alice), engine(&bob));
+        let gid = a1.create_group().unwrap();
+        let kp = a1.validate_key_package(&b1.key_package().unwrap()).unwrap().0;
+        let (_, welcome) = a1.add(&gid, &[kp]).unwrap();
+        b1.join(&welcome, |_| false).unwrap();
+
+        let commit = a1.remove(&gid, &[b1.me()]).unwrap();
+        assert!(matches!(b1.process(&commit, &a1.me().device_pk).unwrap(), Incoming::Commit { removed_self: true, .. }));
+        let m = a1.encrypt(&gid, b"sin bob").unwrap();
+        assert!(b1.process(&m, &a1.me().device_pk).is_err());
+
+        // Sin permiso no se sustituye (y el KeyPackage, de un solo uso, se
+        // gasta: hace falta otro).
+        let kp = a1.validate_key_package(&b1.key_package().unwrap()).unwrap().0;
+        let (_, welcome) = a1.add(&gid, &[kp]).unwrap();
+        assert!(b1.join(&welcome, |_| false).is_err());
+        let commit = a1.remove(&gid, &[b1.me()]).unwrap();
+        assert!(b1.process(&commit, &a1.me().device_pk).is_err());
+        let kp = a1.validate_key_package(&b1.key_package().unwrap()).unwrap().0;
+        let (_, welcome) = a1.add(&gid, &[kp]).unwrap();
+        assert_eq!(b1.join(&welcome, |g| g == gid.as_slice()).unwrap(), gid);
+        let m = a1.encrypt(&gid, b"con bob").unwrap();
+        assert_eq!(app_text(b1.process(&m, &a1.me().device_pk).unwrap()).1, "con bob");
+    }
+
     /// Un KeyPackage de último recurso sirve para entrar en varios grupos.
     #[test]
     fn last_resort_key_package_is_reusable() {
@@ -401,7 +482,7 @@ mod tests {
         for _ in 0..2 {
             let gid = a1.create_group().unwrap();
             let (_, welcome) = a1.add(&gid, &[kp.clone()]).unwrap();
-            assert_eq!(b1.join(&welcome).unwrap(), gid);
+            assert_eq!(b1.join(&welcome, |_| false).unwrap(), gid);
         }
     }
 
@@ -412,7 +493,7 @@ mod tests {
         let gid = a1.create_group().unwrap();
         let kp = a1.validate_key_package(&b1.key_package().unwrap()).unwrap().0;
         let (_, welcome) = a1.add(&gid, &[kp]).unwrap();
-        b1.join(&welcome).unwrap();
+        b1.join(&welcome, |_| false).unwrap();
         // Bob intenta añadir un dispositivo por su cuenta.
         let kp = b1.validate_key_package(&c1.key_package().unwrap()).unwrap().0;
         let (commit, _) = b1.add(&gid, &[kp]).unwrap();

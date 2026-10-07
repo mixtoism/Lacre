@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../l10n/l10n.dart';
 import '../store.dart';
 import 'common.dart';
 
@@ -37,70 +38,91 @@ class _OnboardingPageState extends State<OnboardingPage> {
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Icon(Icons.forum_outlined, size: 64, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 16),
-              Text('p2message', style: text.headlineMedium, textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Text(
-                'Mensajería cifrada de extremo a extremo, sin servidores. '
-                'Tus claves no salen de tus dispositivos.',
-                style: text.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Identidad nueva')),
-                  ButtonSegment(value: true, label: Text('Vincular dispositivo')),
-                ],
-                selected: {_linking},
-                onSelectionChanged: (s) => setState(() => _linking = s.first),
-              ),
-              const SizedBox(height: 24),
-              if (!_linking) ...[
-                TextField(
-                  controller: _name,
-                  autofocus: true,
-                  enabled: !_busy,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    helperText: 'Minúsculas, números y _. Se le añadirá un sufijo: nombre#xxxxxxxx',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _create(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Icon(
+                  Icons.forum_outlined,
+                  size: 64,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _busy ? null : _create,
-                  child: _busy
-                      ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Crear identidad'),
-                ),
-              ] else ...[
                 Text(
-                  'En tu dispositivo principal abre Perfil → Dispositivos → Vincular '
-                  'y pega este código. Esta pantalla cambiará sola cuando se complete.',
+                  'p2message',
+                  style: text.headlineMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  context.l.onboardingTagline,
                   style: text.bodyMedium,
+                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                Center(
-                  child: Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(12),
-                    child: QrImageView(data: code, size: 200),
+                const SizedBox(height: 32),
+                SegmentedButton<bool>(
+                  segments: [
+                    ButtonSegment(
+                      value: false,
+                      label: Text(context.l.newIdentity),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      label: Text(context.l.linkDevice),
+                    ),
+                  ],
+                  selected: {_linking},
+                  onSelectionChanged: (s) => setState(() => _linking = s.first),
+                ),
+                const SizedBox(height: 24),
+                if (!_linking) ...[
+                  TextField(
+                    controller: _name,
+                    autofocus: true,
+                    enabled: !_busy,
+                    decoration: InputDecoration(
+                      labelText: context.l.name,
+                      helperText: context.l.nameHelper,
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => _create(),
                   ),
-                ),
-                const SizedBox(height: 16),
-                CodeBox(text: code, what: 'Código'),
-                const SizedBox(height: 16),
-                const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  SizedBox(width: 12),
-                  Text('Esperando al dispositivo principal…'),
-                ]),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: _busy ? null : _create,
+                    child: _busy
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(context.l.createIdentity),
+                  ),
+                ] else ...[
+                  Text(context.l.linkInstructions, style: text.bodyMedium),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.all(12),
+                      child: QrImageView(data: code, size: 200),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  CodeBox(text: code, what: context.l.code),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(context.l.waitingPrimary),
+                    ],
+                  ),
+                ],
               ],
-            ]),
+            ),
           ),
         ),
       ),

@@ -34,13 +34,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  FileAttachment dco_decode_box_autoadd_file_attachment(dynamic raw);
+
+  @protected
   Message dco_decode_box_autoadd_message(dynamic raw);
+
+  @protected
+  Sticker dco_decode_box_autoadd_sticker(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
   ChatInfo dco_decode_chat_info(dynamic raw);
 
   @protected
+  ChatMembers dco_decode_chat_members(dynamic raw);
+
+  @protected
   Device dco_decode_device(dynamic raw);
+
+  @protected
+  FileAttachment dco_decode_file_attachment(dynamic raw);
+
+  @protected
+  Hit dco_decode_hit(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -55,10 +73,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Device> dco_decode_list_device(dynamic raw);
 
   @protected
+  List<Hit> dco_decode_list_hit(dynamic raw);
+
+  @protected
   List<Message> dco_decode_list_message(dynamic raw);
 
   @protected
+  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<Sticker> dco_decode_list_sticker(dynamic raw);
 
   @protected
   Message dco_decode_message(dynamic raw);
@@ -67,7 +94,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  FileAttachment? dco_decode_opt_box_autoadd_file_attachment(dynamic raw);
+
+  @protected
   Message? dco_decode_opt_box_autoadd_message(dynamic raw);
+
+  @protected
+  Sticker? dco_decode_opt_box_autoadd_sticker(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  Uint8List? dco_decode_opt_list_prim_u_8_strict(dynamic raw);
 
   @protected
   Profile dco_decode_profile(dynamic raw);
@@ -79,7 +118,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Status dco_decode_status(dynamic raw);
 
   @protected
+  Sticker dco_decode_sticker(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -105,13 +150,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  FileAttachment sse_decode_box_autoadd_file_attachment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Message sse_decode_box_autoadd_message(SseDeserializer deserializer);
+
+  @protected
+  Sticker sse_decode_box_autoadd_sticker(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
   ChatInfo sse_decode_chat_info(SseDeserializer deserializer);
 
   @protected
+  ChatMembers sse_decode_chat_members(SseDeserializer deserializer);
+
+  @protected
   Device sse_decode_device(SseDeserializer deserializer);
+
+  @protected
+  FileAttachment sse_decode_file_attachment(SseDeserializer deserializer);
+
+  @protected
+  Hit sse_decode_hit(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -126,10 +191,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Device> sse_decode_list_device(SseDeserializer deserializer);
 
   @protected
+  List<Hit> sse_decode_list_hit(SseDeserializer deserializer);
+
+  @protected
   List<Message> sse_decode_list_message(SseDeserializer deserializer);
 
   @protected
+  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<Sticker> sse_decode_list_sticker(SseDeserializer deserializer);
 
   @protected
   Message sse_decode_message(SseDeserializer deserializer);
@@ -138,7 +212,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  FileAttachment? sse_decode_opt_box_autoadd_file_attachment(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Message? sse_decode_opt_box_autoadd_message(SseDeserializer deserializer);
+
+  @protected
+  Sticker? sse_decode_opt_box_autoadd_sticker(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  Uint8List? sse_decode_opt_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
   Profile sse_decode_profile(SseDeserializer deserializer);
@@ -150,7 +238,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Status sse_decode_status(SseDeserializer deserializer);
 
   @protected
+  Sticker sse_decode_sticker(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -183,13 +277,37 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_file_attachment(
+    FileAttachment self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_message(Message self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_sticker(Sticker self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_chat_info(ChatInfo self, SseSerializer serializer);
 
   @protected
+  void sse_encode_chat_members(ChatMembers self, SseSerializer serializer);
+
+  @protected
   void sse_encode_device(Device self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_file_attachment(
+    FileAttachment self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_hit(Hit self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
@@ -204,7 +322,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_device(List<Device> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_hit(List<Hit> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_list_message(List<Message> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -213,14 +337,38 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_sticker(List<Sticker> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_message(Message self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_file_attachment(
+    FileAttachment? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_box_autoadd_message(
     Message? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_sticker(
+    Sticker? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_list_prim_u_8_strict(
+    Uint8List? self,
     SseSerializer serializer,
   );
 
@@ -234,7 +382,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_status(Status self, SseSerializer serializer);
 
   @protected
+  void sse_encode_sticker(Sticker self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);

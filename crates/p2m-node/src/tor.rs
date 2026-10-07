@@ -67,9 +67,13 @@ impl TorTransport {
     /// listos: el arranque sigue en segundo plano.
     pub fn new(data: &Path) -> Result<Self> {
         let dir = data.join("tor");
-        let config = TorClientConfigBuilder::from_directories(dir.join("state"), dir.join("cache"))
-            .build()
-            .context("configuración de Tor")?;
+        let mut config = TorClientConfigBuilder::from_directories(dir.join("state"), dir.join("cache"));
+        // En el móvil, menos relleno en los canales: menos radio despierta
+        // (D-034). Sigue habiendo el mínimo que pide la red.
+        if cfg!(target_os = "android") {
+            config.channel().padding(tor_config::PaddingLevel::Reduced);
+        }
+        let config = config.build().context("configuración de Tor")?;
         let client = TorClient::builder().config(config).create_unbootstrapped().context("cliente Tor")?;
 
         let nick: HsNickname = "p2message".parse().expect("apodo válido");
@@ -84,8 +88,9 @@ impl TorTransport {
         {
             let client = client.clone();
             tokio::spawn(async move {
+                let start = std::time::Instant::now();
                 match client.bootstrap().await {
-                    Ok(()) => info!("conectado a la red Tor"),
+                    Ok(()) => info!(ms = start.elapsed().as_millis(), "conectado a la red Tor"),
                     Err(e) => warn!("no se pudo conectar a Tor: {e}"),
                 }
             });
@@ -94,9 +99,11 @@ impl TorTransport {
         let mut status = service.status_events();
         let ready_tx = tx.clone();
         tokio::spawn(async move {
+            let start = std::time::Instant::now();
             while let Some(s) = status.next().await {
                 debug!(estado = ?s.state(), "servicio onion");
                 if s.state().is_fully_reachable() {
+                    info!(ms = start.elapsed().as_millis(), "servicio onion alcanzable");
                     let _ = ready_tx.send(ServiceEvent::Reachable).await;
                     break;
                 }
@@ -119,6 +126,68 @@ impl TorTransport {
     /// Dirección onion de este nodo.
     pub fn address(&self) -> Multiaddr {
         self.addr.clone()
+    }
+
+    /// Cliente Tor, para dormirlo y despertarlo (D-034).
+    pub fn client(&self) -> Arc<TorClient<PreferredRuntime>> {
+        self.client.clone()
+    }
+
+    /// Transporte solo de salida con circuitos propios, que no comparte con
+    /// los de este nodo: para depositar en buzones sin que se nos asocie
+    /// (D-034).
+    pub fn isolated_dialer(&self) -> TorDialer {
+        TorDialer { client: self.client.isolated_client() }
+    }
+}
+
+/// Transporte Tor solo de salida (ver [`TorTransport::isolated_dialer`]).
+pub struct TorDialer {
+    client: Arc<TorClient<PreferredRuntime>>,
+}
+
+impl TorDialer {
+    /// Otro transporte, aislado también de este.
+    pub fn isolated(&self) -> Self {
+        Self { client: self.client.isolated_client() }
+    }
+}
+
+fn dial_onion(client: &Arc<TorClient<PreferredRuntime>>, host: String, port: u16) -> BoxFuture<'static, Result<DataStream, TorError>> {
+    let client = client.clone();
+    async move {
+        debug!(%host, "llamando por Tor");
+        let start = std::time::Instant::now();
+        let stream = client.connect((host.as_str(), port)).await.map_err(|e| TorError(e.to_string()));
+        debug!(%host, ms = start.elapsed().as_millis(), ok = stream.is_ok(), "llamada por Tor");
+        stream
+    }
+    .boxed()
+}
+
+impl Transport for TorDialer {
+    type Output = DataStream;
+    type Error = TorError;
+    type ListenerUpgrade = Ready<Result<DataStream, TorError>>;
+    type Dial = BoxFuture<'static, Result<DataStream, TorError>>;
+
+    fn listen_on(&mut self, _id: ListenerId, addr: Multiaddr) -> Result<(), TransportError<TorError>> {
+        Err(TransportError::MultiaddrNotSupported(addr))
+    }
+
+    fn remove_listener(&mut self, _id: ListenerId) -> bool {
+        false
+    }
+
+    fn dial(&mut self, addr: Multiaddr, _opts: DialOpts) -> Result<Self::Dial, TransportError<TorError>> {
+        let Some((host, port)) = onion_target(&addr) else {
+            return Err(TransportError::MultiaddrNotSupported(addr));
+        };
+        Ok(dial_onion(&self.client, host, port))
+    }
+
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<TransportEvent<Self::ListenerUpgrade, TorError>> {
+        Poll::Pending
     }
 }
 
@@ -187,12 +256,7 @@ impl Transport for TorTransport {
         if Some((host.clone(), port)) == onion_target(&self.addr) {
             return Err(TransportError::Other(TorError("llamada a nosotros mismos".into())));
         }
-        let client = self.client.clone();
-        Ok(async move {
-            debug!(%host, "llamando por Tor");
-            client.connect((host.as_str(), port)).await.map_err(|e| TorError(e.to_string()))
-        }
-        .boxed())
+        Ok(dial_onion(&self.client, host, port))
     }
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<TransportEvent<Self::ListenerUpgrade, TorError>> {

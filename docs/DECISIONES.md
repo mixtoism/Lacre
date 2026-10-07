@@ -112,7 +112,8 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   - Con el committer desconectado no hay altas ni bajas (los mensajes siguen
     funcionando).
   - Si se pierde el committer, la membresía del grupo queda congelada.
-  - Aún no se pueden añadir ni quitar *personas* de un grupo existente.
+  - ~~Aún no se pueden añadir ni quitar *personas* de un grupo existente.~~
+    Superada por D-024.
 - **Pendiente:** transferir el rol de committer, administradores múltiples y
   resolución de bifurcaciones.
 
@@ -168,8 +169,9 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   con permisos `0600`. El estado MLS va en JSON (persistencia de
   `openmls_memory_storage`) y se escribe de forma atómica.
 - **Limitación:** los mensajes no se guardan; solo se muestran.
-- **Pendiente:** SQLite/SQLCipher y claves protegidas por el almacén seguro del
-  SO (Keystore, Secure Enclave, TPM/DPAPI, Secret Service).
+- **Pendiente:** ~~SQLite/SQLCipher y claves protegidas por el almacén seguro del
+  SO (Keystore, Secure Enclave, TPM/DPAPI, Secret Service).~~ *(Resuelto en
+  D-033, sin SQLite: cada archivo de estado va cifrado.)*
 
 ## D-013 · Una sola versión de ed25519-dalek
 
@@ -220,8 +222,9 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   confirma lo recibido (`AckEnvelopes`) y descarta duplicados.
 - **Sobre:** sellado para el dispositivo destinatario (X25519 efímero contra
   su clave Ed25519 convertida a Montgomery, BLAKE3 y ChaCha20-Poly1305) y
-  firmado por el dispositivo remitente. El buzón comprueba la firma pero no
-  puede leer nada.
+  ~~firmado por el dispositivo remitente. El buzón comprueba la firma pero no
+  puede leer nada.~~ *(Cambiado en D-034: remitente y firma van dentro del
+  sello; el buzón solo ve el destinatario.)*
 - **Solo se pide el buzón propio:** `Fetch` usa el PeerId autenticado por
   Noise, así que nadie puede vaciar el buzón de otro.
 - **Límites contra abusos:** 500 sobres por destinatario, 2000 destinatarios,
@@ -229,7 +232,9 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
 - **Motivo:** responde a la pregunta abierta. Confiar en otros peers no exige
   a cada usuario un nodo propio, y el cifrado hace que solo vean metadatos.
 - **Riesgos:**
-  - El buzón ve qué dispositivo escribe a cuál, cuándo y cuánto.
+  - ~~El buzón ve qué dispositivo escribe a cuál, cuándo y cuánto.~~
+    *(Resuelto en D-034: remitente sellado y depósito con identidad de un
+    solo uso. Sigue viendo para quién, cuándo y cuánto.)*
   - Reutilizar la clave Ed25519 como X25519 es habitual (libsodium lo
     permite) pero suma otro uso a la misma clave (ver D-008).
   - Un buzón puede tirar sobres: por eso hay varias copias.
@@ -349,7 +354,8 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
     se mantienen para quien sí tenga IP pública.
 - **Pendiente:**
   - ~~Direcciones onion en el QR y caché de peers en disco~~ → hecho en D-021.
-  - En móvil, Tor solo mientras la app está en primer plano (batería).
+  - ~~En móvil, Tor solo mientras la app está en primer plano (batería).~~
+    *(Resuelto en D-034: Tor siempre, dormido en segundo plano.)*
   - Sondear servicios onion propios desde fuera para verificar que siguen
     publicados.
 
@@ -405,10 +411,10 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   ese runtime (`RT.spawn`). Las consultas locales (perfil, chats, mensajes,
   dispositivos) son síncronas.
 - **Historial:** se guarda en `history.cbor` (0600), con hasta 5000 mensajes
-  por chat, y se reescribe en cada mensaje. Está en claro en disco, como el
+  por chat, y se reescribe en cada mensaje. ~~Está en claro en disco, como el
   resto de claves del directorio de datos. Pendiente: pasar a una base de
   datos (SQLite) cifrada con una clave del almacén del sistema (Keystore /
-  Keychain / Secret Service).
+  Keychain / Secret Service).~~ *(Resuelto en D-033: va cifrado.)*
 - **Datos de la app:** `getApplicationSupportDirectory()/node`. La variable
   `P2M_DATA` permite abrir varias instancias en el mismo equipo para probar.
 - **UI:** Material 3 con estas pantallas: alta (identidad nueva o vincular
@@ -416,6 +422,625 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   (handles o códigos `p2m:`, con título opcional para grupos) y perfil (QR,
   estado de Tor y relay, dispositivos). El escáner de QR con cámara queda
   para la versión móvil.
+
+## D-023 · App Android
+- **Compilación:** Gradle 9.3 con AGP 9.1 y el NDK r28 que descarga Gradle.
+  Cargokit compila `p2m_api` para arm64 (y el resto de ABIs en release).
+  Flutter usa el JDK de `flutter config --jdk-dir`, porque el `java` del
+  PATH puede ser solo un JRE.
+- **Contexto Android en Rust:** hickory-resolver (DNS de libp2p) lee la
+  configuración del sistema mediante `ndk-context`. Por eso `MainActivity`
+  carga `libp2m_api.so` y llama a `initAndroidContext(applicationContext)`
+  (JNI, en `app/rust/src/android.rs`) antes de arrancar Flutter. Sin ese paso
+  el nodo hace panic al arrancar.
+- **Red:** permisos INTERNET, ACCESS_NETWORK_STATE y ACCESS_WIFI_STATE, más
+  CHANGE_WIFI_MULTICAST_STATE con un `MulticastLock` mientras la actividad
+  vive, para que funcione mDNS en la LAN.
+- **DNS:** libp2p usa la configuración DNS del sistema, que en Android se
+  lee por JNI de la red activa. Si en ese momento no hay red activa (app
+  lanzada en segundo plano, cambio de red), la lectura falla; antes eso
+  tumbaba el nodo entero. Ahora se usa Quad9 como respaldo (`net::dns_config`).
+  Solo afecta a direcciones `/dns` (arranque), no a los mensajes.
+- **Logs:** en Android, tracing emite registros de `log`, que van a logcat
+  con la etiqueta `p2m`. Instalamos el logger antes que frb (gana el primero)
+  para poder filtrar: `info,p2m_node=debug,libp2p_mdns=off`. yamux y rustls
+  en Debug/Trace saturaban el búfer de logcat, y mDNS escribe un error por
+  paquete en las interfaces de datos móviles (sin multicast), que borraba el
+  resto del log. Para verlo: `adb logcat -s p2m:V`.
+- **Errores de arranque:** si el nodo no arranca, la app muestra el error en
+  lugar de quedarse en la pantalla de carga.
+- **Pendiente:** ~~el nodo solo vive con la app en primer plano (no hay
+  servicio en segundo plano ni notificaciones push, porque no hay servidores).~~
+  *(Resuelto en D-032.)* Además: ~~Tor en el móvil (coste de batería) y no lanzar mDNS en interfaces móviles (ahora solo se
+  silencian sus errores en el log).~~ *(Resuelto en D-034: modo de reposo;
+  mDNS solo con wifi y en primer plano.)*
+- **Prueba móvil ↔ PC:** `scripts/e2e-movil.sh [dispositivo]` arranca en el
+  PC tres nodos solo por Tor y sin mDNS, y lanza en el móvil
+  `app/integration_test/movil_test.dart`. Este cubre alta, chat 1:1 iniciado
+  desde el móvil, grupo, chat iniciado desde el PC con el código del móvil,
+  buzones con un nodo apagado y vinculación de un segundo dispositivo. Se
+  coordinan por líneas `P2M_E2E …` en la salida del test. Funciona con el
+  móvil por datos móviles (otra red, tras CGNAT). Ojo: el test instala su
+  propia versión de la app; después hay que reinstalar la normal.
+- **Prueba visible de grupo:** `scripts/e2e-grupo.sh [dispositivo]` abre
+  una ventana de la app de escritorio por usuario del PC (ana, bea, carl) y
+  la app en el móvil, con `app/integration_test/grupo_test.dart` compilado
+  como app; se ve la interfaz mientras ocurre. El móvil abre el grupo con
+  los códigos de los PC y todos comprueban que reciben los mensajes de
+  todos. Después hay que recompilar e instalar la app normal.
+- **QR entre escritorio y móvil:** da igual dónde se creara la cuenta: el
+  escritorio muestra su QR (Perfil) y el móvil lo escanea. En Android e iOS
+  hay un botón «Escanear QR» (mobile_scanner, permiso de cámara) en
+  «Nuevo chat», que añade el código `p2m:` a los participantes, y en
+  «Vincular dispositivo», que rellena el código del dispositivo nuevo. En
+  escritorio no hay escáner: se pega el código. El perfil regenera su QR
+  cuando cambia la dirección onion.
+
+## D-024 · Añadir y quitar personas de un grupo
+
+- **Decisión:** solo el committer (D-007) añade o quita personas. La lista de
+  participantes nueva viaja **dentro del grupo**, como mensaje MLS de
+  aplicación del committer, y después va el commit que añade o expulsa los
+  dispositivos.
+- **Motivo:** no se necesita ningún mecanismo nuevo de confianza. MLS ya
+  autentica al remitente, y el resto solo acepta la lista si la firma el
+  committer del chat, que no puede cambiar.
+- **Cómo funciona:**
+  - **Añadir:** el committer resuelve a la persona (handle o QR), envía la
+    lista nueva a los miembros actuales y sincroniza. La sincronización añade
+    sus dispositivos y les manda el Welcome con la lista.
+  - **Quitar:** el committer envía la lista sin esa persona (el aviso también
+    le llega a ella) y sincroniza. La sincronización expulsa los dispositivos
+    de cualquier persona que ya no participa.
+  - **Expulsar con un registro sin resolver:** a un dispositivo cuya persona
+    no se ha resuelto (fallo de red) solo se le mantiene si el sufijo de su
+    clave raíz coincide con el de algún participante. En ningún otro caso se
+    mantiene.
+  - **Volver a entrar:** quien ha salido puede volver a ser añadido. Su
+    Welcome sustituye al grupo antiguo, con el mismo id, solo si viene del
+    mismo committer (`replace_old_group` de openmls). El chat conserva su
+    posición y su historial.
+  - **Avisos:** todos los dispositivos calculan, a partir de la diferencia de
+    listas, el aviso «ana#… añadió a carl#…» o «ana#… quitó a bea#…». El aviso
+    se guarda en el historial (`notice`) y la app lo muestra centrado, sin
+    burbuja.
+  - **Interfaz:**
+    - CLI: `members`, `add` y `remove`.
+    - App: pantalla «Miembros» del chat, con «Añadir» (con escáner de QR en el
+      móvil) y «Quitar».
+- **Limitaciones:**
+  - Si el committer cae entre enviar la lista y hacer el commit, los miembros
+    pueden quedar con una lista desfasada hasta el siguiente cambio. Los
+    dispositivos sí se ajustan en la siguiente sincronización.
+  - ~~Nadie puede salir de un grupo por su cuenta: hay que pedírselo al
+    committer.~~ *(Resuelto en D-031: borrar el grupo es salir.)*
+  - Si se rechaza un Welcome (por ejemplo, de otro committer), el KeyPackage
+    de un solo uso se pierde igualmente.
+- **Pruebas:**
+  - `scripts/e2e.sh`: quitar a Bob (con dos dispositivos), comprobar que no
+    recibe y añadirlo de nuevo.
+  - `scripts/e2e-grupo.sh`: el móvil quita al último usuario del PC y lo
+    vuelve a añadir, con la interfaz visible.
+
+## D-025 · Emojis y stickers, sin servicios externos
+- **Decisión:**
+  - Panel de emojis local en la app (`emoji_picker_flutter`).
+  - Stickers propios, que viajan dentro del mensaje MLS cifrado como un
+    mensaje más.
+  - Sin GIPHY, Tenor ni ningún otro buscador.
+- **Por qué:**
+  - Un buscador externo pide una clave de API y ve qué busca cada usuario y
+    desde qué IP. Además, la imagen se descargaría de sus servidores. Eso
+    choca con «privacidad para todos».
+  - Mandar los bytes de la imagen dentro del mensaje no revela nada nuevo a
+    nadie y funciona también por buzón.
+- **Cómo funciona:**
+  - **Formato:** `AppMessage.sticker` lleva los bytes de la imagen; en ese
+    caso `text` va vacío.
+  - **Tipos admitidos:** PNG, GIF, WebP o JPEG, identificados por sus
+    primeros bytes. Se rechaza cualquier otro, incluido SVG.
+  - **Límites:**
+    - 200 KB (`sticker::MAX_STICKER`).
+    - 1024 px por lado (`MAX_SIDE`), leído de la cabecera.
+    - Se comprueban al enviar y al recibir.
+    - El límite de lado evita las «bombas de descompresión»: imágenes de
+      pocos KB que declaran 30000×30000 px y agotan la memoria al
+      decodificarlas.
+  - **Bytes en CBOR:** los campos binarios del protocolo (`Request::Mls`, el
+    Welcome, el KeyPackage y `Envelope.sealed`/`sig`) se serializan ahora como
+    cadenas de bytes CBOR (`serde_bytes`), no como listas de enteros.
+    - Antes cada capa casi duplicaba el tamaño: un sticker de 70 KB ya no
+      cabía en un sobre de buzón de 256 KB. Ahora cabe uno de 200 KB.
+    - Los nodos nuevos leen los dos formatos; los antiguos no entienden el
+      nuevo. No hay versiones publicadas, así que no importa.
+  - **Almacenamiento:**
+    - Cada imagen se guarda una sola vez en `media/<blake3>.<ext>`, sea
+      enviada, recibida o de la colección.
+    - El historial guarda solo ese nombre (`StoredMessage.sticker`), no los
+      bytes.
+    - La colección propia es la lista de nombres en `stickers.cbor`.
+    - El nombre se valida antes de abrir el archivo, para no salir de `media/`.
+  - **Interfaz:**
+    - Botón 😊 junto al campo de texto. Abre un panel con dos pestañas:
+      - Emoji: categorías, recientes y búsqueda.
+      - Stickers: la colección.
+    - «Añadir stickers» importa imágenes con `file_selector`.
+      - Si una imagen estática se pasa de tamaño, se reduce a 512 px (o menos)
+        y se guarda como PNG.
+      - Las animadas que se pasan se rechazan.
+    - Con pulsación larga (o clic derecho), un sticker del chat se guarda en la
+      colección, y uno de la colección se quita.
+  - **CLI:** `sticker <n> <archivo>`.
+- **Riesgos:**
+  - Decodificar imágenes recibidas expone a fallos de los decodificadores de
+    Flutter/Skia. Se reduce limitando formatos, tamaño y lado, y
+    decodificando al tamaño mostrado (`cacheWidth`).
+  - El tamaño del mensaje delata que es un sticker. Ver R-008, análisis de
+    tamaño y tiempo, en la rama `worktree-doc-riesgos`.
+- **Pendiente:**
+  - Paquetes de stickers compartibles.
+  - Un paquete por defecto incluido en la app.
+  - Convertir GIF a WebP animado para que quepan más.
+- **Pruebas:**
+  - Unitarias en `sticker.rs`: formatos, dimensiones de cada formato, bomba
+    rechazada y rutas.
+  - `scripts/e2e.sh`:
+    - Sticker directo.
+    - Uno de 190 KB por buzón, con el destinatario desconectado.
+    - Uno de 300 KB, rechazado.
+  - `scripts/e2e-grupo.sh`, visible:
+    - El móvil manda un emoji desde el panel y su sticker.
+    - Cada PC guarda el del móvil y manda el suyo.
+
+## D-026 · Archivos: enjambre privado dentro del grupo
+- **Decisión:**
+  - Los archivos de hasta 100 MB (`files::MAX_FILE`) se mandan como una
+    oferta dentro del mensaje MLS.
+  - El contenido viaja aparte, cifrado y en trozos. Lo sirven los
+    dispositivos del grupo que ya lo tienen, por nuestra propia red libp2p.
+  - No se usa BitTorrent público.
+- **Por qué no BitTorrent:**
+  - En la DHT y en los trackers públicos cualquiera ve quién comparte qué
+    infohash y desde qué IP. Aunque el contenido fuera cifrado, eso revela
+    quién habla con quién y cuándo.
+  - Nuestra red ya autentica a los dispositivos, va por Tor y sabe quién es
+    miembro del grupo.
+  - Del modelo de BitTorrent se conserva lo útil: trozos verificables y
+    varias fuentes a la vez.
+- **Cómo funciona:**
+  - **Cifrado:**
+    - Cada archivo tiene una clave aleatoria de 32 bytes.
+    - Se parte en trozos de 256 KiB.
+    - Cada trozo se cifra con ChaCha20-Poly1305, usando su índice como
+      nonce. La clave es única por archivo, así que el cifrado es
+      determinista y quien lo tenga sirve exactamente los mismos bytes.
+  - **Oferta** (`FileOffer`, dentro del `AppMessage` cifrado):
+    - Nombre, tamaño y clave.
+    - El BLAKE3 de cada trozo cifrado, para verificar cada trozo antes de
+      descifrarlo, venga de quien venga.
+  - **Identificadores derivados de la clave:**
+    - Id del archivo: `derive_key("p2message 2026 file id", clave)`.
+    - Token de petición: `derive_key("p2message 2026 file token", clave)`.
+  - **Petición:** `Request::Chunk {file, index, token}` por `/p2m/msg/1`.
+  - **Quién recibe un trozo:** quien sirve solo lo entrega si se cumplen las
+    tres condiciones:
+    - El token es correcto (comparación en tiempo constante).
+    - El dispositivo que pide es miembro actual del grupo MLS de la oferta.
+    - Quien sirve tiene el archivo completo.
+  - **Descarga:**
+    - Cuatro peticiones en paralelo.
+    - Primero se pide al remitente y luego a los demás miembros.
+    - Una fuente que falla se descarta durante esa descarga.
+    - Se guarda en `files/<id>/<nombre>.part` y se renombra al terminar.
+    - Para reanudar, se vuelven a cifrar los trozos ya escritos y se comparan
+      sus hashes, sin un mapa aparte.
+  - **Envío:** el archivo se cifra una vez para calcular los hashes y se copia
+    a `files/<id>/<nombre>`, desde donde se sirve.
+  - **Nombre:** se limpia al enviar y se comprueba al recibir
+    (`safe_name`), para no salir de `files/<id>/`.
+  - **Interfaz:**
+    - Botón 📎 en el chat.
+    - Burbuja con nombre y tamaño, y botones «Descargar» (con progreso,
+      `UiEvent::FileProgress`) y «Abrir».
+    - En Android se abre con otra app mediante un `FileProvider`.
+    - La descarga es manual: no se baja nada sin que la persona lo pida.
+  - **CLI:** `file <n> <archivo>` y `get <id>`.
+- **Límites:**
+  - Solo se descarga de dispositivos en línea. Los buzones no guardan
+    archivos: con 100 MB por archivo se llenarían enseguida. Si nadie que lo
+    tenga está conectado, hay que probar más tarde. Se puede añadir más
+    adelante, por ejemplo con buzones que guarden trozos cifrados un tiempo.
+  - Una persona quitada del grupo conserva lo que ya descargó y la clave de
+    lo que se mandó mientras estaba. Ya no puede pedir trozos, porque deja de
+    ser miembro.
+  - En Android, `file_selector` lee el archivo entero en memoria al elegirlo
+    (hasta 100 MB) y deja una copia en la caché. La app borra esa copia al
+    enviar.
+  - El tamaño y el momento de las descargas se ven en la red. Ver R-008 en
+    la rama `worktree-doc-riesgos`.
+- **Pruebas:**
+  - Unitarias en `files.rs`:
+    - Nombres y límites.
+    - Enviar, servir y descargar, incluidos un token incorrecto, un trozo
+      corrupto y la reanudación de una descarga a medias.
+  - `scripts/e2e.sh`:
+    - Archivo de 3 MB enviado y descargado, comprobado con `cmp`.
+    - Con el remitente desconectado, otro miembro lo sirve a un tercero.
+    - Uno de 101 MB, rechazado.
+  - `scripts/e2e-grupo.sh`, visible: el móvil manda 1 MB y cada PC lo
+    descarga desde la interfaz y comprueba el contenido.
+
+## D-027 · Un solo chat 1:1 entre dos personas
+- **Problema:** se podían tener varios chats 1:1 entre las mismas dos
+  cuentas. Pasaba al crearlo dos veces o cuando los dos lo creaban a la vez.
+  Los mensajes quedaban repartidos entre chats.
+- **Decisión:** los chats 1:1 duplicados se funden en uno al mostrarlos, sin
+  tocar los grupos MLS ni lo guardado.
+  - Un chat es 1:1 si está activo, no tiene título y tiene 2 participantes.
+    Su clave son los dos sufijos de handle, ordenados.
+  - El chat canónico es el de menor índice con esa clave. Los demás no salen
+    en la lista.
+  - El historial junta el de todos sus grupos, ordenado por fecha.
+  - Los mensajes que llegan por cualquiera de los grupos se notifican en el
+    canónico, y los envíos van por el canónico.
+  - Crear un chat 1:1 que ya existe devuelve el que hay. Si mientras se crea
+    llega la invitación del otro, se devuelve el canónico.
+- **Por qué así:** no hace falta coordinar a los dos lados ni cambiar el
+  formato guardado. El canónico se calcula al vuelo y ambos lados ven un solo
+  chat aunque cada uno tenga un índice distinto.
+- **Límite:** los grupos duplicados siguen existiendo por debajo. Un mensaje
+  puede salir por un grupo y llegar por otro, pero se ve en el mismo chat.
+- **Pruebas:** `scripts/e2e.sh` crea un 1:1 que ya existe y otro a la vez
+  desde los dos lados, y comprueba que cada uno ve un solo chat.
+
+## D-028 · Conexiones vivas con los miembros de los chats
+- **Problema:** sobre Tor, lo lento es montar la conexión: buscar el
+  descriptor del servicio onion y hacer el rendezvous, varios segundos. La
+  red cierra las conexiones tras 120 s sin uso, así que casi cada mensaje
+  tenía que montarla otra vez.
+- **Decisión:**
+  - Cada 45 s (`KEEPALIVE_EVERY`) se manda un `Request::Ping` a cada
+    dispositivo de nuestros chats activos. Ese tráfico evita que se cierre la
+    conexión y mantiene caliente el circuito.
+  - El primer ping sale a los 3 s de arrancar, así que sirve también de
+    preconexión con las direcciones conocidas (D-021).
+  - Si un dispositivo no responde, se espera antes de volver a probar: de
+    1 min, doblando hasta 15 min. Así no se gasta red en quien está
+    desconectado.
+  - Se registran tiempos (`ms`) del arranque de Tor, del servicio onion
+    alcanzable, de cada llamada por Tor, de cada ping y de cada envío
+    directo, para medir dónde se va el tiempo.
+- **Coste:** un mensaje pequeño cada 45 s por dispositivo conectado, más
+  batería en el móvil (en segundo plano ya no: modo de reposo, D-034). Con muchos contactos habrá que limitarlo, por ejemplo
+  a los chats con actividad reciente.
+- **Privacidad:** se ve que dos dispositivos hablan aunque no se manden
+  mensajes. Sobre Tor solo se ve en los extremos. Entre mensajes ya se veía
+  la conexión abierta hasta 120 s.
+
+## D-029 · Solicitudes de chat, bloqueo, borrar chats y búsqueda
+- **Problema:** cualquiera que conozca nuestro handle puede abrirnos un chat
+  o meternos en un grupo. Hasta ahora salía como un chat más, con sus
+  stickers a la vista y sus archivos listos para descargar. Faltaba también
+  poder bloquear a alguien, borrar un chat y buscar en los mensajes.
+- **Decisión (solicitudes):**
+  - Un chat que nos llega es una **solicitud** si no viene de alguien de
+    confianza. De confianza es: uno de nuestros dispositivos, o quien ya
+    está en un chat aceptado con nosotros (un 1:1, o un grupo que creamos
+    nosotros). Que coincidamos en un grupo creado por un tercero no cuenta.
+  - Mientras es solicitud los mensajes llegan y se ven, pero no se descargan
+    sus archivos (el núcleo se niega) y la app no muestra sus stickers.
+    Tampoco le damos nuestra foto de perfil (D-030).
+  - Se acepta con «Aceptar» o al contestar. Aceptar en un dispositivo lo
+    acepta en todos los nuestros: se manda `Request::Accepted { groups }` a
+    nuestros otros dispositivos (por buzón si no están). Al conectar con un
+    dispositivo nuestro también se le manda la lista, para el que se acaba de
+    vincular. Si la aceptación llega antes que la invitación, se guarda
+    (`pre_accepted`) y se aplica al llegar.
+  - `Chat.accepted` se guarda con valor por defecto `true`, así que los
+    chats que ya existían siguen aceptados.
+- **Decisión (bloqueo):**
+  - Se bloquea por sufijo de handle, que sale de la clave raíz: vale aunque
+    la persona cambie de nombre o de dispositivos.
+  - Se descartan sus mensajes antes de guardarlos. Se ocultan sus chats 1:1
+    y sus invitaciones a grupos sin aceptar. No se le pasa nuestra foto ni
+    se descarga la suya.
+  - En los grupos ya aceptados se ocultan sus mensajes; el grupo sigue.
+  - No se le avisa. Al desbloquear vuelven a verse sus chats, pero sin los
+    mensajes que mandó mientras estaba bloqueada.
+- **Decisión (borrar):** borrar un chat lo oculta y vacía su historial en
+  este dispositivo, pero no se sale del grupo MLS. Si llega otro mensaje,
+  reaparece vacío. Salir del grupo de verdad necesita un commit del creador
+  y queda para más adelante. *(Sustituido para grupos por D-031: borrar un
+  grupo que no gestionamos es salir de él.)*
+- **Decisión (búsqueda):**
+  - Todo se busca en local, en el historial descifrado del dispositivo. No
+    hay índice: se recorren los mensajes, lo que basta para los volúmenes de
+    un chat personal.
+  - No distingue mayúsculas ni tildes.
+  - Busca en el texto y en los nombres de archivo. Da 200 resultados como
+    máximo, del más reciente al más antiguo, con su posición para saltar al
+    mensaje.
+- **Limitaciones:**
+  - La lista de bloqueados no se sincroniza entre nuestros dispositivos.
+    *(Resuelto en D-031.)*
+  - Los stickers de una solicitud ya están en el disco (vienen dentro del
+    mensaje, D-025); solo no se muestran.
+  - Un grupo de un tercero en el que coincidimos con un desconocido no le
+    hace de confianza: si este nos abre un 1:1, llega como solicitud.
+
+## D-030 · Fotos de perfil
+- **Decisión:**
+  - La foto se pide, no se reparte. Cada mensaje lleva la versión de la
+    foto de quien escribe (`AppMessage.avatar`, una marca de tiempo; 0 si no
+    tiene). Al cambiarla se manda un mensaje vacío a los chats aceptados,
+    solo para anunciar la versión nueva; no se guarda en el historial.
+  - Quien ve una versión que no tiene la pide con `Request::Avatar` al
+    dispositivo que la anunció, y solo si esa persona está en un chat
+    aceptado con él.
+  - Ese dispositivo solo la da a dispositivos que comparten con él un chat
+    activo y aceptado, y cuya persona no está bloqueada. Un desconocido no
+    puede ver nuestra cara pidiéndonos un chat.
+  - Formato: PNG, GIF, WebP o JPEG de 128 KB y 512 px de lado como máximo.
+    La app la recorta en cuadrado y la reduce a 256 px (o menos) en PNG.
+  - Se guardan en `avatars/<sufijo>-<versión>.<ext>`. Al llegar una versión
+    nueva se borra la anterior.
+- **Por qué no ir en cada mensaje:** 128 KB por mensaje sería demasiado. Ir
+  solo en el anuncio también falla: quien esté desconectado o entre después
+  en el grupo no la recibiría.
+- **Privacidad:** quitar la foto es una versión más (sin imagen), así que
+  también se propaga. Quien ya la descargó la conserva hasta que llega la
+  versión nueva.
+
+## D-031 · Salir de un grupo al borrarlo y bloqueos en todos los dispositivos
+- **Contexto:** cierra dos limitaciones de D-029. Decidido sin preguntar
+  (se pidió seguir sin parar y anotar aquí lo decidido).
+- **Decisión (salir al borrar):**
+  - Borrar un **grupo** que gestiona otro dispositivo es salir de él. Se
+    manda al grupo un mensaje MLS con `leave` (va cifrado y autenticado: el
+    committer sabe quién lo pide sin más firmas). El committer quita a esa
+    persona (todos sus dispositivos) con el aviso «X salió del chat», en vez
+    de «Y quitó a X».
+  - Se sale como persona, no como dispositivo: un dispositivo suelto no
+    puede estar en un grupo sin los demás de su persona (D-024). Nuestros
+    otros dispositivos ven «Saliste del chat desde otro dispositivo»; no
+    pierden el historial, pero el chat queda inactivo.
+  - Desde que salimos (`Chat.left`) se ignora todo lo que llegue a ese
+    grupo, aunque el commit que nos saca tarde: el chat no reaparece. Que
+    nos saquen no se muestra como expulsión.
+  - Si nos vuelven a añadir, llega como **solicitud** aunque antes lo
+    hubiéramos aceptado: salimos a propósito.
+  - Si el grupo lo gestiona este dispositivo, borrar solo lo oculta, como en
+    D-029: el grupo sigue para los demás. Pasar la gestión a otro queda para
+    más adelante. La app lo explica en la confirmación («Salir y borrar»
+    frente a «Borrar»).
+  - Un 1:1 sigue como en D-029: solo se oculta y reaparece con el siguiente
+    mensaje.
+  - Los avisos (alguien entra o sale) ya no hacen reaparecer un chat
+    borrado; solo un mensaje.
+- **Decisión (bloqueos sincronizados):**
+  - Cada bloqueo o desbloqueo se guarda con su hora y se manda a nuestros
+    otros dispositivos con `Request::Blocks` (por buzón si no están; al
+    conectar se manda la lista entera). Solo se admite de un dispositivo de
+    nuestro registro.
+  - Gana el cambio más reciente por persona; los desbloqueos también se
+    recuerdan, para que una lista vieja no vuelva a bloquear. Un cambio
+    local siempre queda posterior al que había, aunque los relojes no
+    coincidan.
+  - La lista antigua (`blocked.cbor` como sufijo → handle) se lee igual.
+  - Al vincular un dispositivo, el que lo vincula le manda los chats
+    aceptados y los bloqueos justo después de darle la identidad: al
+    conectar todavía no la tenía y rechazaba la lista, así que a veces
+    veía como solicitud un chat ya aceptado.
+- **Limitaciones:** si el committer está desconectado, la salida espera en
+  su buzón y mientras tanto seguimos en el grupo MLS (aunque no se muestre
+  nada). Si el committer desaparece para siempre no hay forma de salir del
+  grupo, igual que no la hay de añadir a nadie.
+
+## D-032 · Android en segundo plano y avisos de mensajes
+- **Contexto:** sin servidores no hay notificaciones push (FCM pasaría por
+  Google y revelaría cuándo nos escriben). Para recibir mensajes con la app
+  cerrada, el nodo tiene que seguir vivo en el móvil. Decidido sin preguntar.
+- **Decisión:**
+  - El motor de Flutter (y con él el nodo) se crea en la `Application`
+    (`P2mApp`), no en la actividad, y se guarda en `FlutterEngineCache`.
+    `MainActivity` lo reutiliza y no lo destruye al cerrarse.
+  - Al arrancar el nodo, Dart pide el servicio en primer plano `NodeService`
+    (tipo `specialUse`, `START_STICKY`). Solo mantiene vivo el proceso. Su
+    aviso fijo («Conectado para recibir mensajes», canal de prioridad
+    mínima) tiene la acción «Cerrar», que termina el proceso.
+  - Si Android mata el proceso, el servicio lo relanza: `P2mApp` crea el
+    motor y Dart vuelve a arrancar el nodo con su clave (D-033).
+  - Los avisos de mensajes los lanza Dart por el canal `p2message/sistema`,
+    solo si la app no está en primer plano. Título: quién escribe (1:1) o el
+    nombre del grupo. En una **solicitud** no se muestra el contenido, solo
+    «Solicitud de chat de X». En la pantalla de bloqueo solo se ve «Mensaje
+    nuevo» (`VISIBILITY_PRIVATE` con versión pública).
+  - Tocar el aviso abre ese chat. Abrir un chat quita su aviso.
+  - El permiso de notificaciones se pide al abrir (Android 13+). En el
+    perfil, la app indica si está exenta de la optimización de batería y
+    ofrece pedirlo; no lo pide sola.
+  - `allowBackup=false`: el estado no va a las copias de Google.
+- **Limitaciones:**
+  - Con Doze y sin la exención de batería, la red se corta con la pantalla
+    apagada y los mensajes llegan al despertar (o por buzón).
+  - MIUI y otras capas matan servicios si no se permite el «Inicio
+    automático». La app no puede activarlo; hay que hacerlo a mano.
+  - ~~Gasto de batería: la conexión sigue abierta. Tor en el móvil sigue
+    pendiente por eso (D-023).~~ *(Resuelto en D-034: modo de reposo.)*
+  - En escritorio la app solo recibe mientras está abierta.
+
+## D-033 · Cifrado del estado en disco
+- **Contexto:** claves, historial, chats y estado MLS iban en claro con
+  permisos `0600` (D-012). Con el dispositivo robado o una copia del disco se
+  leía todo. Decidido sin preguntar.
+- **Decisión:**
+  - Sin SQLite/SQLCipher. Compilar SQLCipher para Android en cada
+    arquitectura complica la build, y el estado ya son archivos pequeños.
+    Cada archivo de estado se cifra entero (`p2m_core::vault`):
+    XChaCha20-Poly1305 con nonce aleatorio de 24 bytes y el nombre del
+    archivo como datos asociados (no se puede cambiar un archivo por otro).
+    Cabecera `P2MVLT1\0`. Escritura atómica (temporal + `rename`, `fsync`,
+    `0600`).
+  - El estado MLS pasa de JSON a CBOR (más compacto). Se sigue leyendo el
+    JSON antiguo.
+  - Una sola clave de datos aleatoria de 32 bytes por directorio de datos:
+    - **Android:** se guarda envuelta (AES-GCM) con una clave del Android
+      Keystore que no sale del hardware, en `noBackupFilesDir`.
+    - **Escritorio Linux:** en el llavero del sistema (Secret Service:
+      GNOME Keyring, KWallet), una entrada por directorio de datos.
+    - **CLI y pruebas:** variable `P2M_DATA_KEY` (64 hex). Si existe, tiene
+      prioridad sobre el llavero; así las pruebas no lo llenan.
+  - Al arrancar con clave, los archivos en claro se cifran (migración). Con
+    el estado cifrado y sin clave, o con otra, el nodo no arranca: no se
+    sobreescribe nada.
+  - Si no hay llavero ni estado cifrado, el nodo arranca **sin cifrar** y el
+    perfil lo avisa («Datos sin cifrar en el disco»). Mejor eso que no
+    poder usar la app en un escritorio mínimo.
+- **Limitaciones:**
+  - Siguen en claro los stickers, las fotos de perfil, los archivos
+    descargados y el estado de Tor (pendiente, hoja de ruta).
+  - La clave se desbloquea con el dispositivo (Keystore) o con la sesión
+    (llavero): protege el disco apagado o copiado, no un móvil desbloqueado.
+  - Sin la clave (llavero borrado, Keystore restablecido), el estado no se
+    puede recuperar. Hace falta la frase de recuperación (hoja de ruta).
+  - macOS, Windows e iOS aún no tienen almacén de clave.
+
+## D-034 · Remitente sellado, entrega activa desde los buzones y modo de reposo
+- **Contexto:** se pidió que el remitente viaje dentro del mensaje firmado,
+  para que los buzones no sepan quién habla con quién. También que un buzón
+  que guarda algo para A#123 se lo lleve, buscando su dirección onion, y que
+  Tor pueda estar siempre activo en el móvil sin un gasto de batería
+  enorme. Los detalles se decidieron sin preguntar.
+- **Remitente sellado:**
+  - El sobre (`p2m_core::envelope`, v2) solo lleva fuera el **destinatario**
+    y el texto sellado. Dentro va `{remitente, firma, contenido}`. La firma
+    cubre destinatario, clave efímera y contenido, así que el contenido
+    firmado no se puede reenvolver para otro. El destinatario descifra,
+    comprueba la firma y procesa la petición como si viniera del remitente.
+  - Id del sobre: `BLAKE3(sellado)`, para confirmar y descartar duplicados.
+  - El buzón ya no puede comprobar firmas: solo que el destinatario es una
+    clave válida y que el sobre no está truncado. Los límites (por
+    destinatario, tamaño, 14 días) siguen. La firma del sobre tampoco
+    frenaba el spam: cualquiera puede crearse una clave.
+  - **Mensajero:** depositar por la conexión normal revelaría al buzón
+    nuestro PeerId (Noise autentica la clave de quien llama). Por eso los
+    depósitos van por un swarm de un solo uso, con una identidad libp2p
+    nueva cada vez. Si hay Tor y el buzón tiene dirección onion, solo se usa
+    esa, con un cliente Tor **aislado**: no comparte circuitos con los del
+    nodo, y el buzón no ve ni la IP.
+  - Solo si así no se guarda ninguna copia se deposita con la identidad
+    propia. Mejor entregar que perder el mensaje. Ese caso queda en el log.
+  - Los sobres antiguos (v1) no se pueden abrir: se confirman y se
+    descartan. Un `mailbox.cbor` ilegible se ignora con un aviso.
+- **Entrega activa desde los buzones:**
+  - Un nodo que guarda sobres para un dispositivo se los lleva
+    (`Deliver` → `Taken{ids}`). `Client::request` busca al destinatario en
+    la DHT si no sabe llegar, así que encuentra su dirección onion.
+  - Cuándo:
+    - En cuanto el destinatario se conecta.
+    - Si no, en el tick: primer intento al minuto, más un azar de hasta
+      30 s para no delatar el momento del depósito.
+    - Después a los 5 min, 30 min y cada 2 h, hasta que caduca el sobre.
+  - Una ronda a la vez, y hasta 768 KiB por petición (las peticiones tienen
+    un límite de 1 MiB).
+  - El destinatario solo acepta sobres para él, descarta duplicados (los
+    mismos ids que con `Fetch`) y admite hasta 300 sobres por peer cada
+    10 min. También confirma los que no puede abrir, para que el buzón no
+    insista con basura.
+  - Sigue habiendo `Fetch`: si un buzón no llega, el destinatario los pide.
+  - **Privacidad:** el buzón ya conocía la dirección onion del destinatario
+    (se difunde por identify y la DHT). Llevarle los sobres le dice si está
+    en línea, nada que no pudiera averiguar con un ping. Como no sabe quién
+    escribió, no relaciona remitente y destinatario.
+- **Modo de reposo** (`Power { low, wifi }`; API `set_power(background,
+  wifi)`, CLI `power low|full [wifi|mobile]`):
+  - En Android, Dart lo activa cuando la app pasa a segundo plano
+    (`AppLifecycleListener`) y lo quita al volver. Al quitarlo hay un tick
+    inmediato. Al arrancar sin pantalla (servicio relanzado), arranca en
+    reposo. Kotlin avisa de los cambios de red (wifi o cable frente a datos)
+    con un `NetworkCallback`.
+  - En reposo:
+    - **Solo se entra por el servicio onion.** Con el servicio publicado, se
+      sueltan las reservas en relays y no se piden otras. TCP y QUIC siguen
+      escuchando, pero sin keepalive (D-028) las conexiones se cierran
+      solas a los 120 s.
+    - **Tor dormido:** `TorClient::set_dormant(Soft)`. Arti para el relleno
+      de los canales y sus tareas periódicas. El servicio onion sigue
+      atendiendo, y Tor despierta al usarse.
+    - **Relleno reducido** (`PaddingLevel::Reduced`) en Android, también en
+      primer plano.
+    - **Tareas agrupadas cada 12 min:** tick (publicar, vaciar y entregar
+      buzones, sincronizar) y volver a llamar a los nodos de arranque. Sin
+      keepalive, sin punto de encuentro, y la DHT Mainline se apaga.
+    - **mDNS** solo en primer plano y con wifi. Sin mDNS se suelta el
+      `MulticastLock`, que impedía al wifi filtrar paquetes.
+    - Dart no consulta el estado del nodo cada 5 s.
+- **Medición en el Pixel** (Pixel 8 Pro, sin exención de batería; series
+  de muestras por minuto en `scripts/bateria/`: CPU del proceso en ticks de
+  10 ms y bytes de `batterystats`). Las series son cortas (11 y 9 min) y el
+  teléfono alternaba entre Doze y pantalla encendida, así que solo se
+  comparan minutos en el mismo estado:
+  - **En Doze profundo:** 0 ticks en las dos versiones. Android congela el
+    proceso.
+  - **Pantalla apagada, proceso activo** (ventanas de mantenimiento y
+    después de usar el móvil):
+    - Antes: 1 700–2 000 ticks por minuto, es decir, 17–20 s de CPU, sobre
+      todo en los hilos de tokio.
+    - Ahora: 170–735 ticks por minuto, unos 450 de media (4,5 s), en reposo
+      y con Tor encendido. Es unas **4 veces menos de CPU**, y antes ni
+      siquiera había Tor.
+  - **Red:** con la pantalla apagada, entre 10 y 150 KB por minuto por
+    wifi en las dos versiones. La medida es demasiado ruidosa para
+    compararlas: arranque, reconexiones de Tor y descarga del directorio.
+  - Para medirlo sin abrir la pantalla no sirve
+    `am start-foreground-service`, porque el servicio no está exportado. Se
+    abre la app y se vuelve al inicio: en el log aparece
+    `reposo: Mainline detenida` y se suelta el `MulticastLock`.
+  - Pendiente: una medición larga (horas) con
+    `dumpsys batterystats --charged` para tener mAh reales.
+- **Limitaciones:**
+  - Los relays de circuito siguen viendo los PeerId de los dos extremos de
+    un circuito. El mensajero no usa relays, solo TCP, QUIC u onion.
+  - Sin Tor, el buzón ve la IP del mensajero (en una red local, la de
+    siempre).
+  - Kademlia mantiene su bootstrap cada 5 min e identify su intervalo:
+    libp2p no permite cambiarlos en marcha.
+  - En Doze profundo Android congela el proceso aunque tenga servicio en
+    primer plano. Lo recibido llega en las ventanas de mantenimiento o, por
+    buzón, al despertar. Con la exención de batería hay más ventanas.
+  - Tras un reposo largo, el primer envío espera a que Tor despierte y
+    renueve el directorio.
+  - No es compatible con nodos anteriores: sobres v1 y v2 no se entienden.
+
+## D-035 · Avisos en el escritorio y qué cuentan los avisos
+- **Contexto:** la app de Linux no usaba los avisos del sistema. Además, un
+  aviso con el remitente y el texto queda a la vista de cualquiera: en la
+  pantalla, en la de bloqueo y en el historial de avisos del sistema (y en
+  Android, de las apps con acceso a las notificaciones).
+- **Decisión:**
+  - **Linux:** avisos por `org.freedesktop.Notifications`
+    (`flutter_local_notifications_linux`: solo la parte de Linux, que es
+    Dart sobre D-Bus, para no meter código en Android). Como en Android,
+    solo cuando la ventana no está a la vista: sin foco Flutter la deja en
+    `inactive`. Al pulsar el aviso se abre el chat. Al abrir un chat se
+    quita su aviso. Sin servidor de avisos se sigue sin ellos.
+  - **Qué dicen** (ajuste por dispositivo, `avisos.txt` en el directorio de
+    datos; no es secreto):
+    - «Quién escribe y el mensaje».
+    - «Solo quién escribe»: «Mensaje nuevo» o «Solicitud de chat».
+    - «Solo "Tienes mensajes nuevos"»: un único aviso para todos los
+      chats, que abre la app pero no un chat concreto.
+  - Se pregunta la primera vez que se ve la lista de chats, también en
+    instalaciones que ya existían, y se puede cambiar en Perfil. Mientras
+    no se elige, los avisos no cuentan nada.
+  - De las solicitudes de chat nunca se enseña el contenido, y en la
+    pantalla de bloqueo de Android el aviso público sigue siendo «Mensaje
+    nuevo» (D-032).
+- **Limitaciones:**
+  - En Wayland, al pulsar el aviso se abre el chat, pero la ventana no
+    pasa al frente: Wayland no deja a una app robar el foco.
+  - El ajuste es de cada dispositivo, no se sincroniza entre los de una
+    misma identidad.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).
