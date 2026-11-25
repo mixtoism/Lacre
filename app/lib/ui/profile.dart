@@ -11,7 +11,7 @@ import '../l10n/l10n.dart';
 import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'common.dart';
-import 'scan.dart';
+import 'link.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.store});
@@ -102,76 +102,9 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _busy = false;
 
   Future<void> _link() async {
-    final code = TextEditingController();
-    final label = TextEditingController(text: context.l.defaultDeviceLabel);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.l.linkDevice),
-        content: SizedBox(
-          width: 420,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  canScan
-                      ? context.l.linkDialogScan
-                      : context.l.linkDialogPaste,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: code,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: context.l.deviceCode,
-                    border: const OutlineInputBorder(),
-                    suffixIcon: canScan
-                        ? IconButton(
-                            tooltip: context.l.scanQr,
-                            icon: const Icon(Icons.qr_code_scanner),
-                            onPressed: () async {
-                              final v = await scanQr(
-                                context,
-                                title: context.l.scanNewDeviceQr,
-                                accept: (v) => !v.startsWith('p2m:'),
-                              );
-                              if (v != null) code.text = v;
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: label,
-                  decoration: InputDecoration(
-                    labelText: context.l.deviceName,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l.cancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l.link),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    final done = await guard(context, () async {
-      await lacre.linkDevice(code: code.text, label: label.text.trim());
-      return true;
-    });
-    if (done == true && mounted) setState(() => _devices = lacre.devices());
+    if (await LinkDialog.show(context, widget.store) && mounted) {
+      setState(() => _devices = lacre.devices());
+    }
   }
 
   Future<void> _unlink(lacre.Device d) async {
@@ -352,6 +285,50 @@ class _ProfilePageState extends State<ProfilePage> {
                   if (mounted) setState(() {});
                 },
               ),
+              if (widget.store.checkEvery case final every?) ...[
+                SwitchListTile(
+                  secondary: const Icon(Icons.wifi_tethering),
+                  title: Text(context.l.alwaysConnected),
+                  subtitle: Text(
+                    every == 0
+                        ? context.l.alwaysConnectedOn
+                        : context.l.alwaysConnectedOff,
+                  ),
+                  value: every == 0,
+                  onChanged: (on) async {
+                    await widget.store.setCheckEvery(
+                      on ? 0 : Store.checkIntervals.first,
+                    );
+                    if (mounted) setState(() {});
+                  },
+                ),
+                if (every > 0)
+                  ListTile(
+                    leading: const Icon(Icons.schedule),
+                    title: Text(context.l.checkEvery),
+                    trailing: DropdownButton<int>(
+                      value: Store.checkIntervals.contains(every)
+                          ? every
+                          : null,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        await widget.store.setCheckEvery(v);
+                        if (mounted) setState(() {});
+                      },
+                      items: [
+                        for (final m in Store.checkIntervals)
+                          DropdownMenuItem(
+                            value: m,
+                            child: Text(
+                              m < 60
+                                  ? context.l.minutes(m)
+                                  : context.l.hours(m ~/ 60),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
               if (_batteryFree != null)
                 ListTile(
                   leading: const Icon(Icons.battery_saver_outlined),

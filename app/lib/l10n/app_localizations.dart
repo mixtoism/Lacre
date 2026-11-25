@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @linkInstructions.
   ///
   /// In es, this message translates to:
-  /// **'En tu dispositivo principal abre Perfil → Dispositivos → Vincular y pega este código. Esta pantalla cambiará sola cuando se complete.'**
+  /// **'En el dispositivo principal abre Perfil → Dispositivos → Vincular y escanea este QR o pega el código. Esta pantalla cambiará sola cuando se complete.'**
   String get linkInstructions;
 
   /// No description provided for @code.
@@ -1003,6 +1003,162 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Los avisos se ven en la pantalla, a veces en la de bloqueo, y quedan en el historial del sistema. ¿Qué quieres que digan?'**
   String get messageNoticesBody;
+
+  /// No description provided for @linkInstructionsScan.
+  ///
+  /// In es, this message translates to:
+  /// **'En el dispositivo principal abre Perfil → Dispositivos → Vincular y escanea el QR que te muestra.'**
+  String get linkInstructionsScan;
+
+  /// No description provided for @scanPrimaryQr.
+  ///
+  /// In es, this message translates to:
+  /// **'Escanear el QR del principal'**
+  String get scanPrimaryQr;
+
+  /// No description provided for @showOwnQr.
+  ///
+  /// In es, this message translates to:
+  /// **'Si el principal es un móvil, que escanee este código:'**
+  String get showOwnQr;
+
+  /// No description provided for @haveInvite.
+  ///
+  /// In es, this message translates to:
+  /// **'Pegar una invitación del principal'**
+  String get haveInvite;
+
+  /// No description provided for @invite.
+  ///
+  /// In es, this message translates to:
+  /// **'Invitación'**
+  String get invite;
+
+  /// No description provided for @linkDialogInvite.
+  ///
+  /// In es, this message translates to:
+  /// **'En el dispositivo nuevo elige «Vincular dispositivo» y escanea este QR. Vale 10 minutos y una sola vez.'**
+  String get linkDialogInvite;
+
+  /// No description provided for @linkDialogOrCode.
+  ///
+  /// In es, this message translates to:
+  /// **'¿El dispositivo nuevo te muestra un código? Pégalo aquí:'**
+  String get linkDialogOrCode;
+
+  /// No description provided for @linkDialogOrQr.
+  ///
+  /// In es, this message translates to:
+  /// **'O que el dispositivo nuevo escanee este QR:'**
+  String get linkDialogOrQr;
+
+  /// No description provided for @waitingNewDevice.
+  ///
+  /// In es, this message translates to:
+  /// **'Esperando al dispositivo nuevo…'**
+  String get waitingNewDevice;
+
+  /// No description provided for @linkConnecting.
+  ///
+  /// In es, this message translates to:
+  /// **'Conectando con el otro dispositivo… Si estáis en redes distintas puede tardar un par de minutos.'**
+  String get linkConnecting;
+
+  /// No description provided for @linkFailed.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo vincular'**
+  String get linkFailed;
+
+  /// No description provided for @linkBadCode.
+  ///
+  /// In es, this message translates to:
+  /// **'Ese código no sirve para vincular. Comprueba que lo has copiado entero.'**
+  String get linkBadCode;
+
+  /// No description provided for @linkUnreachable.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo contactar con el otro dispositivo. Comprueba que los dos tienen la app abierta y conexión a Internet. Si estáis en redes distintas, la conexión va por Tor: espera a que el código diga «Accesible desde otras redes» y vuelve a intentarlo.'**
+  String get linkUnreachable;
+
+  /// No description provided for @linkRefused.
+  ///
+  /// In es, this message translates to:
+  /// **'El otro dispositivo no lo aceptó ({reason}). Pide una invitación nueva y vuelve a intentarlo.'**
+  String linkRefused(String reason);
+
+  /// No description provided for @deviceJoined.
+  ///
+  /// In es, this message translates to:
+  /// **'«{label}» se ha vinculado'**
+  String deviceJoined(String label);
+
+  /// No description provided for @labelPhone.
+  ///
+  /// In es, this message translates to:
+  /// **'móvil'**
+  String get labelPhone;
+
+  /// No description provided for @labelComputer.
+  ///
+  /// In es, this message translates to:
+  /// **'ordenador'**
+  String get labelComputer;
+
+  /// No description provided for @reachableAnywhere.
+  ///
+  /// In es, this message translates to:
+  /// **'Accesible desde otras redes'**
+  String get reachableAnywhere;
+
+  /// No description provided for @reachableLocal.
+  ///
+  /// In es, this message translates to:
+  /// **'De momento solo desde esta red (preparando Tor…)'**
+  String get reachableLocal;
+
+  /// No description provided for @ok.
+  ///
+  /// In es, this message translates to:
+  /// **'Aceptar'**
+  String get ok;
+
+  /// No description provided for @alwaysConnected.
+  ///
+  /// In es, this message translates to:
+  /// **'Siempre conectado a Tor'**
+  String get alwaysConnected;
+
+  /// No description provided for @alwaysConnectedOn.
+  ///
+  /// In es, this message translates to:
+  /// **'Los mensajes llegan al momento. Gasta más batería.'**
+  String get alwaysConnectedOn;
+
+  /// No description provided for @alwaysConnectedOff.
+  ///
+  /// In es, this message translates to:
+  /// **'Con la app cerrada, se conecta de vez en cuando a recoger los mensajes. Android puede retrasar las comprobaciones.'**
+  String get alwaysConnectedOff;
+
+  /// No description provided for @checkEvery.
+  ///
+  /// In es, this message translates to:
+  /// **'Comprobar mensajes cada'**
+  String get checkEvery;
+
+  /// No description provided for @minutes.
+  ///
+  /// In es, this message translates to:
+  /// **'{n} min'**
+  String minutes(int n);
+
+  /// No description provided for @hours.
+  ///
+  /// In es, this message translates to:
+  /// **'{n, plural, =1{1 hora} other{{n} horas}}'**
+  String hours(int n);
 }
 
 class _AppLocalizationsDelegate

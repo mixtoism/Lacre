@@ -10,7 +10,7 @@ use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 
 use anyhow::{Context, Result, anyhow};
 use flutter_rust_bridge::frb;
-use lacre_node::app::{App, Event, SearchHit, Target};
+use lacre_node::app::{App, Event, LinkError, SearchHit, Target};
 use lacre_node::history::StoredMessage;
 use lacre_node::node::{self, Options};
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -182,6 +182,8 @@ pub struct SendResult {
 
 pub enum UiEvent {
     Linked { handle: String },
+    /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
+    DeviceLinked { label: String },
     /// `request`: de alguien con quien aún no hablamos; hay que aceptarlo.
     NewChat { index: u32, name: String, request: bool },
     /// Ha cambiado la foto de perfil de alguien (o la nuestra).
@@ -201,6 +203,7 @@ impl From<Event> for UiEvent {
     fn from(ev: Event) -> Self {
         match ev {
             Event::Linked { handle } => Self::Linked { handle },
+            Event::DeviceLinked { label } => Self::DeviceLinked { label },
             Event::NewChat { index, name, request } => Self::NewChat { index: index as u32, name, request },
             Event::Avatar { handle } => Self::Avatar { handle },
             Event::ChatsChanged => Self::ChatsChanged,
@@ -339,9 +342,66 @@ pub fn devices() -> Result<Vec<Device>> {
         .collect())
 }
 
-pub async fn link_device(code: String, label: String) -> Result<()> {
+/// Cómo acabó un intento de vincular (D-037).
+pub enum LinkResult {
+    Done,
+    /// No es un código de vinculación o está mal copiado.
+    BadCode,
+    /// No se llegó al otro dispositivo (¿app cerrada, sin conexión?).
+    Unreachable,
+    /// El otro dispositivo dijo que no (p. ej. invitación caducada).
+    Refused { reason: String },
+}
+
+fn link_result(r: Result<()>) -> Result<LinkResult> {
+    let Err(e) = r else { return Ok(LinkResult::Done) };
+    match e.downcast_ref::<LinkError>() {
+        Some(LinkError::BadCode) => Ok(LinkResult::BadCode),
+        Some(LinkError::Unreachable) => Ok(LinkResult::Unreachable),
+        Some(LinkError::Refused(reason)) => Ok(LinkResult::Refused { reason: reason.clone() }),
+        None => Err(e),
+    }
+}
+
+/// Código para vincular este dispositivo desde el primario, con las
+/// direcciones por las que llamarlo desde otra red (cambian cuando se
+/// publica el servicio onion: conviene pedirlo de nuevo cada poco).
+pub async fn link_code() -> Result<String> {
     let app = app()?;
-    on_rt(async move { app.link(code.trim(), &label).await }).await
+    on_rt(async move { Ok(app.link_code().await) }).await
+}
+
+/// Desde el primario: vincula el dispositivo cuyo código se ha escaneado
+/// o pegado. Puede tardar un par de minutos si el otro está en otra red.
+pub async fn link_device(code: String, label: String) -> Result<LinkResult> {
+    let app = app()?;
+    on_rt(async move { link_result(app.link(code.trim(), &label).await) }).await
+}
+
+/// Desde el primario: invitación para que la escanee el dispositivo nuevo.
+/// Vale 10 minutos y una sola vez; pedirla otra vez mientras vale da el
+/// mismo token con las direcciones al día.
+pub async fn invite_device() -> Result<String> {
+    let app = app()?;
+    on_rt(async move { app.invite().await }).await
+}
+
+#[frb(sync)]
+pub fn cancel_invite() -> Result<()> {
+    app()?.cancel_invite();
+    Ok(())
+}
+
+/// Desde el dispositivo nuevo: entra con la invitación del primario.
+pub async fn join_identity(code: String, label: String) -> Result<LinkResult> {
+    let app = app()?;
+    on_rt(async move { link_result(app.join(code.trim(), &label).await) }).await
+}
+
+/// ¿Es una invitación (la muestra el primario) y no un código de dispositivo?
+#[frb(sync)]
+pub fn is_invite(code: String) -> bool {
+    code.trim().starts_with(lacre_node::app::INVITE_PREFIX)
 }
 
 pub async fn unlink_device(code: String) -> Result<()> {

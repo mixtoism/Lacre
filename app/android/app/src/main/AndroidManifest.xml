@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- La comprobación periódica de mensajes sigue programada tras reiniciar (D-038). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Lacre"
         android:name=".LacreApp"
@@ -48,6 +50,11 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Mensajería P2P sin servidores: el dispositivo debe seguir conectado a sus contactos para recibir mensajes, porque no hay notificaciones push."/>
         </service>
+        <!-- Comprobación periódica de mensajes (D-038). -->
+        <service
+            android:name=".CheckService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE"/>
         <!-- Abrir con otra app los archivos recibidos en un chat. -->
         <provider
             android:name="androidx.core.content.FileProvider"

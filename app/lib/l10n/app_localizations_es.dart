@@ -53,7 +53,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get linkInstructions =>
-      'En tu dispositivo principal abre Perfil → Dispositivos → Vincular y pega este código. Esta pantalla cambiará sola cuando se complete.';
+      'En el dispositivo principal abre Perfil → Dispositivos → Vincular y escanea este QR o pega el código. Esta pantalla cambiará sola cuando se complete.';
 
   @override
   String get code => 'Código';
@@ -548,4 +548,106 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get messageNoticesBody =>
       'Los avisos se ven en la pantalla, a veces en la de bloqueo, y quedan en el historial del sistema. ¿Qué quieres que digan?';
+
+  @override
+  String get linkInstructionsScan =>
+      'En el dispositivo principal abre Perfil → Dispositivos → Vincular y escanea el QR que te muestra.';
+
+  @override
+  String get scanPrimaryQr => 'Escanear el QR del principal';
+
+  @override
+  String get showOwnQr =>
+      'Si el principal es un móvil, que escanee este código:';
+
+  @override
+  String get haveInvite => 'Pegar una invitación del principal';
+
+  @override
+  String get invite => 'Invitación';
+
+  @override
+  String get linkDialogInvite =>
+      'En el dispositivo nuevo elige «Vincular dispositivo» y escanea este QR. Vale 10 minutos y una sola vez.';
+
+  @override
+  String get linkDialogOrCode =>
+      '¿El dispositivo nuevo te muestra un código? Pégalo aquí:';
+
+  @override
+  String get linkDialogOrQr => 'O que el dispositivo nuevo escanee este QR:';
+
+  @override
+  String get waitingNewDevice => 'Esperando al dispositivo nuevo…';
+
+  @override
+  String get linkConnecting =>
+      'Conectando con el otro dispositivo… Si estáis en redes distintas puede tardar un par de minutos.';
+
+  @override
+  String get linkFailed => 'No se pudo vincular';
+
+  @override
+  String get linkBadCode =>
+      'Ese código no sirve para vincular. Comprueba que lo has copiado entero.';
+
+  @override
+  String get linkUnreachable =>
+      'No se pudo contactar con el otro dispositivo. Comprueba que los dos tienen la app abierta y conexión a Internet. Si estáis en redes distintas, la conexión va por Tor: espera a que el código diga «Accesible desde otras redes» y vuelve a intentarlo.';
+
+  @override
+  String linkRefused(String reason) {
+    return 'El otro dispositivo no lo aceptó ($reason). Pide una invitación nueva y vuelve a intentarlo.';
+  }
+
+  @override
+  String deviceJoined(String label) {
+    return '«$label» se ha vinculado';
+  }
+
+  @override
+  String get labelPhone => 'móvil';
+
+  @override
+  String get labelComputer => 'ordenador';
+
+  @override
+  String get reachableAnywhere => 'Accesible desde otras redes';
+
+  @override
+  String get reachableLocal =>
+      'De momento solo desde esta red (preparando Tor…)';
+
+  @override
+  String get ok => 'Aceptar';
+
+  @override
+  String get alwaysConnected => 'Siempre conectado a Tor';
+
+  @override
+  String get alwaysConnectedOn =>
+      'Los mensajes llegan al momento. Gasta más batería.';
+
+  @override
+  String get alwaysConnectedOff =>
+      'Con la app cerrada, se conecta de vez en cuando a recoger los mensajes. Android puede retrasar las comprobaciones.';
+
+  @override
+  String get checkEvery => 'Comprobar mensajes cada';
+
+  @override
+  String minutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String hours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n horas',
+      one: '1 hora',
+    );
+    return '$_temp0';
+  }
 }

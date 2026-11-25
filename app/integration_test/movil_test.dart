@@ -146,7 +146,10 @@ void main() {
       // 6. Vincular C como segundo dispositivo del móvil. El script espera a
       //    que C entre en el grupo y hace que B escriba en él; tienen que
       //    recibirlo el móvil y C.
-      await esperar(lacre.linkDevice(code: pcCLink, label: 'pc'));
+      expect(
+        await esperar(lacre.linkDevice(code: pcCLink, label: 'pc')),
+        isA<lacre.LinkResult_Done>(),
+      );
       expect(lacre.devices().length, 2);
       marca('vinculado');
       await waitFor(

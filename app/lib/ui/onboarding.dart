@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 import '../l10n/l10n.dart';
 import '../store.dart';
 import 'common.dart';
+import 'link.dart';
 
 /// Primera pantalla: crear identidad o vincular a una existente.
 class OnboardingPage extends StatefulWidget {
@@ -31,7 +31,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final code = widget.store.profile!.deviceCode;
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -96,31 +95,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           )
                         : Text(context.l.createIdentity),
                   ),
-                ] else ...[
-                  Text(context.l.linkInstructions, style: text.bodyMedium),
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(12),
-                      child: QrImageView(data: code, size: 200),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  CodeBox(text: code, what: context.l.code),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(context.l.waitingPrimary),
-                    ],
-                  ),
-                ],
+                ] else
+                  const JoinPanel(),
               ],
             ),
           ),

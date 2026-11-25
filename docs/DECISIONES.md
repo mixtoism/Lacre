@@ -1042,5 +1042,141 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   - El ajuste es de cada dispositivo, no se sincroniza entre los de una
     misma identidad.
 
+## D-036 · El proyecto pasa a llamarse Lacre
+- **Contexto:** el nombre del proyecto pasa de p2message a Lacre. Cambiar
+  los identificadores que viajan por la red cambiaría todos los handles y
+  rompería la compatibilidad con los nodos que ya existen (PROTOCOLO.md §15).
+- **Decisión:** se renombra todo menos la red.
+  - **Cambia:**
+    - El nombre visible: «Lacre» en la app, los avisos, la ventana y la
+      documentación.
+    - Los crates: `p2m-core` → `lacre-core` y `p2m-node` → `lacre-node`
+      (también el binario de la CLI, `lacre-node`). `p2m_api` →
+      `lacre_api`, y el módulo de FRB `api::p2m` → `api::lacre`.
+    - El paquete de Dart: `p2message` → `lacre`.
+    - El ID de la app: `es.p2message.p2message` → `org.lacre.app`, en
+      Android y en Linux. En Android la clase `P2mApp` pasa a ser
+      `LacreApp`.
+    - El canal `lacre/sistema` y el alias del Keystore `lacre-datos`.
+    - En el llavero, la etiqueta `application=lacre`.
+    - Las variables de entorno `P2M_*` → `LACRE_*`.
+    - La unidad de systemd: `deploy/lacre-node.service`.
+  - **No cambia:**
+    - Los protocolos libp2p `/p2m/kad/1.0.0`, `/p2m/msg/1` y `/p2m/id/1`.
+    - Las claves de la DHT `/p2m/v1/…`.
+    - Las cadenas de separación de dominio `p2message/…`.
+    - Los contextos de clave de los archivos, `p2message 2026 file …`.
+    - El prefijo `p2m:` del QR.
+    - El apodo `p2message` del servicio onion. Si cambiara, el nodo
+      tendría otra dirección .onion.
+    - La cabecera `P2MVLT1` del estado cifrado en disco.
+  - No se reescriben las entradas anteriores de este registro: reflejan
+    los nombres de su momento.
+  - El directorio del repositorio sigue siendo `p2message`, para no romper
+    las sesiones abiertas.
+- **Consecuencias:**
+  - Android ve una app nueva (`org.lacre.app`), que convive con la
+    anterior. La identidad de la app vieja no pasa a la nueva: hay que
+    crear la identidad de nuevo (o añadir el dispositivo) y desinstalar
+    `es.p2message.p2message`.
+  - En Linux, los datos pasan a `~/.local/share/org.lacre.app` y el
+    llavero busca `application=lacre`. Una instalación anterior empieza de
+    cero.
+  - Hay un proyecto de software libre anterior llamado Lacre (cifrado de
+    correo con OpenPGP, de Disroot). Puede haber confusión o un conflicto
+    de marca.
+  - PROTOCOLO.md la mantiene la sesión del RFC. Aquí solo se han cambiado
+    en ella los nombres de los crates.
+
+## D-037 · Vincular en los dos sentidos y entre redes distintas
+- **Contexto:**
+  - Solo el dispositivo nuevo mostraba un código, y el primario tenía que
+    escanearlo. Si el primario era el escritorio (sin cámara) y el nuevo un
+    móvil, había que copiar el código a mano.
+  - El código era solo la clave del dispositivo. Entre redes distintas el
+    primario no sabía cómo llegar al nuevo.
+  - Además, el primario añadía el dispositivo al registro *antes* de
+    comprobar que llegaba a él. Si no llegaba, salía un error en crudo y el
+    registro quedaba con un dispositivo que no sabía que estaba vinculado.
+- **Decisión:**
+  - **Quien no tiene cámara muestra el QR**, sea primario o nuevo:
+    - El dispositivo nuevo muestra su código, como hasta ahora.
+    - El primario muestra además una **invitación**:
+      `lacre-link:<clave del primario>:<token>[@dirección…]`.
+    - El nuevo la escanea (o la pega) y pide entrar
+      (`Request::Join { token, label }`). El primario comprueba el token,
+      lo añade al registro y contesta con el registro firmado
+      (`Response::Granted`).
+    - En el móvil la pantalla empieza por «Escanear»; en el escritorio,
+      por el QR. Los dos caminos están siempre disponibles, también entre
+      dos móviles.
+  - **La invitación** dura 10 minutos y sirve una sola vez. Solo existe
+    en memoria y mientras está abierto el diálogo: al cerrarlo deja de
+    valer. El token es de 128 bits y se compara por su hash BLAKE3, para
+    no revelar nada por tiempos. Quien ve el QR puede vincular un
+    dispositivo, igual que quien tiene el código y el primario a mano. Por
+    eso se muestra solo mientras se está vinculando, y el dispositivo
+    vinculado aparece en la lista y se puede revocar.
+  - **Direcciones:** el código del nuevo y la invitación llevan las
+    direcciones alcanzables desde otras redes. Hoy es la onion, en cuanto
+    está publicada, y se usa el mismo formato que el QR de contacto
+    (D-021). Los códigos antiguos, sin `@`, siguen valiendo.
+    - La app vuelve a pedir el código cada 10 s y dice si ya es
+      «Accesible desde otras redes» o, de momento, solo desde la red local.
+  - **Resiliencia:**
+    - Antes de tocar el registro se intenta llegar al otro dispositivo
+      durante hasta 150 s: por sus direcciones (se vuelve a marcar cada
+      20 s), la red local o la DHT.
+    - Si el aviso final falla, se quita del registro el dispositivo recién
+      añadido.
+    - Los fallos llegan a la app como `LinkResult` (`BadCode`,
+      `Unreachable`, `Refused`) y se explican con un mensaje claro en lugar
+      del error en crudo.
+  - En la CLI se usan `invite` y `join <invitación> [etiqueta]`. `whoami`
+    enseña el código con direcciones mientras no hay identidad.
+- **Limitaciones:**
+  - Entre redes distintas, sin onion lista no hay forma de llegar: hay que
+    esperar a que el código diga «Accesible desde otras redes». Las
+    direcciones de relay (`p2p-circuit`) no se incluyen.
+  - El nuevo dispositivo elige su nombre («móvil»/«ordenador»); se puede
+    ver en la lista del primario, pero aún no renombrar.
+  - Un nodo anterior a D-037 no entiende `Join`: entre versiones
+    distintas sigue valiendo el código del dispositivo nuevo.
+
+## D-038 · Siempre conectado o comprobar cada cierto tiempo (Android)
+- **Contexto:** aun con el modo de reposo (D-034), mantener el nodo y Tor
+  vivos en segundo plano gasta mucha batería en Android. Se pidió que la
+  persona elija entre seguir conectada o comprobar los mensajes cada cierto
+  tiempo. Los detalles se decidieron sin preguntar.
+- **Decisión:** en Perfil → Este dispositivo, un interruptor «Siempre
+  conectado a Tor» (por defecto, como hasta ahora). Si se apaga, se elige
+  cada cuánto comprobar: 15 min, 30 min, 1 h o 2 h.
+  - El ajuste lo guarda Kotlin (`SharedPreferences`, clave `intervalo`; 0 es
+    siempre conectado), porque lo necesita antes de que arranque Dart. Dart
+    lo lee y lo cambia por el canal (`intervalo`, `fijarIntervalo`).
+  - **Comprobación:** un `JobService` (`CheckService`) periódico de
+    JobScheduler, con red y persistente tras reiniciar. Arranca el proceso
+    si hace falta; `LacreApp` crea el motor y Dart arranca el nodo, que
+    recoge los buzones en el primer tick y envía lo pendiente. A los 2 min
+    acaba y, si no hay pantalla, se cierra el proceso. Sin dependencias
+    nuevas (no WorkManager).
+  - **Al salir de la app:** el nodo sigue 60 s con el servicio en primer
+    plano, para terminar de enviar, y después se para el servicio y se
+    cierra el proceso, como el botón «Cerrar» del aviso. El servicio se
+    arranca al abrir la pantalla, porque desde segundo plano Android no deja
+    arrancar servicios en primer plano. Durante una comprobación no lo hay:
+    el proceso vive mientras dura el job.
+  - Con intervalo no se usa el modo de reposo: el nodo solo corre en
+    segundo plano durante la gracia o una comprobación, y conviene que sean
+    rápidas.
+- **Limitaciones:**
+  - Los mensajes llegan con retraso: hasta el intervalo, y más con el
+    móvil en Doze, que agrupa los jobs en sus ventanas de mantenimiento.
+    15 min es el mínimo de JobScheduler.
+  - Mientras está cerrado no se es buzón para otros ni se responde a la
+    DHT.
+  - Si una comprobación no basta (Tor tarda en arrancar, buzones lentos),
+    lo que falte llega en la siguiente.
+
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

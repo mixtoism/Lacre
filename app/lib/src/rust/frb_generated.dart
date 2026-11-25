@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -1480781094;
+  int get rustContentHash => 1583078365;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -96,6 +96,8 @@ abstract class RustLibApi extends BaseApi {
 
   List<String> crateApiLacreBlocked();
 
+  void crateApiLacreCancelInvite();
+
   ChatMembers crateApiLacreChatMembers({required int index});
 
   List<ChatInfo> crateApiLacreChats();
@@ -117,11 +119,22 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiLacreInitApp();
 
+  Future<String> crateApiLacreInviteDevice();
+
   bool crateApiLacreIsBlocked({required String handle});
+
+  bool crateApiLacreIsInvite({required String code});
+
+  Future<LinkResult> crateApiLacreJoinIdentity({
+    required String code,
+    required String label,
+  });
 
   void crateApiLacreKeepSticker({required String id});
 
-  Future<void> crateApiLacreLinkDevice({
+  Future<String> crateApiLacreLinkCode();
+
+  Future<LinkResult> crateApiLacreLinkDevice({
     required String code,
     required String label,
   });
@@ -341,13 +354,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "blocked", argNames: []);
 
   @override
+  void crateApiLacreCancelInvite() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLacreCancelInviteConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLacreCancelInviteConstMeta =>
+      const TaskConstMeta(debugName: "cancel_invite", argNames: []);
+
+  @override
   ChatMembers crateApiLacreChatMembers({required int index}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_32(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_chat_members,
@@ -369,7 +404,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_chat_info,
@@ -399,7 +434,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -429,7 +464,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -454,7 +489,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_32(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -476,7 +511,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_device,
@@ -502,7 +537,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 14,
             port: port_,
           );
         },
@@ -532,7 +567,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 14,
+              funcId: 15,
               port: port_,
             );
           },
@@ -561,7 +596,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 16,
             port: port_,
           );
         },
@@ -580,13 +615,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "init_app", argNames: []);
 
   @override
+  Future<String> crateApiLacreInviteDevice() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLacreInviteDeviceConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLacreInviteDeviceConstMeta =>
+      const TaskConstMeta(debugName: "invite_device", argNames: []);
+
+  @override
   bool crateApiLacreIsBlocked({required String handle}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(handle, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -603,13 +665,70 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "is_blocked", argNames: ["handle"]);
 
   @override
+  bool crateApiLacreIsInvite({required String code}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(code, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiLacreIsInviteConstMeta,
+        argValues: [code],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLacreIsInviteConstMeta =>
+      const TaskConstMeta(debugName: "is_invite", argNames: ["code"]);
+
+  @override
+  Future<LinkResult> crateApiLacreJoinIdentity({
+    required String code,
+    required String label,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(code, serializer);
+          sse_encode_String(label, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_link_result,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLacreJoinIdentityConstMeta,
+        argValues: [code, label],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLacreJoinIdentityConstMeta => const TaskConstMeta(
+    debugName: "join_identity",
+    argNames: ["code", "label"],
+  );
+
+  @override
   void crateApiLacreKeepSticker({required String id}) {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -626,7 +745,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "keep_sticker", argNames: ["id"]);
 
   @override
-  Future<void> crateApiLacreLinkDevice({
+  Future<String> crateApiLacreLinkCode() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLacreLinkCodeConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLacreLinkCodeConstMeta =>
+      const TaskConstMeta(debugName: "link_code", argNames: []);
+
+  @override
+  Future<LinkResult> crateApiLacreLinkDevice({
     required String code,
     required String label,
   }) {
@@ -639,12 +785,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 23,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
+          decodeSuccessData: sse_decode_link_result,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLacreLinkDeviceConstMeta,
@@ -665,7 +811,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_64,
@@ -687,7 +833,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_u_32,
@@ -710,7 +856,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_32(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_message,
@@ -732,7 +878,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_profile,
@@ -757,7 +903,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 28,
             port: port_,
           );
         },
@@ -789,7 +935,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 29,
             port: port_,
           );
         },
@@ -816,7 +962,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -840,7 +986,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(query, serializer);
           sse_encode_opt_box_autoadd_u_32(index, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_hit,
@@ -870,7 +1016,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 32,
             port: port_,
           );
         },
@@ -902,7 +1048,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 33,
             port: port_,
           );
         },
@@ -934,7 +1080,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 34,
             port: port_,
           );
         },
@@ -962,7 +1108,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 35,
             port: port_,
           );
         },
@@ -988,7 +1134,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_bool(background, serializer);
           sse_encode_bool(wifi, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1022,7 +1168,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 37,
             port: port_,
           );
         },
@@ -1051,7 +1197,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 33,
+            funcId: 38,
             port: port_,
           );
         },
@@ -1075,7 +1221,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_sticker,
@@ -1098,7 +1244,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(handle, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1124,7 +1270,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 36,
+            funcId: 41,
             port: port_,
           );
         },
@@ -1265,6 +1411,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 dco_decode_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeI64(raw);
+  }
+
+  @protected
+  LinkResult dco_decode_link_result(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return LinkResult_Done();
+      case 1:
+        return LinkResult_BadCode();
+      case 2:
+        return LinkResult_Unreachable();
+      case 3:
+        return LinkResult_Refused(reason: dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -1443,31 +1606,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 0:
         return UiEvent_Linked(handle: dco_decode_String(raw[1]));
       case 1:
+        return UiEvent_DeviceLinked(label: dco_decode_String(raw[1]));
+      case 2:
         return UiEvent_NewChat(
           index: dco_decode_u_32(raw[1]),
           name: dco_decode_String(raw[2]),
           request: dco_decode_bool(raw[3]),
         );
-      case 2:
-        return UiEvent_Avatar(handle: dco_decode_String(raw[1]));
       case 3:
-        return UiEvent_ChatsChanged();
+        return UiEvent_Avatar(handle: dco_decode_String(raw[1]));
       case 4:
+        return UiEvent_ChatsChanged();
+      case 5:
         return UiEvent_Message(
           index: dco_decode_u_32(raw[1]),
           message: dco_decode_box_autoadd_message(raw[2]),
           local: dco_decode_bool(raw[3]),
         );
-      case 5:
-        return UiEvent_Removed(index: dco_decode_u_32(raw[1]));
       case 6:
+        return UiEvent_Removed(index: dco_decode_u_32(raw[1]));
+      case 7:
         return UiEvent_UnverifiedMember(
           index: dco_decode_u_32(raw[1]),
           name: dco_decode_String(raw[2]),
         );
-      case 7:
-        return UiEvent_RelayReady(addr: dco_decode_String(raw[1]));
       case 8:
+        return UiEvent_RelayReady(addr: dco_decode_String(raw[1]));
+      case 9:
         return UiEvent_FileProgress(
           id: dco_decode_String(raw[1]),
           done: dco_decode_u_32(raw[2]),
@@ -1611,6 +1776,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  LinkResult sse_decode_link_result(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return LinkResult_Done();
+      case 1:
+        return LinkResult_BadCode();
+      case 2:
+        return LinkResult_Unreachable();
+      case 3:
+        var var_reason = sse_decode_String(deserializer);
+        return LinkResult_Refused(reason: var_reason);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1855,6 +2040,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         var var_handle = sse_decode_String(deserializer);
         return UiEvent_Linked(handle: var_handle);
       case 1:
+        var var_label = sse_decode_String(deserializer);
+        return UiEvent_DeviceLinked(label: var_label);
+      case 2:
         var var_index = sse_decode_u_32(deserializer);
         var var_name = sse_decode_String(deserializer);
         var var_request = sse_decode_bool(deserializer);
@@ -1863,12 +2051,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           name: var_name,
           request: var_request,
         );
-      case 2:
+      case 3:
         var var_handle = sse_decode_String(deserializer);
         return UiEvent_Avatar(handle: var_handle);
-      case 3:
-        return UiEvent_ChatsChanged();
       case 4:
+        return UiEvent_ChatsChanged();
+      case 5:
         var var_index = sse_decode_u_32(deserializer);
         var var_message = sse_decode_box_autoadd_message(deserializer);
         var var_local = sse_decode_bool(deserializer);
@@ -1877,17 +2065,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           message: var_message,
           local: var_local,
         );
-      case 5:
+      case 6:
         var var_index = sse_decode_u_32(deserializer);
         return UiEvent_Removed(index: var_index);
-      case 6:
+      case 7:
         var var_index = sse_decode_u_32(deserializer);
         var var_name = sse_decode_String(deserializer);
         return UiEvent_UnverifiedMember(index: var_index, name: var_name);
-      case 7:
+      case 8:
         var var_addr = sse_decode_String(deserializer);
         return UiEvent_RelayReady(addr: var_addr);
-      case 8:
+      case 9:
         var var_id = sse_decode_String(deserializer);
         var var_done = sse_decode_u_32(deserializer);
         var var_total = sse_decode_u_32(deserializer);
@@ -2030,6 +2218,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_link_result(LinkResult self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case LinkResult_Done():
+        sse_encode_i_32(0, serializer);
+      case LinkResult_BadCode():
+        sse_encode_i_32(1, serializer);
+      case LinkResult_Unreachable():
+        sse_encode_i_32(2, serializer);
+      case LinkResult_Refused(reason: final reason):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(reason, serializer);
+    }
   }
 
   @protected
@@ -2250,45 +2454,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case UiEvent_Linked(handle: final handle):
         sse_encode_i_32(0, serializer);
         sse_encode_String(handle, serializer);
+      case UiEvent_DeviceLinked(label: final label):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(label, serializer);
       case UiEvent_NewChat(
         index: final index,
         name: final name,
         request: final request,
       ):
-        sse_encode_i_32(1, serializer);
+        sse_encode_i_32(2, serializer);
         sse_encode_u_32(index, serializer);
         sse_encode_String(name, serializer);
         sse_encode_bool(request, serializer);
       case UiEvent_Avatar(handle: final handle):
-        sse_encode_i_32(2, serializer);
+        sse_encode_i_32(3, serializer);
         sse_encode_String(handle, serializer);
       case UiEvent_ChatsChanged():
-        sse_encode_i_32(3, serializer);
+        sse_encode_i_32(4, serializer);
       case UiEvent_Message(
         index: final index,
         message: final message,
         local: final local,
       ):
-        sse_encode_i_32(4, serializer);
+        sse_encode_i_32(5, serializer);
         sse_encode_u_32(index, serializer);
         sse_encode_box_autoadd_message(message, serializer);
         sse_encode_bool(local, serializer);
       case UiEvent_Removed(index: final index):
-        sse_encode_i_32(5, serializer);
+        sse_encode_i_32(6, serializer);
         sse_encode_u_32(index, serializer);
       case UiEvent_UnverifiedMember(index: final index, name: final name):
-        sse_encode_i_32(6, serializer);
+        sse_encode_i_32(7, serializer);
         sse_encode_u_32(index, serializer);
         sse_encode_String(name, serializer);
       case UiEvent_RelayReady(addr: final addr):
-        sse_encode_i_32(7, serializer);
+        sse_encode_i_32(8, serializer);
         sse_encode_String(addr, serializer);
       case UiEvent_FileProgress(
         id: final id,
         done: final done,
         total: final total,
       ):
-        sse_encode_i_32(8, serializer);
+        sse_encode_i_32(9, serializer);
         sse_encode_String(id, serializer);
         sse_encode_u_32(done, serializer);
         sse_encode_u_32(total, serializer);

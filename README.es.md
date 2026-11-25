@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# Lacre
-=======
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lacre-logo-dark.svg">
@@ -8,8 +5,7 @@
   </picture>
 </p>
 
-# p2message
->>>>>>> worktree-iconos-lacre
+# Lacre
 
 Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
 servidores intermedios. Estado: **prueba de concepto** (CLI en Linux).
@@ -63,7 +59,8 @@ cargo run -p lacre-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0
 ```
 
 Para vincular un segundo dispositivo, arráncalo sin `init`: mostrará un código.
-Después ejecuta `link <código> portatil` en el dispositivo primario.
+Después ejecuta `link <código> portatil` en el dispositivo primario. También
+al revés: `invite` en el primario y `join <invitación> portatil` en el nuevo.
 
 ### Entre redes distintas
 

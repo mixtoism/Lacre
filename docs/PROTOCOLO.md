@@ -22,7 +22,7 @@ nodos con remitente sellado, y el envío de archivos dentro de un grupo.
 ## Estado de este documento
 
 Borrador de trabajo. Describe la implementación de referencia tal como está
-en el repositorio (crates `p2m-core` y `p2m-node`) en la fecha indicada. Si
+en el repositorio (crates `lacre-core` y `lacre-node`) en la fecha indicada. Si
 este documento y el código no coinciden, manda el código y este documento
 tiene un error.
 

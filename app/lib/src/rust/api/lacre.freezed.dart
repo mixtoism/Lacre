@@ -13,6 +13,342 @@ part of 'lacre.dart';
 // dart format off
 T _$identity<T>(T value) => value;
 /// @nodoc
+mixin _$LinkResult {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'LinkResult()';
+}
+
+
+}
+
+/// @nodoc
+class $LinkResultCopyWith<$Res>  {
+$LinkResultCopyWith(LinkResult _, $Res Function(LinkResult) __);
+}
+
+
+/// Adds pattern-matching-related methods to [LinkResult].
+extension LinkResultPatterns on LinkResult {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( LinkResult_Done value)?  done,TResult Function( LinkResult_BadCode value)?  badCode,TResult Function( LinkResult_Unreachable value)?  unreachable,TResult Function( LinkResult_Refused value)?  refused,required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case LinkResult_Done() when done != null:
+return done(_that);case LinkResult_BadCode() when badCode != null:
+return badCode(_that);case LinkResult_Unreachable() when unreachable != null:
+return unreachable(_that);case LinkResult_Refused() when refused != null:
+return refused(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( LinkResult_Done value)  done,required TResult Function( LinkResult_BadCode value)  badCode,required TResult Function( LinkResult_Unreachable value)  unreachable,required TResult Function( LinkResult_Refused value)  refused,}){
+final _that = this;
+switch (_that) {
+case LinkResult_Done():
+return done(_that);case LinkResult_BadCode():
+return badCode(_that);case LinkResult_Unreachable():
+return unreachable(_that);case LinkResult_Refused():
+return refused(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( LinkResult_Done value)?  done,TResult? Function( LinkResult_BadCode value)?  badCode,TResult? Function( LinkResult_Unreachable value)?  unreachable,TResult? Function( LinkResult_Refused value)?  refused,}){
+final _that = this;
+switch (_that) {
+case LinkResult_Done() when done != null:
+return done(_that);case LinkResult_BadCode() when badCode != null:
+return badCode(_that);case LinkResult_Unreachable() when unreachable != null:
+return unreachable(_that);case LinkResult_Refused() when refused != null:
+return refused(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  done,TResult Function()?  badCode,TResult Function()?  unreachable,TResult Function( String reason)?  refused,required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case LinkResult_Done() when done != null:
+return done();case LinkResult_BadCode() when badCode != null:
+return badCode();case LinkResult_Unreachable() when unreachable != null:
+return unreachable();case LinkResult_Refused() when refused != null:
+return refused(_that.reason);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  done,required TResult Function()  badCode,required TResult Function()  unreachable,required TResult Function( String reason)  refused,}) {final _that = this;
+switch (_that) {
+case LinkResult_Done():
+return done();case LinkResult_BadCode():
+return badCode();case LinkResult_Unreachable():
+return unreachable();case LinkResult_Refused():
+return refused(_that.reason);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  done,TResult? Function()?  badCode,TResult? Function()?  unreachable,TResult? Function( String reason)?  refused,}) {final _that = this;
+switch (_that) {
+case LinkResult_Done() when done != null:
+return done();case LinkResult_BadCode() when badCode != null:
+return badCode();case LinkResult_Unreachable() when unreachable != null:
+return unreachable();case LinkResult_Refused() when refused != null:
+return refused(_that.reason);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class LinkResult_Done extends LinkResult {
+  const LinkResult_Done(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult_Done);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'LinkResult.done()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class LinkResult_BadCode extends LinkResult {
+  const LinkResult_BadCode(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult_BadCode);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'LinkResult.badCode()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class LinkResult_Unreachable extends LinkResult {
+  const LinkResult_Unreachable(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult_Unreachable);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'LinkResult.unreachable()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class LinkResult_Refused extends LinkResult {
+  const LinkResult_Refused({required this.reason}): super._();
+  
+
+ final  String reason;
+
+/// Create a copy of LinkResult
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$LinkResult_RefusedCopyWith<LinkResult_Refused> get copyWith => _$LinkResult_RefusedCopyWithImpl<LinkResult_Refused>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult_Refused&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
+
+@override
+String toString() {
+    return 'LinkResult.refused(reason: $reason)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $LinkResult_RefusedCopyWith<$Res> implements $LinkResultCopyWith<$Res> {
+  factory $LinkResult_RefusedCopyWith(LinkResult_Refused value, $Res Function(LinkResult_Refused) _then) = _$LinkResult_RefusedCopyWithImpl;
+@useResult
+$Res call({
+ String reason
+});
+
+
+
+
+}
+/// @nodoc
+class _$LinkResult_RefusedCopyWithImpl<$Res>
+    implements $LinkResult_RefusedCopyWith<$Res> {
+  _$LinkResult_RefusedCopyWithImpl(this._self, this._then);
+
+  final LinkResult_Refused _self;
+  final $Res Function(LinkResult_Refused) _then;
+
+/// Create a copy of LinkResult
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
+  return _then(LinkResult_Refused(
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$UiEvent {
 
 
@@ -56,11 +392,12 @@ extension UiEventPatterns on UiEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UiEvent_Linked value)?  linked,TResult Function( UiEvent_NewChat value)?  newChat,TResult Function( UiEvent_Avatar value)?  avatar,TResult Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult Function( UiEvent_Message value)?  message,TResult Function( UiEvent_Removed value)?  removed,TResult Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult Function( UiEvent_RelayReady value)?  relayReady,TResult Function( UiEvent_FileProgress value)?  fileProgress,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UiEvent_Linked value)?  linked,TResult Function( UiEvent_DeviceLinked value)?  deviceLinked,TResult Function( UiEvent_NewChat value)?  newChat,TResult Function( UiEvent_Avatar value)?  avatar,TResult Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult Function( UiEvent_Message value)?  message,TResult Function( UiEvent_Removed value)?  removed,TResult Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult Function( UiEvent_RelayReady value)?  relayReady,TResult Function( UiEvent_FileProgress value)?  fileProgress,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
-return linked(_that);case UiEvent_NewChat() when newChat != null:
+return linked(_that);case UiEvent_DeviceLinked() when deviceLinked != null:
+return deviceLinked(_that);case UiEvent_NewChat() when newChat != null:
 return newChat(_that);case UiEvent_Avatar() when avatar != null:
 return avatar(_that);case UiEvent_ChatsChanged() when chatsChanged != null:
 return chatsChanged(_that);case UiEvent_Message() when message != null:
@@ -86,11 +423,12 @@ return fileProgress(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UiEvent_Linked value)  linked,required TResult Function( UiEvent_NewChat value)  newChat,required TResult Function( UiEvent_Avatar value)  avatar,required TResult Function( UiEvent_ChatsChanged value)  chatsChanged,required TResult Function( UiEvent_Message value)  message,required TResult Function( UiEvent_Removed value)  removed,required TResult Function( UiEvent_UnverifiedMember value)  unverifiedMember,required TResult Function( UiEvent_RelayReady value)  relayReady,required TResult Function( UiEvent_FileProgress value)  fileProgress,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UiEvent_Linked value)  linked,required TResult Function( UiEvent_DeviceLinked value)  deviceLinked,required TResult Function( UiEvent_NewChat value)  newChat,required TResult Function( UiEvent_Avatar value)  avatar,required TResult Function( UiEvent_ChatsChanged value)  chatsChanged,required TResult Function( UiEvent_Message value)  message,required TResult Function( UiEvent_Removed value)  removed,required TResult Function( UiEvent_UnverifiedMember value)  unverifiedMember,required TResult Function( UiEvent_RelayReady value)  relayReady,required TResult Function( UiEvent_FileProgress value)  fileProgress,}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked():
-return linked(_that);case UiEvent_NewChat():
+return linked(_that);case UiEvent_DeviceLinked():
+return deviceLinked(_that);case UiEvent_NewChat():
 return newChat(_that);case UiEvent_Avatar():
 return avatar(_that);case UiEvent_ChatsChanged():
 return chatsChanged(_that);case UiEvent_Message():
@@ -112,11 +450,12 @@ return fileProgress(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UiEvent_Linked value)?  linked,TResult? Function( UiEvent_NewChat value)?  newChat,TResult? Function( UiEvent_Avatar value)?  avatar,TResult? Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult? Function( UiEvent_Message value)?  message,TResult? Function( UiEvent_Removed value)?  removed,TResult? Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult? Function( UiEvent_RelayReady value)?  relayReady,TResult? Function( UiEvent_FileProgress value)?  fileProgress,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UiEvent_Linked value)?  linked,TResult? Function( UiEvent_DeviceLinked value)?  deviceLinked,TResult? Function( UiEvent_NewChat value)?  newChat,TResult? Function( UiEvent_Avatar value)?  avatar,TResult? Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult? Function( UiEvent_Message value)?  message,TResult? Function( UiEvent_Removed value)?  removed,TResult? Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult? Function( UiEvent_RelayReady value)?  relayReady,TResult? Function( UiEvent_FileProgress value)?  fileProgress,}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
-return linked(_that);case UiEvent_NewChat() when newChat != null:
+return linked(_that);case UiEvent_DeviceLinked() when deviceLinked != null:
+return deviceLinked(_that);case UiEvent_NewChat() when newChat != null:
 return newChat(_that);case UiEvent_Avatar() when avatar != null:
 return avatar(_that);case UiEvent_ChatsChanged() when chatsChanged != null:
 return chatsChanged(_that);case UiEvent_Message() when message != null:
@@ -141,10 +480,11 @@ return fileProgress(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle)?  linked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle)?  linked,TResult Function( String label)?  deviceLinked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
-return linked(_that.handle);case UiEvent_NewChat() when newChat != null:
+return linked(_that.handle);case UiEvent_DeviceLinked() when deviceLinked != null:
+return deviceLinked(_that.label);case UiEvent_NewChat() when newChat != null:
 return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar() when avatar != null:
 return avatar(_that.handle);case UiEvent_ChatsChanged() when chatsChanged != null:
 return chatsChanged();case UiEvent_Message() when message != null:
@@ -170,10 +510,11 @@ return fileProgress(_that.id,_that.done,_that.total);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle)  linked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle)  linked,required TResult Function( String label)  deviceLinked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked():
-return linked(_that.handle);case UiEvent_NewChat():
+return linked(_that.handle);case UiEvent_DeviceLinked():
+return deviceLinked(_that.label);case UiEvent_NewChat():
 return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar():
 return avatar(_that.handle);case UiEvent_ChatsChanged():
 return chatsChanged();case UiEvent_Message():
@@ -195,10 +536,11 @@ return fileProgress(_that.id,_that.done,_that.total);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle)?  linked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle)?  linked,TResult? Function( String label)?  deviceLinked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
-return linked(_that.handle);case UiEvent_NewChat() when newChat != null:
+return linked(_that.handle);case UiEvent_DeviceLinked() when deviceLinked != null:
+return deviceLinked(_that.label);case UiEvent_NewChat() when newChat != null:
 return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar() when avatar != null:
 return avatar(_that.handle);case UiEvent_ChatsChanged() when chatsChanged != null:
 return chatsChanged();case UiEvent_Message() when message != null:
@@ -275,6 +617,74 @@ class _$UiEvent_LinkedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? handle = null,}) {
   return _then(UiEvent_Linked(
 handle: null == handle ? _self.handle : handle // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class UiEvent_DeviceLinked extends UiEvent {
+  const UiEvent_DeviceLinked({required this.label}): super._();
+  
+
+ final  String label;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UiEvent_DeviceLinkedCopyWith<UiEvent_DeviceLinked> get copyWith => _$UiEvent_DeviceLinkedCopyWithImpl<UiEvent_DeviceLinked>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_DeviceLinked&&(identical(other.label, label) || other.label == label));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,label);
+}
+
+@override
+String toString() {
+    return 'UiEvent.deviceLinked(label: $label)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UiEvent_DeviceLinkedCopyWith<$Res> implements $UiEventCopyWith<$Res> {
+  factory $UiEvent_DeviceLinkedCopyWith(UiEvent_DeviceLinked value, $Res Function(UiEvent_DeviceLinked) _then) = _$UiEvent_DeviceLinkedCopyWithImpl;
+@useResult
+$Res call({
+ String label
+});
+
+
+
+
+}
+/// @nodoc
+class _$UiEvent_DeviceLinkedCopyWithImpl<$Res>
+    implements $UiEvent_DeviceLinkedCopyWith<$Res> {
+  _$UiEvent_DeviceLinkedCopyWithImpl(this._self, this._then);
+
+  final UiEvent_DeviceLinked _self;
+  final $Res Function(UiEvent_DeviceLinked) _then;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? label = null,}) {
+  return _then(UiEvent_DeviceLinked(
+label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

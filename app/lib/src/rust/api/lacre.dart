@@ -9,7 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'lacre.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `app`, `desktop_key`, `forward_events`, `on_rt`, `parse_targets`, `sticker`
+// These functions are ignored because they are not marked as `pub`: `app`, `desktop_key`, `forward_events`, `link_result`, `on_rt`, `parse_targets`, `sticker`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`, `from`
 
 /// Arranca el nodo con los datos de `data_dir`. Llamarla otra vez no hace
@@ -55,8 +55,33 @@ Future<String> qrPayload() => RustLib.instance.api.crateApiLacreQrPayload();
 
 List<Device> devices() => RustLib.instance.api.crateApiLacreDevices();
 
-Future<void> linkDevice({required String code, required String label}) =>
+/// Código para vincular este dispositivo desde el primario, con las
+/// direcciones por las que llamarlo desde otra red (cambian cuando se
+/// publica el servicio onion: conviene pedirlo de nuevo cada poco).
+Future<String> linkCode() => RustLib.instance.api.crateApiLacreLinkCode();
+
+/// Desde el primario: vincula el dispositivo cuyo código se ha escaneado
+/// o pegado. Puede tardar un par de minutos si el otro está en otra red.
+Future<LinkResult> linkDevice({required String code, required String label}) =>
     RustLib.instance.api.crateApiLacreLinkDevice(code: code, label: label);
+
+/// Desde el primario: invitación para que la escanee el dispositivo nuevo.
+/// Vale 10 minutos y una sola vez; pedirla otra vez mientras vale da el
+/// mismo token con las direcciones al día.
+Future<String> inviteDevice() =>
+    RustLib.instance.api.crateApiLacreInviteDevice();
+
+void cancelInvite() => RustLib.instance.api.crateApiLacreCancelInvite();
+
+/// Desde el dispositivo nuevo: entra con la invitación del primario.
+Future<LinkResult> joinIdentity({
+  required String code,
+  required String label,
+}) => RustLib.instance.api.crateApiLacreJoinIdentity(code: code, label: label);
+
+/// ¿Es una invitación (la muestra el primario) y no un código de dispositivo?
+bool isInvite({required String code}) =>
+    RustLib.instance.api.crateApiLacreIsInvite(code: code);
 
 Future<void> unlinkDevice({required String code}) =>
     RustLib.instance.api.crateApiLacreUnlinkDevice(code: code);
@@ -327,6 +352,23 @@ class Hit {
           message == other.message;
 }
 
+@freezed
+sealed class LinkResult with _$LinkResult {
+  const LinkResult._();
+
+  const factory LinkResult.done() = LinkResult_Done;
+
+  /// No es un código de vinculación o está mal copiado.
+  const factory LinkResult.badCode() = LinkResult_BadCode;
+
+  /// No se llegó al otro dispositivo (¿app cerrada, sin conexión?).
+  const factory LinkResult.unreachable() = LinkResult_Unreachable;
+
+  /// El otro dispositivo dijo que no (p. ej. invitación caducada).
+  const factory LinkResult.refused({required String reason}) =
+      LinkResult_Refused;
+}
+
 class Message {
   final String from;
   final String text;
@@ -478,6 +520,10 @@ sealed class UiEvent with _$UiEvent {
   const UiEvent._();
 
   const factory UiEvent.linked({required String handle}) = UiEvent_Linked;
+
+  /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
+  const factory UiEvent.deviceLinked({required String label}) =
+      UiEvent_DeviceLinked;
 
   /// `request`: de alguien con quien aún no hablamos; hay que aceptarlo.
   const factory UiEvent.newChat({

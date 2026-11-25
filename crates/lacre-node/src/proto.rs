@@ -37,6 +37,13 @@ pub enum Request {
     Mls(#[serde(with = "serde_bytes")] Vec<u8>),
     /// Avisa al dispositivo recién vinculado de su identidad (registro firmado).
     LinkGrant { record: Vec<u8> },
+    /// Un dispositivo nuevo pide entrar con la invitación que muestra el
+    /// primario (D-037). Si vale, el primario contesta `Granted`.
+    Join {
+        #[serde(with = "serde_bytes")]
+        token: Vec<u8>,
+        label: String,
+    },
     /// Pide al committer de un grupo que sincronice los dispositivos.
     SyncHint { group_id: Vec<u8> },
 
@@ -85,5 +92,10 @@ pub enum Response {
     },
     /// Sobres entregados (respuesta a `Deliver`).
     Taken { ids: Vec<[u8; 32]> },
+    /// Registro firmado que ya incluye al dispositivo (respuesta a `Join`).
+    Granted {
+        #[serde(with = "serde_bytes")]
+        record: Vec<u8>,
+    },
     Error(String),
 }

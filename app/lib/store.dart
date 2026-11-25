@@ -63,8 +63,18 @@ class Store extends ChangeNotifier {
   bool _background = false;
   bool _wifi = true;
 
+  /// Android: minutos entre comprobaciones de mensajes con la app cerrada;
+  /// 0, siempre conectado a Tor (D-038). `null` en el escritorio.
+  int? checkEvery;
+
+  /// Intervalos que se ofrecen. JobScheduler no baja de 15 min.
+  static const checkIntervals = [15, 30, 60, 120];
+
   /// Chats que hay que abrir (al tocar el aviso de un mensaje).
   final openChat = StreamController<int>.broadcast();
+
+  /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
+  final deviceLinked = StreamController<String>.broadcast();
 
   /// Chat que se está viendo.
   int? viewing;
@@ -125,6 +135,7 @@ class Store extends ChangeNotifier {
         }
       });
       _wifi = await sistema.invokeMethod<bool>('wifi') ?? true;
+      checkEvery = await sistema.invokeMethod<int>('intervalo') ?? 0;
       _background = _isBackground(WidgetsBinding.instance.lifecycleState);
       _lifecycle = AppLifecycleListener(
         onStateChange: (s) {
@@ -183,9 +194,14 @@ class Store extends ChangeNotifier {
       s == AppLifecycleState.detached;
 
   void _applyPower() {
-    debugPrint('lacre energía: segundo plano=$_background wifi=$_wifi');
+    // Con intervalo (D-038) el nodo solo corre en segundo plano durante una
+    // comprobación, que conviene que sea rápida: sin reposo.
+    final low = _background && checkEvery == 0;
+    debugPrint(
+      'lacre energía: segundo plano=$_background reposo=$low wifi=$_wifi',
+    );
     try {
-      lacre.setPower(background: _background, wifi: _wifi);
+      lacre.setPower(background: low, wifi: _wifi);
     } catch (e) {
       debugPrint('lacre energía: $e');
     }
@@ -193,7 +209,7 @@ class Store extends ChangeNotifier {
     // mientras mDNS esté activo.
     unawaited(
       sistema
-          .invokeMethod('multicast', !_background && _wifi)
+          .invokeMethod('multicast', !low && _wifi)
           .catchError((Object e) => debugPrint('lacre multicast: $e')),
     );
     if (_background) {
@@ -216,6 +232,9 @@ class Store extends ChangeNotifier {
       case lacre.UiEvent_Linked(:final handle):
         notices.add(systemL10n.deviceLinked(handle));
         profile = lacre.profile();
+      case lacre.UiEvent_DeviceLinked(:final label):
+        notices.add(systemL10n.deviceJoined(label));
+        deviceLinked.add(label);
       case lacre.UiEvent_NewChat(:final index, :final name, :final request):
         final text = request
             ? systemL10n.chatRequestFrom(name)
@@ -274,6 +293,18 @@ class Store extends ChangeNotifier {
       await _noticeFile?.writeAsString(c.name);
     } catch (e) {
       debugPrint('lacre avisos: $e');
+    }
+  }
+
+  /// Android: siempre conectado (0) o comprobar cada `minutes` (D-038).
+  Future<void> setCheckEvery(int minutes) async {
+    checkEvery = minutes;
+    notifyListeners();
+    _applyPower();
+    try {
+      await sistema.invokeMethod('fijarIntervalo', minutes);
+    } catch (e) {
+      debugPrint('lacre intervalo: $e');
     }
   }
 

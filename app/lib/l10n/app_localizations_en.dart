@@ -53,7 +53,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get linkInstructions =>
-      'On your main device open Profile → Devices → Link and paste this code. This screen will change by itself once it\'s done.';
+      'On your main device open Profile → Devices → Link and scan this QR or paste the code. This screen will change by itself once it\'s done.';
 
   @override
   String get code => 'Code';
@@ -548,4 +548,106 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get messageNoticesBody =>
       'Notifications show up on the screen, sometimes on the lock screen, and stay in the system history. What should they say?';
+
+  @override
+  String get linkInstructionsScan =>
+      'On your main device open Profile → Devices → Link and scan the QR it shows you.';
+
+  @override
+  String get scanPrimaryQr => 'Scan the main device\'s QR';
+
+  @override
+  String get showOwnQr =>
+      'If the main device is a phone, let it scan this code:';
+
+  @override
+  String get haveInvite => 'Paste an invitation from the main device';
+
+  @override
+  String get invite => 'Invitation';
+
+  @override
+  String get linkDialogInvite =>
+      'On the new device choose “Link device” and scan this QR. It is valid for 10 minutes and only once.';
+
+  @override
+  String get linkDialogOrCode =>
+      'Does the new device show you a code? Paste it here:';
+
+  @override
+  String get linkDialogOrQr => 'Or let the new device scan this QR:';
+
+  @override
+  String get waitingNewDevice => 'Waiting for the new device…';
+
+  @override
+  String get linkConnecting =>
+      'Connecting to the other device… If you are on different networks it may take a couple of minutes.';
+
+  @override
+  String get linkFailed => 'Couldn\'t link';
+
+  @override
+  String get linkBadCode =>
+      'That code can\'t be used to link. Check that you copied all of it.';
+
+  @override
+  String get linkUnreachable =>
+      'Couldn\'t reach the other device. Check that both have the app open and an Internet connection. If you are on different networks the connection goes through Tor: wait until the code says “Reachable from other networks” and try again.';
+
+  @override
+  String linkRefused(String reason) {
+    return 'The other device didn\'t accept it ($reason). Get a new invitation and try again.';
+  }
+
+  @override
+  String deviceJoined(String label) {
+    return '“$label” has been linked';
+  }
+
+  @override
+  String get labelPhone => 'phone';
+
+  @override
+  String get labelComputer => 'computer';
+
+  @override
+  String get reachableAnywhere => 'Reachable from other networks';
+
+  @override
+  String get reachableLocal =>
+      'Only from this network for now (setting up Tor…)';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get alwaysConnected => 'Always connected to Tor';
+
+  @override
+  String get alwaysConnectedOn =>
+      'Messages arrive instantly. Uses more battery.';
+
+  @override
+  String get alwaysConnectedOff =>
+      'With the app closed, it connects now and then to pick up messages. Android may delay the checks.';
+
+  @override
+  String get checkEvery => 'Check for messages every';
+
+  @override
+  String minutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String hours(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n hours',
+      one: '1 hour',
+    );
+    return '$_temp0';
+  }
 }

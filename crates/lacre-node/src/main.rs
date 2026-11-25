@@ -64,6 +64,8 @@ comandos:
   whoami                       muestra tu handle, el QR y el código de este dispositivo
   devices                      lista tus dispositivos
   link <código> [etiqueta]     vincula un dispositivo nuevo (solo en el primario)
+  invite                       invitación que un dispositivo nuevo usa con `join` (primario)
+  join <invitación> [etiqueta] vincula este dispositivo con la invitación del primario
   unlink <código>              revoca un dispositivo (solo en el primario)
   whois <handle>               resuelve un handle en la red
   chat <handle|qr>             abre un chat 1:1
@@ -119,7 +121,8 @@ async fn main() -> Result<()> {
     match app.handle() {
         Some(h) => println!("identidad: {h}"),
         None => println!(
-            "sin identidad. Usa `init <nombre>`, o vincula este dispositivo desde el primario con:\n  link {}",
+            "sin identidad. Usa `init <nombre>`, `join <invitación>` con la invitación del primario \
+             (`invite`), o vincula este dispositivo desde el primario con:\n  link {}",
             app.device_code()
         ),
     }
@@ -168,6 +171,7 @@ fn body(m: &StoredMessage) -> String {
 fn print_event(ev: Event) {
     match ev {
         Event::Linked { handle } => println!("\n✔ dispositivo vinculado a {handle}"),
+        Event::DeviceLinked { label } => println!("\n✔ «{label}» se ha vinculado con la invitación"),
         Event::NewChat { index, name, request: false } => println!("\n✉ nuevo chat [{index}] {name}"),
         Event::NewChat { index, name, request: true } => println!("\n✉ solicitud de chat [{index}] {name}"),
         Event::Avatar { handle } => println!("\n✔ foto de perfil de {handle}"),
@@ -214,6 +218,9 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
                 println!("qr:     {qr}");
             }
             println!("código de dispositivo: {}", app.device_code());
+            if app.handle().is_none() {
+                println!("para vincular: {}", app.link_code().await);
+            }
         }
         "devices" => {
             for (code, label, this) in app.devices() {
@@ -224,6 +231,11 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             let (code, label) = rest.split_once(' ').unwrap_or((rest, "dispositivo"));
             app.link(code, label.trim()).await?;
             println!("dispositivo «{}» vinculado", label.trim());
+        }
+        "invite" => println!("invitación: {}", app.invite().await?),
+        "join" => {
+            let (code, label) = rest.split_once(' ').unwrap_or((rest, "dispositivo"));
+            app.join(code, label.trim()).await?;
         }
         "unlink" => {
             app.unlink(rest).await?;

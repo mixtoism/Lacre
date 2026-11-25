@@ -83,8 +83,14 @@ wait_for carol "portatil): hola grupo"; wait_for bob "portatil): hola grupo"; wa
 ok "grupo de 3 personas / 4 dispositivos"
 
 start bob2; sleep 2
-say bob "link $(field bob2 'link [a-z2-7]*') movil"
-wait_for bob2 "vinculado a $HB"
+# Al revés que el portátil de Alicia: el primario muestra la invitación y el
+# dispositivo nuevo la usa (D-037).
+say bob "invite"
+wait_for bob "invitación: "
+say bob2 "join $(field bob 'invitación: [^ ]*') movil"
+wait_for bob2 "vinculado a $HB"; wait_for bob "«movil» se ha vinculado"
+say bob2 "join $(field bob 'invitación: [^ ]*') otro"
+wait_for bob2 "ya tiene identidad"
 wait_for bob2 "\(nuevo\|solicitud de\) chat .*alice" $((TICK * 3)); wait_for bob2 "\(nuevo\|solicitud de\) chat .*amigos" $((TICK * 3))
 say bob2 "send 0 desde el movil"
 wait_for alice2 "(movil): desde el movil"

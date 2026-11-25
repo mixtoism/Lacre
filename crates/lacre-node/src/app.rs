@@ -64,6 +64,8 @@ const KEEPALIVE_RETRY_MAX: Duration = Duration::from_secs(15 * 60);
 pub enum Event {
     /// Este dispositivo ha sido vinculado a una identidad.
     Linked { handle: String },
+    /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
+    DeviceLinked { label: String },
     /// Nos han añadido a un chat. `request`: de alguien con quien aún no
     /// hablamos; hay que aceptarlo (D-029).
     NewChat { index: usize, name: String, request: bool },
@@ -225,6 +227,8 @@ pub struct App {
     pushing: std::sync::atomic::AtomicBool,
     /// Sobres aceptados por `Deliver` de cada peer: (inicio de ventana, cuántos).
     delivered: Mutex<HashMap<PeerId, (u64, usize)>>,
+    /// Invitación para vincular que muestra ahora este dispositivo (D-037).
+    invite: Mutex<Option<Invite>>,
     events: tokio::sync::mpsc::UnboundedSender<Event>,
     /// Runtime donde se lanzan las tareas que siguen a una llamada síncrona.
     rt: tokio::runtime::Handle,
@@ -448,6 +452,65 @@ const FILE_WORKERS: usize = 4;
 
 /// Cuánto se espera a conectar con las direcciones de un QR.
 const QR_DIAL_TIMEOUT: Duration = Duration::from_secs(60);
+/// Prefijo de las invitaciones para vincular, que muestra el primario
+/// (D-037): `lacre-link:clave-del-primario:token[@dirección…]`.
+pub const INVITE_PREFIX: &str = "lacre-link:";
+const INVITE_TTL: Duration = Duration::from_secs(10 * 60);
+/// Cuánto se intenta llegar al otro dispositivo al vincular. Entre redes
+/// distintas solo se llega por onion, y el servicio tarda en publicarse.
+const LINK_TIMEOUT: Duration = Duration::from_secs(150);
+const LINK_REDIAL: Duration = Duration::from_secs(20);
+const MAX_LABEL: usize = 64;
+
+/// Por qué no se pudo vincular, para explicarlo bien en la app (D-037).
+#[derive(Debug)]
+pub enum LinkError {
+    /// No es un código de vinculación (o está mal copiado).
+    BadCode,
+    /// No se llegó al otro dispositivo en `LINK_TIMEOUT`.
+    Unreachable,
+    /// El otro dispositivo contestó que no: invitación caducada o ya usada,
+    /// ya pertenece a otra identidad…
+    Refused(String),
+}
+
+impl std::fmt::Display for LinkError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BadCode => write!(f, "el código no es de vinculación"),
+            Self::Unreachable => write!(f, "no se pudo contactar con el otro dispositivo"),
+            Self::Refused(why) => write!(f, "el otro dispositivo no aceptó: {why}"),
+        }
+    }
+}
+
+impl std::error::Error for LinkError {}
+
+/// Invitación vigente (solo en memoria y de un solo uso).
+struct Invite {
+    token: [u8; 16],
+    until: Instant,
+}
+
+/// Código de vinculación de un dispositivo nuevo: su clave y, desde D-037,
+/// direcciones por las que llamarlo (`clave[@dirección…]`).
+fn parse_link_code(code: &str) -> Result<([u8; 32], Vec<Multiaddr>), LinkError> {
+    let mut parts = code.trim().split('@');
+    let key = decode_key(parts.next().unwrap_or("").trim()).map_err(|_| LinkError::BadCode)?;
+    Ok((key.to_bytes(), parts.filter_map(|a| a.trim().parse().ok()).collect()))
+}
+
+/// Invitación: (clave del primario, token, direcciones).
+fn parse_invite(code: &str) -> Result<([u8; 32], Vec<u8>, Vec<Multiaddr>), LinkError> {
+    let rest = code.trim().strip_prefix(INVITE_PREFIX).ok_or(LinkError::BadCode)?;
+    let mut parts = rest.split('@');
+    let (key, token) = parts.next().unwrap_or("").split_once(':').ok_or(LinkError::BadCode)?;
+    let key = decode_key(key).map_err(|_| LinkError::BadCode)?.to_bytes();
+    let token = data_encoding::BASE32_NOPAD
+        .decode(token.to_uppercase().as_bytes())
+        .map_err(|_| LinkError::BadCode)?;
+    Ok((key, token, parts.filter_map(|a| a.trim().parse().ok()).collect()))
+}
 
 impl App {
     pub fn open(
@@ -514,6 +577,7 @@ impl App {
             avatars: Mutex::new(avatars),
             pushing: Default::default(),
             delivered: Mutex::new(HashMap::new()),
+            invite: Mutex::new(None),
             rt: tokio::runtime::Handle::current(),
             events,
         }))
@@ -778,13 +842,27 @@ impl App {
             let root = VerifyingKey::from_bytes(&id.record.root_pk).ok()?;
             format!("p2m:{}:{}", id.handle, encode_key(&root))
         };
+        self.append_addrs(&mut qr).await;
+        Some(qr)
+    }
+
+    /// Añade `@dirección` por cada dirección nuestra alcanzable desde otras
+    /// redes (la onion, cuando ya está publicada).
+    async fn append_addrs(&self, code: &mut String) {
         for a in self.net.listen_addrs().await.unwrap_or_default() {
             if is_dialable_from_anywhere(&a) {
-                qr.push('@');
-                qr.push_str(&a.to_string());
+                code.push('@');
+                code.push_str(&a.to_string());
             }
         }
-        Some(qr)
+    }
+
+    /// Código para que el primario vincule este dispositivo: la clave y las
+    /// direcciones por las que llamarlo desde otra red (D-037).
+    pub async fn link_code(&self) -> String {
+        let mut code = self.device_code();
+        self.append_addrs(&mut code).await;
+        code
     }
 
     // ---------------------------------------------------------------- identidad
@@ -866,21 +944,143 @@ impl App {
         Ok(verified)
     }
 
-    /// Vincula un dispositivo nuevo a partir de su código.
+    /// Vincula un dispositivo nuevo a partir de su código. Primero se
+    /// comprueba que se llega a él: un dispositivo que no se entera de que
+    /// está vinculado no debe quedarse en el registro (D-037).
     pub async fn link(self: &Arc<Self>, code: &str, label: &str) -> Result<()> {
-        let device = decode_key(code)?.to_bytes();
-        let verified = self
-            .edit_devices(|rec| Ok(rec.add_device(device, label)?))
-            .await?;
-        let grant = Request::LinkGrant { record: verified.signed.to_bytes()? };
+        if self.state.lock().unwrap().root.is_none() {
+            bail!("solo el dispositivo primario puede vincular otros");
+        }
+        let (device, addrs) = parse_link_code(code)?;
+        if device == self.device_pk() {
+            return Err(LinkError::BadCode.into());
+        }
         let peer = peer_id_of(&device)?;
-        match self.net.request(peer, grant).await? {
-            Response::Ack => {}
-            other => bail!("el dispositivo rechazó el enlace: {other:?}"),
+        self.reach(peer, &addrs).await?;
+        let was_linked = self.state.lock().unwrap().identity.as_ref().is_some_and(|v| v.record.has_device(&device));
+        let label = clean_label(label);
+        let verified = self.edit_devices(|rec| Ok(rec.add_device(device, &label)?)).await?;
+        let grant = Request::LinkGrant { record: verified.signed.to_bytes()? };
+        let refused = match self.net.request(peer, grant).await {
+            Ok(Response::Ack) => None,
+            Ok(Response::Error(why)) => Some(LinkError::Refused(why)),
+            Ok(other) => Some(LinkError::Refused(format!("{other:?}"))),
+            Err(_) => Some(LinkError::Unreachable),
+        };
+        if let Some(e) = refused {
+            if !was_linked {
+                let _ = self.edit_devices(|rec| {
+                    rec.remove_device(&device);
+                    Ok(())
+                })
+                .await;
+            }
+            return Err(e.into());
         }
         // Al conectar aún no tenía identidad y no lo habrá admitido.
         self.share_with_own(peer).await;
         self.after_devices_changed().await;
+        Ok(())
+    }
+
+    /// Invitación para que un dispositivo nuevo se vincule escaneándola
+    /// (D-037). Mientras siga vigente se reutiliza el mismo token, así que
+    /// se puede volver a pedir para que lleve las direcciones nuevas.
+    pub async fn invite(&self) -> Result<String> {
+        if self.state.lock().unwrap().root.is_none() {
+            bail!("solo el dispositivo primario puede vincular otros");
+        }
+        let token = {
+            let mut inv = self.invite.lock().unwrap();
+            match inv.as_ref() {
+                Some(i) if i.until > Instant::now() => i.token,
+                _ => {
+                    let mut token = [0u8; 16];
+                    rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut token);
+                    *inv = Some(Invite { token, until: Instant::now() + INVITE_TTL });
+                    token
+                }
+            }
+        };
+        let mut code = format!(
+            "{INVITE_PREFIX}{}:{}",
+            self.device_code(),
+            data_encoding::BASE32_NOPAD.encode(&token).to_lowercase()
+        );
+        self.append_addrs(&mut code).await;
+        Ok(code)
+    }
+
+    /// Deja de valer la invitación (se cerró la pantalla que la mostraba).
+    pub fn cancel_invite(&self) {
+        *self.invite.lock().unwrap() = None;
+    }
+
+    /// Desde el dispositivo nuevo: entra en la identidad con la invitación
+    /// que muestra el primario (D-037).
+    pub async fn join(self: &Arc<Self>, code: &str, label: &str) -> Result<()> {
+        if self.handle().is_some() {
+            bail!("este dispositivo ya tiene identidad");
+        }
+        let (primary, token, addrs) = parse_invite(code)?;
+        let peer = peer_id_of(&primary)?;
+        self.reach(peer, &addrs).await?;
+        let req = Request::Join { token, label: clean_label(label) };
+        match self.net.request(peer, req).await {
+            Ok(Response::Granted { record }) => {
+                let verified = SignedRecord::from_bytes(&record)?.verify()?;
+                if !verified.record.has_device(&primary) {
+                    return Err(LinkError::Refused("la invitación no es de esa identidad".into()).into());
+                }
+                self.accept_grant(verified)
+            }
+            Ok(Response::Error(why)) => Err(LinkError::Refused(why).into()),
+            Ok(other) => Err(LinkError::Refused(format!("{other:?}")).into()),
+            Err(_) => Err(LinkError::Unreachable.into()),
+        }
+    }
+
+    /// Intenta llegar a `peer` durante `LINK_TIMEOUT`: por las direcciones
+    /// del código, la red local o la DHT. Entre redes distintas la onion
+    /// del otro puede tardar un par de minutos en estar lista.
+    async fn reach(&self, peer: PeerId, addrs: &[Multiaddr]) -> Result<(), LinkError> {
+        let deadline = tokio::time::Instant::now() + LINK_TIMEOUT;
+        let mut next_dial = tokio::time::Instant::now();
+        loop {
+            let now = tokio::time::Instant::now();
+            if now >= next_dial {
+                for a in addrs {
+                    self.net.dial(a.clone()).await;
+                }
+                next_dial = now + LINK_REDIAL;
+            }
+            let left = deadline.saturating_duration_since(now);
+            match tokio::time::timeout(left, self.net.request(peer, Request::Ping)).await {
+                Ok(Ok(Response::Ack)) => return Ok(()),
+                Ok(other) => debug!(%peer, "aún no se llega al otro dispositivo: {other:?}"),
+                Err(_) => {}
+            }
+            if tokio::time::Instant::now() + Duration::from_secs(3) >= deadline {
+                return Err(LinkError::Unreachable);
+            }
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
+    }
+
+    /// Acepta el registro que nos incluye: este dispositivo queda vinculado.
+    fn accept_grant(&self, verified: VerifiedRecord) -> Result<()> {
+        if !verified.record.has_device(&self.device_pk()) {
+            bail!("el registro no incluye este dispositivo");
+        }
+        let mut st = self.state.lock().unwrap();
+        match &st.identity {
+            None => {}
+            Some(cur) if cur.record.root_pk == verified.record.root_pk => {}
+            Some(_) => bail!("este dispositivo ya pertenece a otra identidad"),
+        }
+        let handle = verified.handle.clone();
+        self.set_identity(&mut st, verified)?;
+        self.emit(Event::Linked { handle: handle.to_string() });
         Ok(())
     }
 
@@ -1900,20 +2100,34 @@ impl App {
         match req {
             Request::KeyPackage => Ok(Response::KeyPackage(self.with_mls(|m| Ok(m.key_package()?))?)),
             Request::LinkGrant { record } => {
-                let verified = SignedRecord::from_bytes(&record)?.verify()?;
-                if !verified.record.has_device(&self.device_pk()) {
-                    bail!("el registro no incluye este dispositivo");
-                }
-                let mut st = self.state.lock().unwrap();
-                match &st.identity {
-                    None => {}
-                    Some(cur) if cur.record.root_pk == verified.record.root_pk => {}
-                    Some(_) => bail!("este dispositivo ya pertenece a otra identidad"),
-                }
-                let handle = verified.handle.clone();
-                self.set_identity(&mut st, verified)?;
-                self.emit(Event::Linked { handle: handle.to_string() });
+                self.accept_grant(SignedRecord::from_bytes(&record)?.verify()?)?;
                 Ok(Response::Ack)
+            }
+            Request::Join { token, label } => {
+                {
+                    // Comparación de hashes: no revela por tiempos cuánto
+                    // del token coincide.
+                    let mut inv = self.invite.lock().unwrap();
+                    let valid = inv
+                        .as_ref()
+                        .is_some_and(|i| i.until > Instant::now() && blake3::hash(&i.token) == blake3::hash(&token));
+                    if !valid {
+                        bail!("la invitación no vale o ha caducado");
+                    }
+                    *inv = None;
+                }
+                let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
+                let label = clean_label(&label);
+                let verified = self.edit_devices(|rec| Ok(rec.add_device(device, &label)?)).await?;
+                self.emit(Event::DeviceLinked { label });
+                let app = self.clone();
+                self.rt.spawn(async move {
+                    // Que procese antes el registro de la respuesta.
+                    tokio::time::sleep(Duration::from_secs(3)).await;
+                    app.share_with_own(peer).await;
+                    app.after_devices_changed().await;
+                });
+                Ok(Response::Granted { record: verified.signed.to_bytes()? })
             }
             Request::Welcome { welcome, meta } => {
                 if peer != peer_id_of(&meta.committer)? {
@@ -2349,4 +2563,9 @@ impl App {
             let _ = self.process_mls(bytes, attempts);
         }
     }
+}
+
+/// Nombre de dispositivo sin espacios sobrantes y de longitud acotada.
+fn clean_label(label: &str) -> String {
+    label.trim().chars().take(MAX_LABEL).collect()
 }

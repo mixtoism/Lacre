@@ -1,5 +1,6 @@
 package org.lacre.app
 
+import android.app.Activity
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -13,9 +14,11 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.os.Process
 import android.provider.Settings
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
@@ -31,12 +34,20 @@ import java.io.File
  * El nodo vive en el proceso, no en la pantalla (D-032): el motor de Flutter
  * se crea aquí y sobrevive a la actividad. Mientras el servicio en primer
  * plano ([NodeService]) mantiene vivo el proceso, el nodo sigue recibiendo
- * mensajes con la app cerrada.
+ * mensajes con la app cerrada. Si la persona elige comprobar cada cierto
+ * tiempo (D-038), el proceso se cierra al salir de la app y [CheckService]
+ * lo vuelve a arrancar en cada comprobación.
  */
 class LacreApp : Application() {
     private var multicastLock: WifiManager.MulticastLock? = null
     /** La red por defecto es wifi (o cable): mDNS tiene sentido (D-034). */
     @Volatile private var wifi = true
+    /** Actividades visibles: con alguna, la app está en primer plano. */
+    private var visibles = 0
+    /** Hay una comprobación periódica en curso ([CheckService]). */
+    var comprobando = false
+    private val main = Handler(Looper.getMainLooper())
+    private val apagar = Runnable { apagarSiOculta() }
     lateinit var engine: FlutterEngine
         private set
     lateinit var sistema: MethodChannel
@@ -59,6 +70,8 @@ class LacreApp : Application() {
         }
         crearCanales()
         vigilarRed()
+        vigilarPantalla()
+        CheckService.programar(this, intervalo())
 
         engine = FlutterEngine(this)
         sistema = MethodChannel(engine.dartExecutor.binaryMessenger, "lacre/sistema")
@@ -67,7 +80,14 @@ class LacreApp : Application() {
                 when (call.method) {
                     "claveDatos" -> result.success(DataKey.get(this))
                     "servicio" -> {
-                        NodeService.start(this)
+                        // Arrancado por una comprobación, sin pantalla: el
+                        // proceso vive lo que dure ella, sin servicio.
+                        if (intervalo() == 0 || visibles > 0) NodeService.start(this)
+                        result.success(true)
+                    }
+                    "intervalo" -> result.success(intervalo())
+                    "fijarIntervalo" -> {
+                        fijarIntervalo(call.arguments as Int)
                         result.success(true)
                     }
                     "aviso" -> {
@@ -99,6 +119,52 @@ class LacreApp : Application() {
         }
         engine.dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault())
         FlutterEngineCache.getInstance().put(ENGINE, engine)
+    }
+
+    /** Minutos entre comprobaciones de mensajes; 0: siempre conectado (D-038). */
+    private fun intervalo(): Int =
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(INTERVALO, 0)
+
+    private fun fijarIntervalo(minutos: Int) {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(INTERVALO, minutos).apply()
+        CheckService.programar(this, minutos)
+        if (minutos == 0) NodeService.start(this)
+    }
+
+    /**
+     * Con intervalo, al salir de la app el nodo sigue [GRACIA] (para terminar
+     * de enviar) con el servicio en primer plano, y después se cierra el
+     * proceso. El servicio se arranca al abrir la pantalla: desde segundo
+     * plano Android no deja.
+     */
+    private fun vigilarPantalla() {
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityStarted(activity: Activity) {
+                visibles++
+                main.removeCallbacks(apagar)
+                NodeService.start(this@LacreApp)
+            }
+            override fun onActivityStopped(activity: Activity) {
+                visibles--
+                if (visibles == 0 && intervalo() > 0) main.postDelayed(apagar, GRACIA)
+            }
+            override fun onActivityCreated(activity: Activity, state: Bundle?) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
+    }
+
+    /** Con intervalo, sin pantalla ni comprobación en curso, cierra el proceso (y el nodo). */
+    fun apagarSiOculta() {
+        if (intervalo() == 0 || visibles > 0 || comprobando) return
+        // Primero el servicio: si no, START_STICKY volvería a arrancarlo.
+        stopService(Intent(this, NodeService::class.java))
+        // Margen para que JobScheduler anote el fin de la comprobación.
+        main.postDelayed({
+            if (visibles == 0 && !comprobando) Process.killProcess(Process.myPid())
+        }, 2000)
     }
 
     /** Avisa a Dart cuando la red por defecto pasa de wifi a datos o al revés. */
@@ -202,5 +268,9 @@ class LacreApp : Application() {
         const val CANAL_MENSAJES = "mensajes"
         /** Los avisos de mensajes van de AVISO_BASE + índice del chat. */
         const val AVISO_BASE = 1000
+        private const val PREFS = "lacre"
+        private const val INTERVALO = "intervalo"
+        /** Tras salir de la app, cuánto sigue conectado el nodo con intervalo. */
+        private const val GRACIA = 60 * 1000L
     }
 }

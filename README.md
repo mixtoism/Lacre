@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# Lacre
-=======
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lacre-logo-dark.svg">
@@ -8,8 +5,7 @@
   </picture>
 </p>
 
-# p2message
->>>>>>> worktree-iconos-lacre
+# Lacre
 
 Peer-to-peer messaging with end-to-end encryption, multi-device support and
 no intermediary servers.
@@ -197,10 +193,18 @@ IdentityRecord {
   new devices.
 - **Linking a device:**
   1. The new device starts without an identity and shows its *device code*
-     (its public key in base32).
-  2. On the primary, `link <code> <label>` adds the device to the record,
-     bumps `seq`, signs it, publishes it to the DHT and sends the new device
-     a `LinkGrant` containing the signed record.
+     (its public key in base32, followed by `@<multiaddr>` for each address
+     reachable from other networks, such as its onion service).
+  2. On the primary, `link <code> <label>` first makes sure it can reach the
+     new device, then adds it to the record, bumps `seq`, signs it,
+     publishes it to the DHT and sends the new device a `LinkGrant`
+     containing the signed record. If the grant cannot be delivered, the
+     device is removed from the record again.
+     The other way round (D-037), the primary shows an *invitation*
+     (`invite`: `lacre-link:<primary key>:<token>[@<multiaddr>]…`, single
+     use, valid for 10 minutes) and the new device runs `join <invitation>`;
+     the primary checks the token and answers with the signed record. This
+     way the device without a camera (the desktop) always shows the QR.
   3. The new device adopts the identity. On their next sync, group
      committers add it to every existing chat.
 - **Revoking:** `unlink <code>` removes the device from the record.
@@ -259,6 +263,7 @@ with CBOR encoding and a 30 s timeout. Every request is acknowledged.
 | `Welcome { welcome, meta }`   | MLS Welcome plus chat metadata for a new member                      | `Ack`                       |
 | `Mls(bytes)`                  | MLS message (application data or commit)                             | `Ack`                       |
 | `LinkGrant { record }`        | Hand a newly linked device its signed identity record                | `Ack`                       |
+| `Join { token, label }`       | A new device joins with the primary's invitation (D-037)             | `Granted { record }`        |
 | `SyncHint { group_id }`       | Ask a group's committer to resync devices                            | `Ack`                       |
 | `Deposit(Envelope)`           | Store a sealed envelope for an offline device                        | `Ack`                       |
 | `Fetch`                       | Retrieve envelopes addressed to *the caller* (authenticated by Noise) | `Envelopes { list, more }` |
@@ -502,6 +507,8 @@ code, Tor/relay status and device management. Bindings are regenerated with
 | `whoami`                      | Show your handle, QR payload and this device's code                 |
 | `devices`                     | List your devices (`*` marks this one)                              |
 | `link <code> [label]`         | Authorize a new device (primary only)                               |
+| `invite`                      | Show an invitation for a new device to `join` (primary only)        |
+| `join <invitation> [label]`   | Link this new device using the primary's invitation                 |
 | `unlink <code>`               | Revoke a device (primary only)                                      |
 | `whois <handle>`              | Resolve a handle on the network and list its devices                |
 | `chat <handle\|qr>`           | Open a 1:1 chat                                                     |
