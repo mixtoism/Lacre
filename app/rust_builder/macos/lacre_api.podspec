@@ -39,6 +39,7 @@ A new Flutter FFI plugin project.
     'DEFINES_MODULE' => 'YES',
     # Flutter.framework does not contain a i386 slice.
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
-    'OTHER_LDFLAGS' => '-force_load ${BUILT_PRODUCTS_DIR}/liblacre_api.a',
+    # Frameworks que usan las dependencias de Rust (if-watch, hickory, rustls…).
+    'OTHER_LDFLAGS' => '-force_load ${BUILT_PRODUCTS_DIR}/liblacre_api.a -framework SystemConfiguration -framework Security -framework CoreFoundation',
   }
 end

@@ -132,6 +132,9 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
+      # Diagnóstico: cargokit no muestra los errores de cargo en Windows.
+      - name: Comprobar Rust
+        run: cargo build --release --manifest-path app/rust/Cargo.toml
       - name: Compilar
         working-directory: app
         shell: bash
