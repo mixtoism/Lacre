@@ -43,3 +43,15 @@ svg "$brand/lacre-app-icon.svg" 256 "$raiz/app/linux/runner/resources/app_icon.p
 if command -v oxipng >/dev/null; then
   oxipng -q -o 4 --strip safe "$res"/mipmap-*/*.png "$raiz/app/linux/runner/resources/app_icon.png"
 fi
+
+# Windows: .ico con varios tamaños.
+for l in 16 24 32 48 64 128 256; do
+  svg "$brand/lacre-app-icon.svg" "$l" "$tmp/win-$l.png"
+done
+magick "$tmp"/win-{16,24,32,48,64,128,256}.png "$raiz/app/windows/runner/resources/app_icon.ico"
+
+# macOS: juego de AppIcon.
+for l in 16 32 64 128 256 512 1024; do
+  svg "$brand/lacre-app-icon.svg" "$l" \
+    "$raiz/app/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$l.png"
+done

@@ -24,10 +24,10 @@ class LacreApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Naranja rojizo. Fijo como `primary` en los dos modos: el texto blanco
-    // encima cumple el contraste AA (4,6:1) y se sigue viendo sobre fondo
-    // oscuro.
-    const brand = Color(0xFFD44012);
+    // Rojo lacre, el del sello del icono. Fijo como `primary` en los dos
+    // modos: el texto blanco encima cumple el contraste AA (7,2:1) y se sigue
+    // viendo sobre fondo oscuro.
+    const brand = Color(0xFFA8231F);
     ColorScheme scheme(Brightness b) => ColorScheme.fromSeed(
       seedColor: brand,
       brightness: b,
