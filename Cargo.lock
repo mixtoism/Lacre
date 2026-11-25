@@ -3443,6 +3443,7 @@ dependencies = [
  "jni-sys",
  "lacre-core",
  "lacre-node",
+ "liblzma",
  "log",
  "ndk-context",
  "rand 0.8.8",

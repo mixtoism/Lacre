@@ -30,3 +30,8 @@ log = "0.4.34"
 [target.'cfg(target_os = "linux")'.dependencies]
 secret-service = { version = "5.2.0", features = ["rt-tokio-crypto-rust"] }
 rand = "0.8"
+
+# En macOS, liblzma (lo usa Tor para descomprimir directorios) se enlazaría con
+# la de Homebrew, que no entra en la biblioteca estática ni es universal.
+[target.'cfg(target_os = "macos")'.dependencies]
+liblzma = { version = "0.4.8", features = ["static"] }

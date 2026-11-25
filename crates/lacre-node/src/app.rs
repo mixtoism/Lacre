@@ -269,16 +269,16 @@ pub(crate) fn read_private(path: &Path) -> Result<Option<Vec<u8>>> {
 /// Como [`write_private`], pero siempre en claro: fotos y stickers, que la
 /// interfaz abre directamente.
 pub(crate) fn write_plain(path: &Path, bytes: &[u8]) -> Result<()> {
-    use std::os::unix::fs::OpenOptionsExt;
     use std::io::Write;
     let tmp = path.with_extension("tmp");
-    fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&tmp)?
-        .write_all(bytes)?;
+    let mut opts = fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        opts.mode(0o600);
+    }
+    opts.open(&tmp)?.write_all(bytes)?;
     fs::rename(tmp, path)?;
     Ok(())
 }
