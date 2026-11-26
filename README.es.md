@@ -8,41 +8,68 @@
 # Lacre
 
 Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
-servidores intermedios. Estado: **prueba de concepto** (CLI en Linux).
+servidores intermedios.
 
-- **Identidad:** una clave raíz por persona, guardada en el dispositivo.
-  Handle verificable `nombre#sufijo`, con el sufijo derivado de la clave, o QR.
-- **Descubrimiento:** DHT Kademlia propia (libp2p) y mDNS en la red local.
-- **Entre redes, sin servidores propios:** cada nodo publica un servicio onion
-  de Tor (alcanzable tras NAT o CGNAT). El primer contacto llega por QR, que
-  lleva esa dirección, y después por una caché de peers. Los nodos con IP
-  pública pueden además ofrecer relay y anunciarse en la DHT Mainline de
-  BitTorrent y en trackers.
-- **Mensajes a dispositivos desconectados:** se dejan sellados en buzones de
-  otros nodos.
+> **Estado: endurecida, sin auditar.** Se ha aplicado una revisión de
+> seguridad interna (D-039 a D-055), pero el protocolo (`v1`) aún puede
+> cambiar y el código no ha pasado ninguna auditoría independiente. No lo
+> uses todavía para nada delicado.
+
+La versión completa, con el protocolo y la referencia de la CLI, está en
+inglés en [`README.md`](README.md). Las decisiones de diseño, con sus motivos
+y lo que queda pendiente, están en [`docs/DECISIONES.md`](docs/DECISIONES.md);
+el protocolo, en [`docs/PROTOCOLO.md`](docs/PROTOCOLO.md), y lo que falta, en
+[`docs/HOJA_DE_RUTA.md`](docs/HOJA_DE_RUTA.md).
+
+## Qué hace
+
+- **Identidad:** una clave raíz Ed25519 por persona. Handle verificable
+  `nombre#sufijo`, con el sufijo derivado de la clave (Argon2id), o QR. Frase
+  de recuperación de 24 palabras (D-048).
+- **Multidispositivo:** la raíz firma la lista de dispositivos. Vincular uno
+  nuevo pide el secreto de un solo uso de su código y un código de 6 cifras
+  que se compara en las dos pantallas (D-039, D-047). Los nuevos entran solos
+  en los chats y reciben el historial anterior de otro dispositivo propio
+  (D-050); los revocados quedan fuera.
 - **Cifrado:** MLS (RFC 9420). Cada dispositivo es un miembro; los chats 1:1 y
-  los grupos usan el mismo mecanismo.
-- **Multidispositivo:** la raíz firma la lista de dispositivos. Los dispositivos
-  nuevos entran solos en los chats existentes y los revocados quedan fuera.
-
-Las decisiones de diseño y sus motivos están en
-[`docs/DECISIONES.md`](docs/DECISIONES.md).
+  los grupos usan el mismo mecanismo. Número de seguridad para comprobar un
+  contacto (D-043). Quien gestiona un grupo puede traspasarlo (D-049).
+- **Descubrimiento:** DHT Kademlia propia (libp2p) y mDNS en la wifi.
+- **Entre redes, sin servidores propios:** cada nodo publica un servicio onion
+  de Tor, alcanzable tras NAT o CGNAT, y comprueba desde fuera que sigue
+  publicado (D-053). El primer contacto llega por QR y después por una caché
+  de peers. Los nodos con IP pública pueden ofrecer relay (con AutoNAT, D-051)
+  y anunciarse en la DHT Mainline de BitTorrent y en trackers. IPv6 (D-052).
+- **Mensajes a dispositivos desconectados:** se dejan sellados en buzones de
+  otros nodos, que no pueden leerlos.
+- **Archivos:** hasta 100 MB, en trozos cifrados que sirve cualquier miembro.
+  Hasta 32 MiB se depositan además 7 días en dos nodos de la DHT, para
+  descargarlos con el remitente desconectado (D-054).
+- **Stickers:** PNG, GIF, WebP o JPEG de hasta 200 KB. Un GIF animado que no
+  cabe se convierte a WebP animado. La colección se comparte como un archivo
+  `.lacre-stickers` (D-055).
+- **Cifrado en disco:** estado, historial, fotos y archivos, con una clave del
+  almacén del sistema (Keystore de Android, Secret Service, Llavero de macOS,
+  DPAPI). Se detecta la vuelta atrás de un archivo de estado (D-046).
+- **Nodo siempre encendido:** `--headless` para systemd o Docker: hace de
+  buzón, de depósito y, con IP pública y `--relay-server`, de relay.
 
 ## Estructura
 
 ```
-crates/lacre-core   identidad, registros firmados, MLS (sin red; reutilizable vía FFI)
-crates/lacre-node   red libp2p + lógica de chats + CLI
-app/              app Flutter (de momento Linux); app/rust es el puente lacre_api
-scripts/e2e.sh    prueba de extremo a extremo con varios nodos locales
-deploy/           servicio systemd y Dockerfile para un nodo siempre encendido
+crates/lacre-core   identidad, registros firmados, MLS, sobres (sin red)
+crates/lacre-node   red libp2p, lógica de chats, CLI
+app/                app Flutter (Linux y Android); app/rust es el puente lacre_api
+scripts/e2e.sh      prueba de extremo a extremo con varios nodos locales
+deploy/             servicio systemd y Dockerfile para un nodo siempre encendido
+fuzz/               fuzzing de los decodificadores
 ```
 
 ## Probarlo
 
 ```sh
-cargo test -p lacre-core     # pruebas unitarias del núcleo
-scripts/e2e.sh             # escenario completo en local
+cargo test                 # pruebas unitarias
+scripts/e2e.sh             # escenario completo en local (sin Tor)
 ```
 
 A mano, en dos terminales (o dos máquinas de la misma red local):
@@ -58,20 +85,22 @@ cargo run -p lacre-node -- --data /tmp/beto --port 4002 --bootstrap /ip4/127.0.0
 > send 0 hola
 ```
 
+`help` lista todos los comandos: grupos, archivos, stickers, bloqueo,
+búsqueda, recuperación, vinculación…
+
 Para vincular un segundo dispositivo, arráncalo sin `init`: mostrará un código.
-Después ejecuta `link <código> portatil` en el dispositivo primario. También
-al revés: `invite` en el primario y `join <invitación> portatil` en el nuevo.
+Después ejecuta `link <código> portatil` en el dispositivo primario y compara
+el código de confirmación que muestran los dos.
 
 ### Entre redes distintas
 
-mDNS solo funciona en la red local. Entre redes (por ejemplo, casa y móvil
-compartiendo datos), Tor está activado por defecto:
+Tor está activado por defecto:
 
 ```sh
 # máquina A
 cargo run -p lacre-node -- --data /tmp/ana
 > init ana
-> whoami      # espera a ver «servicio onion publicado»; el QR incluye /onion3/…
+> whoami      # espera a «servicio onion publicado»; el QR incluye /onion3/…
 
 # máquina B, en cualquier otra red
 cargo run -p lacre-node -- --data /tmp/beto
@@ -80,39 +109,39 @@ cargo run -p lacre-node -- --data /tmp/beto
 > send 0 hola
 ```
 
-- Publicar el servicio onion suele llevar menos de un minuto. La primera vez
-  (Tor descarga su directorio) a veces tarda varios.
-- Cada conexión por onion tarda unos segundos en abrirse.
+- Publicar el servicio onion suele llevar menos de un minuto; la primera vez
+  a veces tarda varios. Cada conexión por onion tarda unos segundos.
 - Los peers vistos se guardan en `<datos>/peers.txt`; al reiniciar se
   reconecta solo.
-- Opciones:
-  - `--no-tor` desactiva Tor.
-  - `--bootstrap <multiaddr>` da un nodo de entrada (vale una `/onion3/…`).
-  - `--no-rendezvous` desactiva la búsqueda de relays en Mainline y trackers.
-    La lista de trackers se puede cambiar con `--tracker` o con
-    `<datos>/trackers.txt`.
-  - `addrs` muestra las direcciones propias.
+- `--no-tor` desactiva Tor; `--bootstrap <multiaddr>` da un nodo de entrada
+  (vale una `/onion3/…`); `addrs` muestra las direcciones propias.
 
-### Nodo siempre encendido
+## App
 
-`--headless` arranca sin consola, para systemd o Docker (ver `deploy/`).
-Hace de buzón para los contactos desconectados y, con IP pública y
-`--relay-server`, de relay.
-
-## App de escritorio (Linux)
-
-Requiere Flutter, las librerías de desarrollo de GTK 3 y Rust. La parte en
-Rust se compila sola con Flutter.
+Requiere Flutter y Rust; la parte en Rust se compila sola con Flutter.
 
 ```sh
 cd app
-flutter run -d linux
-LACRE_DATA=/tmp/lacre-b flutter run -d linux     # segunda instancia independiente
+flutter run -d linux                              # escritorio (GTK 3)
+LACRE_DATA=/tmp/lacre-b flutter run -d linux      # segunda instancia independiente
+flutter build apk                                 # Android (SDK, NDK y JDK 17)
 ```
+
+Tras cambiar `app/rust/src/api`, se regeneran los enlaces con
+`flutter_rust_bridge_codegen generate` (desde `app/`).
 
 ## Limitaciones actuales
 
+- Sin auditoría externa: no se puede afirmar que sea segura.
 - Tor no es un modo anónimo: también se anuncian las direcciones IP.
-- Historial en un único archivo CBOR, sin cifrar en disco.
-- Interfaz gráfica solo en Linux por ahora (falta Android, iOS, Windows y macOS).
-- Más detalle en `docs/DECISIONES.md`.
+- Sin iOS, Windows ni macOS todavía, y sin notificaciones push. En Linux el
+  nodo se cierra con la ventana.
+- Solo un dispositivo por grupo hace cambios de miembros; si está
+  desconectado, esperan.
+- La clave raíz no se puede rotar: el handle se deriva de ella.
+- Más detalle en [`docs/DECISIONES.md`](docs/DECISIONES.md) y en la sección
+  «Limitations and roadmap» de [`README.md`](README.md).
+
+## Licencia
+
+[GPL-3.0 o posterior](LICENSE).

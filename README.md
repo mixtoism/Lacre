@@ -88,8 +88,8 @@ references below point to entries in that file.
 - **Headless mode.** Run an always-on node (mailbox, relay, onion entry
   point) under systemd or Docker.
 - **Reusable core.** All identity and crypto logic lives in a
-  network-independent Rust crate, meant to be exposed to mobile and desktop
-  apps via FFI (Flutter + `flutter_rust_bridge` is planned).
+  network-independent Rust crate; the Flutter app (Linux and Android) uses
+  it through `flutter_rust_bridge`.
 
 ---
 
@@ -660,7 +660,10 @@ the relay.
 
 Current limitations:
 
-- Clients: CLI and a Linux desktop app; no mobile builds or push notifications yet.
+- Clients: CLI, a Linux desktop app and an Android app (with a foreground
+  service and notifications, D-032). No iOS, Windows or macOS builds yet,
+  and no push notifications (D-009). On Linux the node stops when the
+  window is closed.
 - The root key exists only on the primary device and in its 24-word recovery
   phrase (D-048). Whoever has the phrase owns the identity, and a leaked
   root key cannot be rotated: the handle is derived from it.
@@ -679,12 +682,13 @@ Current limitations:
 
 Planned:
 
-- Flutter builds for Android, iOS, Windows and macOS (the app and its
-  `lacre_api` bridge already exist; Linux works), QR scanning with the camera.
+- Flutter builds for iOS, Windows and macOS (Linux and Android work).
+- Desktop background mode (tray icon or user service).
+- A default sticker pack with original artwork.
 - Encrypted history backup.
 - Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.
-- SQLite/SQLCipher storage and OS keystore integration.
+- SQLite storage instead of a single CBOR file.
 - IPv6 rendezvous, AutoNAT v2, an optional Tor-only anonymous
   mode.
 
