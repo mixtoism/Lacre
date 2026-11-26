@@ -4,8 +4,10 @@ import '../l10n/l10n.dart';
 import '../store.dart';
 import 'common.dart';
 import 'link.dart';
+import 'recovery.dart';
 
-/// Primera pantalla: crear identidad o vincular a una existente.
+/// Primera pantalla: crear identidad, vincular a una existente o
+/// recuperarla con su frase (D-048).
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key, required this.store});
 
@@ -18,7 +20,8 @@ class OnboardingPage extends StatefulWidget {
 class _OnboardingPageState extends State<OnboardingPage> {
   final _name = TextEditingController();
   bool _busy = false;
-  bool _linking = false;
+  /// 0: identidad nueva, 1: vincular, 2: recuperar.
+  int _mode = 0;
 
   Future<void> _create() async {
     final name = _name.text.trim();
@@ -58,22 +61,26 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                SegmentedButton<bool>(
+                SegmentedButton<int>(
                   segments: [
                     ButtonSegment(
-                      value: false,
+                      value: 0,
                       label: Text(context.l.newIdentity),
                     ),
                     ButtonSegment(
-                      value: true,
+                      value: 1,
                       label: Text(context.l.linkDevice),
                     ),
+                    ButtonSegment(
+                      value: 2,
+                      label: Text(context.l.recover),
+                    ),
                   ],
-                  selected: {_linking},
-                  onSelectionChanged: (s) => setState(() => _linking = s.first),
+                  selected: {_mode},
+                  onSelectionChanged: (s) => setState(() => _mode = s.first),
                 ),
                 const SizedBox(height: 24),
-                if (!_linking) ...[
+                if (_mode == 0) ...[
                   TextField(
                     controller: _name,
                     autofocus: true,
@@ -95,8 +102,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           )
                         : Text(context.l.createIdentity),
                   ),
-                ] else
-                  const JoinPanel(),
+                ] else if (_mode == 1)
+                  const JoinPanel()
+                else
+                  RecoverPanel(store: widget.store),
               ],
             ),
           ),

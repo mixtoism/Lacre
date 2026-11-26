@@ -1075,6 +1075,91 @@ impl App {
         Ok(verified.handle)
     }
 
+    /// Frase de recuperación de la identidad (D-048). Solo la tiene el
+    /// dispositivo con la clave raíz.
+    pub fn recovery_phrase(&self) -> Result<Zeroizing<String>> {
+        let st = self.state.lock().unwrap();
+        let root = st.root.as_ref().context("solo el dispositivo primario tiene la clave raíz")?;
+        Ok(lacre_core::identity::root_phrase(root))
+    }
+
+    /// ¿Tiene este dispositivo la clave raíz?
+    pub fn is_primary(&self) -> bool {
+        self.state.lock().unwrap().root.is_some()
+    }
+
+    /// Recupera la identidad con su frase (D-048): este dispositivo pasa a
+    /// tener la clave raíz y entra en el registro. Vale en un dispositivo
+    /// nuevo o en uno ya vinculado a esa identidad (así se pasa el papel de
+    /// primario). Con `only_this`, el resto de dispositivos sale del
+    /// registro (p. ej. si robaron el anterior).
+    ///
+    /// Busca en la red el último registro de la identidad: sin él no se
+    /// sabría el nombre ni los dispositivos.
+    pub async fn recover(self: &Arc<Self>, phrase: &str, label: &str, only_this: bool) -> Result<Handle> {
+        let root = lacre_core::identity::root_from_phrase(phrase)?;
+        let root_pk = root.verifying_key().to_bytes();
+        let current = self.state.lock().unwrap().identity.clone();
+        if let Some(cur) = &current
+            && cur.record.root_pk != root_pk
+        {
+            bail!("este dispositivo ya pertenece a otra identidad");
+        }
+        let vk = root.verifying_key();
+        let suffix = tokio::task::spawn_blocking(move || handle_suffix(&vk)).await?;
+        let mut found: Vec<VerifiedRecord> = self
+            .net
+            .get_records(dht_key(&suffix))
+            .await
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|b| {
+                let signed = SignedRecord::from_bytes(b).ok()?;
+                let rec: IdentityRecord = cbor_from(&signed.body).ok()?;
+                (rec.root_pk == root_pk).then(|| signed.verify().ok())?
+            })
+            .collect();
+        found.extend(current);
+        let best = found
+            .into_iter()
+            .max_by_key(|v| v.record.seq)
+            .context("no se encontró la identidad en la red: hace falta conexión con algún otro nodo")?;
+        let me = self.device_pk();
+        let mut rec = best.record.clone();
+        if only_this {
+            rec.devices.retain(|d| d.device_pk == me);
+        }
+        rec.add_device(me, &clean_label(label))?;
+        // Por encima de cualquier registro que se nos haya escapado en la
+        // red: el de mayor `seq` gana.
+        rec.seq = (best.record.seq + 1).max(now());
+        let verified = rec.sign(&root)?.verify()?;
+        {
+            let mut st = self.state.lock().unwrap();
+            write_private(&self.dir.join("root.key"), Zeroizing::new(root.to_bytes()).as_slice())?;
+            st.root = Some(root);
+            self.set_identity(&mut st, verified.clone())?;
+        }
+        info!("identity recovered with the recovery phrase");
+        self.publish().await;
+        self.after_devices_changed().await;
+        Ok(verified.handle)
+    }
+
+    /// Borra la clave raíz de este dispositivo, que deja de ser primario
+    /// (D-048). Para pasar el papel a otro: recuperar allí con la frase y
+    /// luego esto aquí. Sin la frase anotada no se podrá volver a vincular
+    /// ni desvincular nada.
+    pub fn forget_root(&self) -> Result<()> {
+        let mut st = self.state.lock().unwrap();
+        if st.root.is_none() {
+            bail!("este dispositivo no tiene la clave raíz");
+        }
+        vault::remove(&self.dir.join("root.key"))?;
+        st.root = None;
+        Ok(())
+    }
+
     /// Publica nuestro registro en la DHT. Sin peers solo queda en local.
     pub async fn publish(&self) {
         let Some((key, value)) = self.state.lock().unwrap().identity.as_ref().and_then(|v| {

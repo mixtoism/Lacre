@@ -312,6 +312,21 @@ say fran "send 0 vuelvo"; wait_for bob "fran#.*: vuelvo"
 : > bob.out; say bob "history $FA"; wait_for bob "vuelvo"; sleep 1; refute bob "ZANAH"
 ok "chat borrado: desaparece y vuelve vacío con el siguiente mensaje"
 
+# Frase de recuperación (D-048): otro dispositivo recupera la identidad de
+# Carol con sus 24 palabras, entra en sus chats y pasa a ser el primario.
+say carol phrase; wait_for carol "frase de recuperación: "
+PH=$(grep -o "frase de recuperación: .*" carol.out | head -1 | cut -d' ' -f4-)
+[[ $(wc -w <<< "$PH") == 24 ]] || { echo "FALLO: la frase no tiene 24 palabras: $PH"; exit 1; }
+start carol2; sleep 2
+say carol2 "recover $PH"; wait_for carol2 "identidad recuperada: $HC" 60
+wait_for carol2 "\(nuevo\|solicitud de\) chat .*amigos" $((TICK * 4))
+say carol "forget-root"; wait_for carol "clave raíz borrada"
+: > carol.out; say carol phrase; wait_for carol "solo el dispositivo primario"
+say carol2 phrase; wait_for carol2 "frase de recuperación: $PH"
+stop carol; : > carol.out; start carol
+say carol whoami; wait_for carol "handle: $HC"; refute carol "falta un archivo"
+ok "frase de recuperación: otro dispositivo recupera la identidad y entra en sus chats; papel de primario transferido (D-048)"
+
 # Cifrado en disco (D-033): nada legible sin la clave, el relay (en claro)
 # se migra al arrancar con clave, y sin ella ya no arranca.
 for f in device.key history.cbor chats.cbor mls.json; do

@@ -1195,6 +1195,78 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'{n, plural, =1{1 hora} other{{n} horas}}'**
   String hours(int n);
+
+  /// No description provided for @recover.
+  ///
+  /// In es, this message translates to:
+  /// **'Recuperar'**
+  String get recover;
+
+  /// No description provided for @recoveryPhrase.
+  ///
+  /// In es, this message translates to:
+  /// **'Frase de recuperación'**
+  String get recoveryPhrase;
+
+  /// No description provided for @recoveryPhraseHelper.
+  ///
+  /// In es, this message translates to:
+  /// **'Las 24 palabras, separadas por espacios'**
+  String get recoveryPhraseHelper;
+
+  /// No description provided for @recoveryPhraseWarning.
+  ///
+  /// In es, this message translates to:
+  /// **'Con estas 24 palabras recuperas tu identidad en otro dispositivo si pierdes este. Anótalas en papel y guárdalas bien: quien las tenga puede hacerse pasar por ti.'**
+  String get recoveryPhraseWarning;
+
+  /// No description provided for @recoverOnlyThis.
+  ///
+  /// In es, this message translates to:
+  /// **'Quitar los demás dispositivos (si perdiste o te robaron alguno)'**
+  String get recoverOnlyThis;
+
+  /// No description provided for @recoverIdentity.
+  ///
+  /// In es, this message translates to:
+  /// **'Recuperar identidad'**
+  String get recoverIdentity;
+
+  /// No description provided for @becomePrimary.
+  ///
+  /// In es, this message translates to:
+  /// **'Pasar a ser el primario'**
+  String get becomePrimary;
+
+  /// No description provided for @becomePrimaryBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Escribe la frase de recuperación. Este dispositivo tendrá la clave raíz y podrá vincular y desvincular dispositivos.'**
+  String get becomePrimaryBody;
+
+  /// No description provided for @forgetRoot.
+  ///
+  /// In es, this message translates to:
+  /// **'Dejar de ser el primario'**
+  String get forgetRoot;
+
+  /// No description provided for @forgetRootBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Se borrará la clave raíz de este dispositivo. Para vincular o desvincular necesitarás la frase de recuperación. ¿La tienes anotada?'**
+  String get forgetRootBody;
+
+  /// No description provided for @forgetRootConfirm.
+  ///
+  /// In es, this message translates to:
+  /// **'Borrar la clave'**
+  String get forgetRootConfirm;
+
+  /// No description provided for @identityRecovered.
+  ///
+  /// In es, this message translates to:
+  /// **'Identidad recuperada: {handle}'**
+  String identityRecovered(String handle);
 }
 
 class _AppLocalizationsDelegate

@@ -297,11 +297,11 @@ fn forward_events(mut rx: UnboundedReceiver<Event>) {
 
 #[frb(sync)]
 pub fn profile() -> Result<Profile> {
-    let (app, dir) = NODE.get().context("el nodo no está arrancado")?;
+    let (app, _) = NODE.get().context("el nodo no está arrancado")?;
     Ok(Profile {
         handle: app.handle().map(|h| h.to_string()),
         device_code: app.device_code(),
-        primary: dir.join("root.key").exists(),
+        primary: app.is_primary(),
         encrypted: lacre_core::vault::enabled(),
     })
 }
@@ -344,6 +344,26 @@ pub async fn status() -> Result<Status> {
 pub async fn create_identity(name: String) -> Result<String> {
     let app = app()?;
     on_rt(async move { Ok(app.init(&name).await?.to_string()) }).await
+}
+
+/// Frase de recuperación (24 palabras, D-048). Solo en el primario.
+#[frb(sync)]
+pub fn recovery_phrase() -> Result<String> {
+    Ok(app()?.recovery_phrase()?.to_string())
+}
+
+/// Recupera la identidad con su frase: en un dispositivo sin identidad o en
+/// uno vinculado que pasa a ser primario. Con `only_this`, quita los demás
+/// dispositivos del registro. Devuelve el handle.
+pub async fn recover_identity(phrase: String, label: String, only_this: bool) -> Result<String> {
+    let app = app()?;
+    on_rt(async move { Ok(app.recover(&phrase, &label, only_this).await?.to_string()) }).await
+}
+
+/// Borra la clave raíz de este dispositivo, que deja de ser primario.
+#[frb(sync)]
+pub fn forget_root() -> Result<()> {
+    app()?.forget_root()
 }
 
 /// Contenido del QR para que otros nos añadan.

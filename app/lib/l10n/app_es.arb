@@ -211,5 +211,18 @@
   "minutes": "{n} min",
   "@minutes": {"placeholders": {"n": {"type": "int"}}},
   "hours": "{n, plural, =1{1 hora} other{{n} horas}}",
-  "@hours": {"placeholders": {"n": {"type": "int"}}}
+  "@hours": {"placeholders": {"n": {"type": "int"}}},
+  "recover": "Recuperar",
+  "recoveryPhrase": "Frase de recuperación",
+  "recoveryPhraseHelper": "Las 24 palabras, separadas por espacios",
+  "recoveryPhraseWarning": "Con estas 24 palabras recuperas tu identidad en otro dispositivo si pierdes este. Anótalas en papel y guárdalas bien: quien las tenga puede hacerse pasar por ti.",
+  "recoverOnlyThis": "Quitar los demás dispositivos (si perdiste o te robaron alguno)",
+  "recoverIdentity": "Recuperar identidad",
+  "becomePrimary": "Pasar a ser el primario",
+  "becomePrimaryBody": "Escribe la frase de recuperación. Este dispositivo tendrá la clave raíz y podrá vincular y desvincular dispositivos.",
+  "forgetRoot": "Dejar de ser el primario",
+  "forgetRootBody": "Se borrará la clave raíz de este dispositivo. Para vincular o desvincular necesitarás la frase de recuperación. ¿La tienes anotada?",
+  "forgetRootConfirm": "Borrar la clave",
+  "identityRecovered": "Identidad recuperada: {handle}",
+  "@identityRecovered": {"placeholders": {"handle": {"type": "String"}}}
 }

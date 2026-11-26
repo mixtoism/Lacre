@@ -54,6 +54,25 @@ Future<Status> status() => RustLib.instance.api.crateApiLacreStatus();
 Future<String> createIdentity({required String name}) =>
     RustLib.instance.api.crateApiLacreCreateIdentity(name: name);
 
+/// Frase de recuperación (24 palabras, D-048). Solo en el primario.
+String recoveryPhrase() => RustLib.instance.api.crateApiLacreRecoveryPhrase();
+
+/// Recupera la identidad con su frase: en un dispositivo sin identidad o en
+/// uno vinculado que pasa a ser primario. Con `only_this`, quita los demás
+/// dispositivos del registro. Devuelve el handle.
+Future<String> recoverIdentity({
+  required String phrase,
+  required String label,
+  required bool onlyThis,
+}) => RustLib.instance.api.crateApiLacreRecoverIdentity(
+  phrase: phrase,
+  label: label,
+  onlyThis: onlyThis,
+);
+
+/// Borra la clave raíz de este dispositivo, que deja de ser primario.
+void forgetRoot() => RustLib.instance.api.crateApiLacreForgetRoot();
+
 /// Contenido del QR para que otros nos añadan.
 Future<String> qrPayload() => RustLib.instance.api.crateApiLacreQrPayload();
 

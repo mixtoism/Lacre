@@ -810,8 +810,19 @@ Si los dos números coinciden, cada parte tiene fijada la raíz de la otra.
 ### 13.2. Pérdida o robo de la clave raíz
 
 Quien tenga la clave raíz puede añadir dispositivos al registro y, así, entrar
-en todos los grupos de la persona en la siguiente sincronización. Todavía no
-hay frase de recuperación ni forma de transferir el papel de primario.
+en todos los grupos de la persona en la siguiente sincronización.
+
+La clave raíz se puede anotar como **frase de recuperación** (D-048): sus 32
+bytes como 24 palabras BIP39 (lista inglesa, 8 bits de suma de
+comprobación). Con ella, otro dispositivo busca en la DHT el último registro
+de esa raíz (`dht_key(sufijo)`, filtrando por `root_pk`), se añade y lo
+firma con `seq = max(seq_anterior + 1, ahora_unix)`, opcionalmente quitando
+los demás dispositivos. Para pasar el papel de primario se recupera en el
+nuevo y se borra la clave raíz del anterior.
+
+La clave raíz no se puede rotar: el sufijo del handle depende de ella. Si
+se filtra (el dispositivo primario o la frase), quien la tenga puede firmar
+registros con `seq` mayores. La única salida es una identidad nueva.
 
 ### 13.3. Vinculación
 

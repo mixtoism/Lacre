@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-047),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-048),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -1588,6 +1588,46 @@ puede afirmar que sea segura.
     criptográfica fuerte. El número de seguridad (D-043) sí lo es.
   - Solo sirve si la persona lo compara de verdad. Si no coincide, hay que
     desvincular el dispositivo a mano.
+
+## D-048 · Frase de recuperación y traspaso del primario
+- **Contexto:** D-004 preveía 24 palabras para la clave raíz. Sin ellas,
+  perder el primario dejaba la identidad sin poder vincular ni desvincular
+  dispositivos, y no había forma de pasar el papel de primario a otro.
+- **Decisión:**
+  - Frase: la clave raíz (32 bytes de semilla Ed25519) en BIP39, 24
+    palabras de la lista inglesa con 8 bits de suma de comprobación (crate
+    `bip39`). Se admiten mayúsculas y espacios de más.
+  - Recuperar (`recover`): se deriva la raíz y se busca en la DHT el
+    registro de su sufijo con esa `root_pk` y mayor `seq`. Este dispositivo
+    entra en él y se firma con `seq = max(seq + 1, ahora_unix)`, por encima
+    de cualquier copia que circule. Se guarda `root.key` y se publica.
+    Después los committers añaden el dispositivo a los grupos en su próxima
+    sincronización, como con un dispositivo vinculado.
+  - `--only-this` / casilla en la app: el registro se queda solo con este
+    dispositivo, para cuando se pierde o roban el anterior.
+  - Vale en un dispositivo nuevo o en uno ya vinculado a esa identidad.
+    Traspasar el primario = recuperar en el nuevo y `forget-root` en el
+    viejo. `forget-root` borra `root.key` y la saca del registro de
+    guardados (D-046, `vault::remove`) para que no se tome por un borrado
+    ajeno.
+  - App: frase en el perfil (palabras numeradas, con aviso), "Recuperar" en
+    la primera pantalla, "Pasar a ser el primario" y "Dejar de ser el
+    primario" en el perfil. CLI: `phrase`, `recover`, `forget-root`.
+- **Motivo:** formato estándar, con suma de comprobación y una lista de
+  palabras pensada para anotarse a mano. `seq` basado en la hora evita que
+  un registro viejo, guardado en algún nodo, gane al recuperado.
+- **Limitaciones:**
+  - Quien tenga la frase es el dueño de la identidad. Si se filtra, no hay
+    rotación posible (el handle sale de la raíz): el atacante puede firmar
+    registros con `seq` mayores. La única salida es una identidad nueva.
+  - Recuperar necesita encontrar el registro en la red: sin conexión con
+    ningún nodo que lo tenga, no se sabe el nombre ni los dispositivos.
+  - Los grupos cuyo committer era un dispositivo perdido siguen congelados
+    hasta que se pueda traspasar el committer (hoja de ruta, punto 4). El
+    historial anterior no llega al dispositivo recuperado (punto 6).
+  - La app no impide capturas de pantalla de la frase (FLAG_SECURE en
+    Android, pendiente).
+  - Solo lista inglesa.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

@@ -171,6 +171,27 @@ pub fn link_confirmation(root: &[u8; 32], device: &[u8; 32], secret: &[u8]) -> S
     format!("{:03} {:03}", n / 1000, n % 1000)
 }
 
+/// Frase de recuperación (D-048): la clave raíz en 24 palabras BIP39
+/// (inglés), con su suma de comprobación. Quien la tenga es el dueño de la
+/// identidad.
+pub fn root_phrase(root: &SigningKey) -> zeroize::Zeroizing<String> {
+    let m = bip39::Mnemonic::from_entropy(root.as_bytes()).expect("32 bytes son entropía BIP39 válida");
+    zeroize::Zeroizing::new(m.to_string())
+}
+
+/// Recupera la clave raíz de su frase. Admite mayúsculas y espacios de más.
+pub fn root_from_phrase(phrase: &str) -> Result<SigningKey, Error> {
+    let clean = phrase.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
+    let m = bip39::Mnemonic::parse_in_normalized(bip39::Language::English, &clean)
+        .map_err(|e| Error::BadPhrase(e.to_string()))?;
+    let entropy = zeroize::Zeroizing::new(m.to_entropy());
+    let seed: [u8; 32] = entropy
+        .as_slice()
+        .try_into()
+        .map_err(|_| Error::BadPhrase("tienen que ser 24 palabras".into()))?;
+    Ok(SigningKey::from_bytes(&seed))
+}
+
 pub fn encode_key(pk: &VerifyingKey) -> String {
     BASE32_NOPAD.encode(pk.as_bytes()).to_lowercase()
 }
@@ -238,5 +259,24 @@ mod tests {
         assert_ne!(c, link_confirmation(&[3u8; 32], &d, b"secreto"));
         assert_ne!(c, link_confirmation(&r, &[3u8; 32], b"secreto"));
         assert_ne!(c, link_confirmation(&r, &d, b"otro"));
+    }
+
+    #[test]
+    fn root_phrase_roundtrip() {
+        let k = generate_key();
+        let p = root_phrase(&k);
+        assert_eq!(p.split(' ').count(), 24);
+        let back = root_from_phrase(&format!("  {}  ", p.to_uppercase().replace(' ', "   "))).unwrap();
+        assert_eq!(back.to_bytes(), k.to_bytes());
+        // Dos palabras cambiadas de sitio rompen la suma de comprobación
+        // (con esta clave fija; en general falla 255 de cada 256 veces).
+        let fixed = root_phrase(&SigningKey::from_bytes(&[1u8; 32]));
+        let mut words: Vec<&str> = fixed.split(' ').collect();
+        words.swap(0, 1);
+        assert!(root_from_phrase(&words.join(" ")).is_err());
+        assert!(root_from_phrase("hola que tal").is_err());
+        // 12 palabras válidas (128 bits) no son una clave raíz.
+        let twelve = bip39::Mnemonic::from_entropy(&[7u8; 16]).unwrap().to_string();
+        assert!(root_from_phrase(&twelve).is_err());
     }
 }

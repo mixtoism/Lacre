@@ -71,6 +71,11 @@ comandos:
   invite                       invitación que un dispositivo nuevo usa con `join` (primario)
   join <invitación> [etiqueta] vincula este dispositivo con la invitación del primario
   unlink <código>              revoca un dispositivo (solo en el primario)
+  phrase                       muestra la frase de recuperación (24 palabras, primario)
+  recover [--only-this] <24 palabras>
+                               recupera la identidad con su frase; este dispositivo
+                               pasa a ser primario (--only-this: quita los demás)
+  forget-root                  borra la clave raíz de aquí (deja de ser primario)
   whois <handle>               resuelve un handle en la red
   chat <handle|qr>             abre un chat 1:1
   group <título> <h1> <h2>...  crea un grupo
@@ -233,6 +238,19 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             if app.handle().is_none() {
                 println!("para vincular: {}", app.link_code().await);
             }
+        }
+        "phrase" => println!("frase de recuperación: {}", app.recovery_phrase()?.as_str()),
+        "recover" => {
+            let (only_this, words) = match rest.strip_prefix("--only-this") {
+                Some(w) => (true, w),
+                None => (false, rest),
+            };
+            let h = app.recover(words, "recuperado", only_this).await?;
+            println!("identidad recuperada: {h}");
+        }
+        "forget-root" => {
+            app.forget_root()?;
+            println!("clave raíz borrada de este dispositivo");
         }
         "devices" => {
             for (code, label, this) in app.devices() {

@@ -18,6 +18,8 @@ pub enum Error {
     InvalidHandle(String),
     #[error("clave inválida")]
     InvalidKey,
+    #[error("frase de recuperación inválida: {0}")]
+    BadPhrase(String),
     #[error("firma inválida")]
     BadSignature,
     #[error("registro inválido: {0}")]

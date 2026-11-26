@@ -19,6 +19,8 @@ DECISIONES.md.
 3. **Frase de recuperación** (D-004): 24 palabras para la clave raíz. Sin
    ella, si se pierde el dispositivo primario no se pueden vincular
    dispositivos nuevos. También: transferir el rol de primario.
+   → **Hecho (D-048).** Recuperar, quitar los demás dispositivos y pasar el
+   papel de primario (recuperar en el nuevo y borrar la clave del viejo).
 4. **Transferir el rol de committer** (D-007, D-031): si el committer de un
    grupo desaparece, no se puede añadir, quitar ni salir. También:
    administradores múltiples y resolución de bifurcaciones.

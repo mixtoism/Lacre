@@ -186,6 +186,25 @@ pub fn write(path: &Path, plain: &[u8]) -> io::Result<()> {
     write_raw(path, &seal(path, plain))
 }
 
+/// Borra un archivo a propósito. Si está protegido (D-046), también sale
+/// del registro, para que al arrancar no se tome por un borrado ajeno. Si se
+/// corta entre las dos cosas, al arrancar se avisa como si faltase.
+pub fn remove(path: &Path) -> io::Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
+    if let (Some(key), Some(ledger)) = (KEY.get(), LEDGER.lock().unwrap().as_mut())
+        && ledger.covers(path)
+        && let Some(rel) = ledger.rel(path)
+        && ledger.manifest.files.remove(&rel).is_some()
+    {
+        ledger.save_manifest(key)?;
+    }
+    Ok(())
+}
+
 /// Escritura atómica (temporal + `fsync` + renombrar), modo `0600`.
 fn write_raw(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let tmp = path.with_extension("tmp");

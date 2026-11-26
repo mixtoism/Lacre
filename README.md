@@ -427,7 +427,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-047), but nothing should be considered secure until audited.
+  (D-039–D-048), but nothing should be considered secure until audited.
 
 ---
 
@@ -629,9 +629,9 @@ the relay.
 Current limitations:
 
 - Clients: CLI and a Linux desktop app; no mobile builds or push notifications yet.
-- The root key exists only on the primary device. There is no recovery phrase
-  yet; if the primary is lost, other devices keep working but no new devices
-  can be linked.
+- The root key exists only on the primary device and in its 24-word recovery
+  phrase (D-048). Whoever has the phrase owns the identity, and a leaked
+  root key cannot be rotated: the handle is derived from it.
 - Only the group creator can commit. If it is offline, membership changes
   wait; if it is lost, membership is frozen. People cannot yet be added to or
   removed from an existing group.
@@ -644,7 +644,6 @@ Planned:
 
 - Flutter builds for Android, iOS, Windows and macOS (the app and its
   `lacre_api` bridge already exist; Linux works), QR scanning with the camera.
-- 24-word recovery phrase and primary-role transfer.
 - History transfer between own devices.
 - Committer transfer, multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.

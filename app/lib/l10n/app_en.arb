@@ -185,5 +185,17 @@
   "minutes": "{n} min",
   "@minutes": {"placeholders": {"n": {"type": "int"}}},
   "hours": "{n, plural, =1{1 hour} other{{n} hours}}",
-  "@hours": {"placeholders": {"n": {"type": "int"}}}
+  "@hours": {"placeholders": {"n": {"type": "int"}}},
+  "recover": "Recover",
+  "recoveryPhrase": "Recovery phrase",
+  "recoveryPhraseHelper": "The 24 words, separated by spaces",
+  "recoveryPhraseWarning": "With these 24 words you can recover your identity on another device if you lose this one. Write them down on paper and keep them safe: whoever has them can impersonate you.",
+  "recoverOnlyThis": "Remove the other devices (if one was lost or stolen)",
+  "recoverIdentity": "Recover identity",
+  "becomePrimary": "Make this the primary",
+  "becomePrimaryBody": "Enter the recovery phrase. This device will hold the root key and will be able to link and unlink devices.",
+  "forgetRoot": "Stop being the primary",
+  "forgetRootBody": "The root key will be deleted from this device. To link or unlink devices you will need the recovery phrase. Have you written it down?",
+  "forgetRootConfirm": "Delete the key",
+  "identityRecovered": "Identity recovered: {handle}"
 }

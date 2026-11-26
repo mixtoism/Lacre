@@ -673,4 +673,46 @@ class AppLocalizationsEs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get recover => 'Recuperar';
+
+  @override
+  String get recoveryPhrase => 'Frase de recuperación';
+
+  @override
+  String get recoveryPhraseHelper => 'Las 24 palabras, separadas por espacios';
+
+  @override
+  String get recoveryPhraseWarning =>
+      'Con estas 24 palabras recuperas tu identidad en otro dispositivo si pierdes este. Anótalas en papel y guárdalas bien: quien las tenga puede hacerse pasar por ti.';
+
+  @override
+  String get recoverOnlyThis =>
+      'Quitar los demás dispositivos (si perdiste o te robaron alguno)';
+
+  @override
+  String get recoverIdentity => 'Recuperar identidad';
+
+  @override
+  String get becomePrimary => 'Pasar a ser el primario';
+
+  @override
+  String get becomePrimaryBody =>
+      'Escribe la frase de recuperación. Este dispositivo tendrá la clave raíz y podrá vincular y desvincular dispositivos.';
+
+  @override
+  String get forgetRoot => 'Dejar de ser el primario';
+
+  @override
+  String get forgetRootBody =>
+      'Se borrará la clave raíz de este dispositivo. Para vincular o desvincular necesitarás la frase de recuperación. ¿La tienes anotada?';
+
+  @override
+  String get forgetRootConfirm => 'Borrar la clave';
+
+  @override
+  String identityRecovered(String handle) {
+    return 'Identidad recuperada: $handle';
+  }
 }

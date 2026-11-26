@@ -12,6 +12,7 @@ import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 import 'common.dart';
 import 'link.dart';
+import 'recovery.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.store});
@@ -380,6 +381,31 @@ class _ProfilePageState extends State<ProfilePage> {
                           onPressed: () => _unlink(d),
                         )
                       : null,
+                ),
+              if (profile.primary) ...[
+                ListTile(
+                  leading: const Icon(Icons.key),
+                  title: Text(context.l.recoveryPhrase),
+                  onTap: () => showRecoveryPhrase(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.key_off),
+                  title: Text(context.l.forgetRoot),
+                  onTap: () async {
+                    if (await forgetRoot(context, widget.store) && mounted) {
+                      setState(() {});
+                    }
+                  },
+                ),
+              ] else
+                ListTile(
+                  leading: const Icon(Icons.key),
+                  title: Text(context.l.becomePrimary),
+                  onTap: () async {
+                    if (await becomePrimary(context, widget.store) && mounted) {
+                      setState(() => _devices = lacre.devices());
+                    }
+                  },
                 ),
               const Divider(height: 32),
               Text(context.l.blocked, style: text.titleMedium),

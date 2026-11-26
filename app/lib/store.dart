@@ -428,6 +428,22 @@ class Store extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Recupera la identidad con su frase (D-048). Devuelve el handle.
+  Future<String> recoverIdentity(String phrase, String label,
+      {bool onlyThis = false}) async {
+    final handle = await lacre.recoverIdentity(
+        phrase: phrase, label: label, onlyThis: onlyThis);
+    profile = lacre.profile();
+    notifyListeners();
+    return handle;
+  }
+
+  void forgetRoot() {
+    lacre.forgetRoot();
+    profile = lacre.profile();
+    notifyListeners();
+  }
+
   /// Descarga un archivo recibido; el progreso queda en [downloads].
   Future<void> download(String id) async {
     downloads[id] = 0;

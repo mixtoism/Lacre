@@ -673,4 +673,46 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get recover => 'Recover';
+
+  @override
+  String get recoveryPhrase => 'Recovery phrase';
+
+  @override
+  String get recoveryPhraseHelper => 'The 24 words, separated by spaces';
+
+  @override
+  String get recoveryPhraseWarning =>
+      'With these 24 words you can recover your identity on another device if you lose this one. Write them down on paper and keep them safe: whoever has them can impersonate you.';
+
+  @override
+  String get recoverOnlyThis =>
+      'Remove the other devices (if one was lost or stolen)';
+
+  @override
+  String get recoverIdentity => 'Recover identity';
+
+  @override
+  String get becomePrimary => 'Make this the primary';
+
+  @override
+  String get becomePrimaryBody =>
+      'Enter the recovery phrase. This device will hold the root key and will be able to link and unlink devices.';
+
+  @override
+  String get forgetRoot => 'Stop being the primary';
+
+  @override
+  String get forgetRootBody =>
+      'The root key will be deleted from this device. To link or unlink devices you will need the recovery phrase. Have you written it down?';
+
+  @override
+  String get forgetRootConfirm => 'Delete the key';
+
+  @override
+  String identityRecovered(String handle) {
+    return 'Identity recovered: $handle';
+  }
 }
