@@ -61,7 +61,7 @@ for n in alice1 bob carol; do wait_for $n "identidad creada"; done
 HA=$(field alice1 "identidad creada: .*"); HB=$(field bob "identidad creada: .*"); HC=$(field carol "identidad creada: .*")
 ok "identidades: $HA $HB $HC"
 
-say alice1 "link $(field alice2 'link [a-z2-7]*') portatil"
+say alice1 "link $(field alice2 'link [a-z2-7:]*') portatil"
 wait_for alice2 "vinculado a $HA"
 ok "portátil de Alicia vinculado"
 
@@ -153,7 +153,10 @@ mksticker small.png 2000; mksticker big.png 190000; mksticker huge.png 300000
 say carol "sticker 0 small.png"
 wait_for bob "carol#.*: \[sticker [0-9a-f]*.png\]"; wait_for alice1 "carol#.*: \[sticker [0-9a-f]*.png\]"
 SID=$(grep -o "carol#.*: \[sticker [0-9a-f]*.png\]" bob.out | head -1 | grep -o "[0-9a-f]\{64\}.png")
-cmp small.png "bob/media/$SID"; cmp small.png "alice1/media/$SID"
+say bob "export-sticker $SID s_bob.png"; wait_for bob "sticker exportado a s_bob.png"; cmp small.png s_bob.png
+say alice1 "export-sticker $SID s_al.png"; wait_for alice1 "sticker exportado a s_al.png"; cmp small.png s_al.png
+# En disco el sticker está cifrado (D-033): no debe coincidir con el original.
+! cmp -s small.png "bob/media/$SID"
 say carol "sticker 0 huge.png"
 wait_for carol "máximo 200 KB"
 stop carol
@@ -162,7 +165,7 @@ wait_for bob "guardado en buzones" 60
 start carol
 wait_for carol "bob#.*: \[sticker [0-9a-f]*.png\]" $((TICK * 4))
 BID=$(grep -o "bob#.*: \[sticker [0-9a-f]*.png\]" carol.out | head -1 | grep -o "[0-9a-f]\{64\}.png")
-cmp big.png "carol/media/$BID"
+say carol "export-sticker $BID b_car.png"; wait_for carol "sticker exportado a b_car.png"; cmp big.png b_car.png
 ok "stickers entregados (190 KB por buzón; los de más de 200 KB se rechazan)"
 
 # --- Archivos (D-026): oferta cifrada en el mensaje, trozos cifrados que
@@ -173,12 +176,12 @@ wait_for bob "carol#.*: \[archivo doc.bin · 3000000 bytes"; wait_for alice1 "ca
 FID=$(grep -o "\[archivo doc.bin · 3000000 bytes · [0-9a-f]*\]" bob.out | head -1 | grep -o "[0-9a-f]\{64\}")
 say bob "get $FID"
 wait_for bob "archivo descargado" 60
-cmp doc.bin "bob/files/$FID/doc.bin"
+cmp doc.bin "bob/abiertos/$FID/doc.bin"
 ok "archivo de 3 MB enviado y descargado"
 stop carol
 say alice1 "get $FID"
 wait_for alice1 "archivo descargado" 60
-cmp doc.bin "alice1/files/$FID/doc.bin"
+cmp doc.bin "alice1/abiertos/$FID/doc.bin"
 start carol
 ok "archivo descargado de otro miembro con el remitente desconectado"
 truncate -s 101M enorme.bin
@@ -246,16 +249,23 @@ ok "chat de un desconocido: llega como solicitud, sin su foto y sin poder descar
 : > bob.out; : > bob2.out
 say bob "accept $FA"
 wait_for bob "foto de perfil de $HF" 30
-cmp cara.png bob/avatars/"${HF#*#}"-*.png
+say bob "export-avatar $HF a_fran.png"; wait_for bob "foto exportada a a_fran.png"; cmp cara.png a_fran.png
 say bob "get $FF"; wait_for bob "archivo descargado" 60
-cmp doc.bin "bob/files/$FF/doc.bin"
+cmp doc.bin "bob/abiertos/$FF/doc.bin"
 sleep 3; say bob2 chats; wait_for bob2 "\] $HF"; sleep 1; refute bob2 "(solicitud)"
 ok "solicitud aceptada: llegan su foto y el archivo; el portátil también la da por aceptada"
 
 mksticker cara2.png 4000
 say bob "avatar cara2.png"; wait_for fran "foto de perfil de $HB" 30
-cmp cara2.png fran/avatars/"${HB#*#}"-*.png
+say fran "export-avatar $HB a_bob.png"; wait_for fran "foto exportada a a_bob.png"; cmp cara2.png a_bob.png
 ok "foto de perfil propia anunciada y descargada por el otro"
+
+SN='[0-9]\{5\}\( [0-9]\{5\}\)\{11\}'
+: > bob.out; : > fran.out
+say bob "safety $HF"; wait_for bob "$SN"
+say fran "safety $HB"; wait_for fran "$SN"
+[ "$(grep -o "$SN" bob.out)" = "$(grep -o "$SN" fran.out)" ]
+ok "número de seguridad igual en los dos lados (D-043)"
 
 : > bob.out; say bob "search zanahoria"; wait_for bob "resultado(s)"
 grep -q "\[$FA#[0-9]*\] fran#.*ZANAHÓRIA" bob.out || { echo "FALLO: búsqueda global"; cat bob.out; exit 1; }
@@ -298,7 +308,7 @@ ok "chat borrado: desaparece y vuelve vacío con el siguiente mensaje"
 # Cifrado en disco (D-033): nada legible sin la clave, el relay (en claro)
 # se migra al arrancar con clave, y sin ella ya no arranca.
 for f in device.key history.cbor chats.cbor mls.json; do
-  head -c 8 "alice1/$f" | grep -q P2MVLT1 || { echo "FALLO: alice1/$f no está cifrado"; exit 1; }
+  head -c 8 "alice1/$f" | grep -q P2MVLT2 || { echo "FALLO: alice1/$f no está cifrado"; exit 1; }
 done
 if grep -rqa "hola dan" alice1 dan; then echo "FALLO: texto de un mensaje en claro en disco"; exit 1; fi
 [[ $(stat -c %s relay/device.key) == 32 ]] || { echo "FALLO: el relay ya estaba cifrado"; exit 1; }
@@ -307,7 +317,7 @@ RELAYKEY=$(key_of relay)
 LACRE_DATA_KEY=$RELAYKEY "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay2.out 2>&1 & RP=$!; PIDS+=($RP)
 for _ in $(seq 40); do grep -q "dispositivo" relay2.out && break; sleep 0.25; done
 kill $RP; wait $RP 2>/dev/null || true
-head -c 8 relay/device.key | grep -q P2MVLT1 || { echo "FALLO: el relay no se migró"; cat relay2.out; exit 1; }
+head -c 8 relay/device.key | grep -q P2MVLT2 || { echo "FALLO: el relay no se migró"; cat relay2.out; exit 1; }
 if "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay3.out 2>&1; then
   echo "FALLO: arrancó sin la clave de datos"; exit 1
 fi

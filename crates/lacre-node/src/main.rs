@@ -85,6 +85,9 @@ comandos:
   block <handle> | unblock <handle> | blocked
                                bloquea, desbloquea o lista personas bloqueadas
   avatar <archivo>|none        cambia o quita tu foto de perfil (≤128 KB, ≤512 px)
+  export-sticker <id> <archivo>   guarda descifrado un sticker recibido
+  export-avatar <nombre#suf> <archivo>  guarda descifrada la foto de un contacto
+  safety <nombre#suf>              número de seguridad con un contacto (compáralo con el suyo)
   dial <multiaddr>             conecta con un nodo concreto
   addrs                        muestra las direcciones por las que te pueden llamar
   power low|full [wifi|mobile] modo de energía: reposo o normal (D-034)
@@ -123,7 +126,7 @@ async fn main() -> Result<()> {
         None => println!(
             "sin identidad. Usa `init <nombre>`, `join <invitación>` con la invitación del primario \
              (`invite`), o vincula este dispositivo desde el primario con:\n  link {}",
-            app.device_code()
+            app.link_code().await
         ),
     }
     if args.relay_server {
@@ -325,8 +328,8 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             }
         }
         "get" => {
-            let path = app.download(rest).await?;
-            println!("archivo descargado: {}", path.display());
+            app.download(rest).await?;
+            println!("archivo descargado: {}", app.open_file(rest)?.display());
         }
         "search" => {
             let (index, query) = match rest.split_once(':') {
@@ -367,6 +370,18 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             };
             app.set_avatar(image).await?;
             println!("foto de perfil actualizada");
+        }
+        "export-sticker" => {
+            let (id, out) = rest.split_once(' ').context("uso: export-sticker <id> <archivo>")?;
+            std::fs::write(out.trim(), app.sticker_bytes(id)?)?;
+            println!("sticker exportado a {}", out.trim());
+        }
+        "safety" => println!("{}", app.safety_number(rest)?),
+        "export-avatar" => {
+            let (handle, out) = rest.split_once(' ').context("uso: export-avatar <nombre#sufijo> <archivo>")?;
+            let image = app.avatar(handle)?.1.context("sin foto de perfil")?;
+            std::fs::write(out.trim(), image)?;
+            println!("foto exportada a {}", out.trim());
         }
         "dial" => app.net().dial(rest.parse()?).await,
         "addrs" => {

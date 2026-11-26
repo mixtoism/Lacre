@@ -35,8 +35,16 @@ pub enum Request {
     },
     /// Mensaje MLS (aplicación o commit).
     Mls(#[serde(with = "serde_bytes")] Vec<u8>),
-    /// Avisa al dispositivo recién vinculado de su identidad (registro firmado).
-    LinkGrant { record: Vec<u8> },
+    /// Avisa al dispositivo recién vinculado de su identidad (registro
+    /// firmado). `secret` es el secreto de un solo uso de su código de
+    /// vinculación: sin él cualquiera podría meter un dispositivo en una
+    /// identidad ajena (D-039).
+    LinkGrant {
+        #[serde(with = "serde_bytes")]
+        record: Vec<u8>,
+        #[serde(with = "serde_bytes")]
+        secret: Vec<u8>,
+    },
     /// Un dispositivo nuevo pide entrar con la invitación que muestra el
     /// primario (D-037). Si vale, el primario contesta `Granted`.
     Join {

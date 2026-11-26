@@ -197,8 +197,26 @@ async fn discover(dht: Option<&AsyncDht>, trackers: &[String], topic: [u8; 20], 
             Err(e) => debug!(tracker = %t, "consulta fallida: {e:#}"),
         }
     }
-    found.retain(|a| a.port() != 0 && !a.ip().is_unspecified());
+    found.retain(|a| a.port() != 0 && is_public(a.ip()));
     found
+}
+
+/// Solo direcciones públicas (D-042): un tracker o un nodo de Mainline
+/// maliciosos no deben poder hacernos marcar a la red local (router,
+/// impresoras, servicios en 127.0.0.1).
+fn is_public(ip: &std::net::Ipv4Addr) -> bool {
+    let o = ip.octets();
+    !(ip.is_unspecified()
+        || ip.is_private()
+        || ip.is_loopback()
+        || ip.is_link_local()
+        || ip.is_broadcast()
+        || ip.is_multicast()
+        || ip.is_documentation()
+        || o[0] == 0
+        || (o[0] == 100 && (64..128).contains(&o[1])) // CGNAT
+        || (o[0] == 198 && (o[1] == 18 || o[1] == 19)) // pruebas de rendimiento
+        || o[0] >= 240)
 }
 
 // --- Trackers UDP (BEP 15) ------------------------------------------------
@@ -256,7 +274,7 @@ async fn tracker_announce(tracker: &str, topic: [u8; 20], port: u16, relay: bool
         bail!("respuesta de anuncio inválida");
     }
     let peers = resp[20..]
-        .chunks_exact(6)
+        .as_chunks::<6>().0.iter()
         .map(|c| SocketAddrV4::new([c[0], c[1], c[2], c[3]].into(), u16::from_be_bytes([c[4], c[5]])))
         .collect();
     if !relay {
@@ -287,6 +305,16 @@ fn u32_at(b: &[u8], i: usize) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_public_addresses() {
+        for ip in ["127.0.0.1", "10.1.2.3", "192.168.1.1", "172.16.0.1", "169.254.1.1", "100.64.0.1", "0.1.2.3", "255.255.255.255", "224.0.0.1"] {
+            assert!(!is_public(&ip.parse().unwrap()), "{ip}");
+        }
+        for ip in ["1.1.1.1", "88.12.34.56", "100.128.0.1"] {
+            assert!(is_public(&ip.parse().unwrap()), "{ip}");
+        }
+    }
 
     #[test]
     fn tracker_urls_are_normalized() {

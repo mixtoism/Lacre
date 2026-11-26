@@ -5,8 +5,11 @@
 //! direcciones `/onion3/…` se difunden como cualquier otra (identify y la
 //! DHT). Encima van Noise y yamux, igual que sobre TCP.
 //!
-//! La clave del servicio onion la genera Arti y se guarda en `<datos>/tor`; no
-//! es la clave del dispositivo (ver D-008).
+//! La clave del servicio onion se deriva de la del dispositivo (BLAKE3, en
+//! un dominio propio) y vive solo en memoria: Arti usa un almacén de claves
+//! efímero, así que en `<datos>/tor` no queda ninguna clave privada (D-044).
+//! No es la clave del dispositivo, pero la misma clave da siempre la misma
+//! dirección onion.
 
 use std::fmt;
 use std::path::Path;
@@ -26,6 +29,9 @@ use libp2p::{Multiaddr, Transport};
 use safelog::DisplayRedacted;
 use tokio::sync::mpsc;
 use tor_cell::relaycell::msg::Connected;
+use tor_config::ExplicitOrAuto;
+use tor_hscrypto::pk::HsIdKeypair;
+use tor_keymgr::config::ArtiKeystoreKind;
 use tor_hsservice::{HsNickname, RunningOnionService, StreamRequest, handle_rend_requests};
 use tor_proto::stream::IncomingStreamRequest;
 use tor_rtcompat::PreferredRuntime;
@@ -48,7 +54,7 @@ impl std::error::Error for TorError {}
 enum ServiceEvent {
     /// El descriptor está publicado: ya se nos puede llamar.
     Reachable,
-    Stream(DataStream),
+    Stream(Box<DataStream>),
 }
 
 pub struct TorTransport {
@@ -65,9 +71,23 @@ pub struct TorTransport {
 impl TorTransport {
     /// Arranca el cliente Tor y el servicio onion. No espera a que estén
     /// listos: el arranque sigue en segundo plano.
-    pub fn new(data: &Path) -> Result<Self> {
+    pub fn new(data: &Path, device_secret: &[u8; 32]) -> Result<Self> {
         let dir = data.join("tor");
+        // Versiones anteriores guardaban aquí la clave onion en claro. Y el
+        // estado de los puntos de introducción apunta a claves que, con el
+        // almacén efímero, no sobreviven a un reinicio: se empieza de cero.
+        for stale in ["keystore", "hss"] {
+            let path = dir.join("state").join(stale);
+            if path.exists() {
+                std::fs::remove_dir_all(&path).with_context(|| format!("borrar {}", path.display()))?;
+            }
+        }
         let mut config = TorClientConfigBuilder::from_directories(dir.join("state"), dir.join("cache"));
+        config
+            .storage()
+            .keystore()
+            .primary()
+            .kind(ExplicitOrAuto::Explicit(ArtiKeystoreKind::Ephemeral));
         // En el móvil, menos relleno en los canales: menos radio despierta
         // (D-034). Sigue habiendo el mínimo que pide la red.
         if cfg!(target_os = "android") {
@@ -79,7 +99,7 @@ impl TorTransport {
         let nick: HsNickname = "p2message".parse().expect("apodo válido");
         let svc = OnionServiceConfigBuilder::default().nickname(nick).build().context("servicio onion")?;
         let (service, requests) = client
-            .launch_onion_service(svc)
+            .launch_onion_service_with_hsid(svc, onion_keypair(device_secret))
             .context("arranque del servicio onion")?
             .context("servicio onion desactivado")?;
         let hsid = service.onion_address().context("servicio onion sin dirección")?;
@@ -115,7 +135,7 @@ impl TorTransport {
                 let tx = tx.clone();
                 tokio::spawn(async move {
                     if let Some(s) = accept(req).await {
-                        let _ = tx.send(ServiceEvent::Stream(s)).await;
+                        let _ = tx.send(ServiceEvent::Stream(Box::new(s))).await;
                     }
                 });
             }
@@ -208,6 +228,13 @@ async fn accept(req: StreamRequest) -> Option<DataStream> {
     }
 }
 
+/// Clave del servicio onion derivada de la del dispositivo (D-044).
+fn onion_keypair(device_secret: &[u8; 32]) -> HsIdKeypair {
+    let seed = zeroize::Zeroizing::new(blake3::derive_key("p2message/onion-id/v1", device_secret));
+    let kp = tor_llcrypto::pk::ed25519::Keypair::from_bytes(&seed);
+    HsIdKeypair::from(tor_llcrypto::pk::ed25519::ExpandedKeypair::from(&kp))
+}
+
 /// `xxxx.onion` → `/onion3/xxxx:ONION_PORT`.
 fn onion_multiaddr(host: &str) -> Result<Multiaddr> {
     let b32 = host.trim_end_matches(".onion").to_ascii_uppercase();
@@ -273,7 +300,7 @@ impl Transport for TorTransport {
                 Poll::Ready(Some(ServiceEvent::Stream(s))) => {
                     return Poll::Ready(TransportEvent::Incoming {
                         listener_id,
-                        upgrade: ready(Ok(s)),
+                        upgrade: ready(Ok(*s)),
                         local_addr: self.addr.clone(),
                         // Tor no revela quién llama.
                         send_back_addr: Multiaddr::empty(),
@@ -293,6 +320,16 @@ impl Transport for TorTransport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn onion_key_is_stable_and_not_the_device_key() {
+        use tor_hscrypto::pk::HsIdKey;
+        let id = |s: &[u8; 32]| HsIdKey::from(&onion_keypair(s)).id();
+        assert_eq!(id(&[1; 32]), id(&[1; 32]));
+        assert_ne!(id(&[1; 32]), id(&[2; 32]));
+        let device = tor_llcrypto::pk::ed25519::Keypair::from_bytes(&[1; 32]);
+        assert_ne!(id(&[1; 32]).as_ref(), device.verifying_key().as_bytes());
+    }
 
     #[test]
     fn onion_addresses_round_trip() {

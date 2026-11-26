@@ -635,7 +635,7 @@ class _Line extends StatelessWidget {
         children: [
           if (avatar) ...[
             first
-                ? Avatar(name: handle, path: store.avatar(handle), radius: 14)
+                ? Avatar(name: handle, image: store.avatar(handle), radius: 14)
                 : const SizedBox(width: 28),
             const SizedBox(width: 6),
           ],
@@ -793,7 +793,7 @@ class _StickerBubble extends StatelessWidget {
         children: [
           Semantics(
             label: context.l.sticker,
-            child: StickerImage(path: message.sticker!.path, size: 160),
+            child: StickerImage(id: message.sticker!.id, size: 160),
           ),
           Text(hhmm(message.sentAt), style: theme.textTheme.labelSmall),
         ],
@@ -819,21 +819,25 @@ class _FileBubble extends StatelessWidget {
   Future<void> _download(BuildContext context, String id) =>
       guard(context, () => store.download(id));
 
-  Future<void> _open(BuildContext context, String path) =>
-      guard(context, () => openExternal(path));
+  /// El archivo va cifrado en disco: el núcleo descifra una copia temporal
+  /// (se borra al cerrar la app) y se abre esa.
+  Future<void> _open(BuildContext context, String id) => guard(
+    context,
+    () async => openExternal(await lacre.openFile(id: id)),
+  );
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final file = message.file!;
-    final path = file.path ?? store.downloaded[file.id];
+    final ready = file.downloaded || store.downloaded.contains(file.id);
     final progress = store.downloads[file.id];
     final Widget action;
-    if (path != null) {
+    if (ready) {
       action = IconButton(
         tooltip: context.l.open,
         icon: const Icon(Icons.open_in_new),
-        onPressed: () => _open(context, path),
+        onPressed: () => _open(context, file.id),
       );
     } else if (progress != null) {
       action = SizedBox.square(

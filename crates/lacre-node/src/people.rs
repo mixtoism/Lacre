@@ -11,7 +11,7 @@ use anyhow::{Context, Result, bail};
 use lacre_core::{cbor_from, cbor_to};
 use serde::{Deserialize, Serialize};
 
-use crate::app::{read_private, write_plain, write_private};
+use crate::app::{read_private, write_private};
 use crate::sticker::{dimensions, image_ext};
 
 /// Tamaño máximo de una foto de perfil. La app la reduce antes de enviarla.
@@ -154,7 +154,11 @@ impl Avatars {
     /// Versión y bytes de la foto (`None`: sin foto).
     pub fn read(&self, suffix: &str) -> Result<(u64, Option<Vec<u8>>)> {
         let version = self.version(suffix);
-        Ok((version, self.path(suffix).map(fs::read).transpose()?))
+        let bytes = match self.path(suffix) {
+            Some(p) => read_private(&p)?,
+            None => None,
+        };
+        Ok((version, bytes))
     }
 
     /// Anota una versión anunciada. Devuelve si hay que pedirla.
@@ -183,7 +187,7 @@ impl Avatars {
         let file = match image {
             Some(b) => {
                 let name = format!("{suffix}-{version}.{}", check_avatar(b)?);
-                write_plain(&self.dir.join(&name), b)?;
+                write_private(&self.dir.join(&name), b)?;
                 Some(name)
             }
             None => None,

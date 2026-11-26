@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Archivos de los chats (D-026), para abrirlos con otra app. -->
+<!-- Copias descifradas de los archivos de los chats (D-026, D-039), para
+     abrirlos con otra app. Los originales van cifrados en node/files/. -->
 <paths>
-    <files-path name="archivos" path="node/files/" />
+    <files-path name="abiertos" path="node/abiertos/" />
 </paths>

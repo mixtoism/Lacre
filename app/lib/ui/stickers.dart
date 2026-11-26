@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -141,7 +140,7 @@ class _StickerGridState extends State<StickerGrid> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.l.removeStickerTitle),
-        content: Image.file(File(s.path), height: 120, cacheHeight: 240),
+        content: StickerImage(id: s.id, size: 120),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -202,7 +201,7 @@ class _StickerGridState extends State<StickerGrid> {
             onSecondaryTap: () => _remove(s),
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: StickerImage(path: s.path, size: 88),
+              child: StickerImage(id: s.id, size: 88),
             ),
           ),
         );
@@ -214,16 +213,20 @@ class _StickerGridState extends State<StickerGrid> {
 /// Imagen de un sticker. Se decodifica a tamaño reducido; las dimensiones
 /// ya las ha limitado el núcleo (`sticker::check`).
 class StickerImage extends StatelessWidget {
-  const StickerImage({super.key, required this.path, required this.size});
+  const StickerImage({super.key, required this.id, required this.size});
 
-  final String path;
+  final String id;
   final double size;
 
   @override
   Widget build(BuildContext context) {
     final px = (size * MediaQuery.devicePixelRatioOf(context)).round();
-    return Image.file(
-      File(path),
+    final bytes = stickerOf(id);
+    if (bytes == null) {
+      return Icon(Icons.broken_image_outlined, size: size / 2);
+    }
+    return Image.memory(
+      bytes,
       width: size,
       height: size,
       fit: BoxFit.contain,

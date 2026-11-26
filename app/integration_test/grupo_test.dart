@@ -398,7 +398,7 @@ void main() {
           .lastWhere((m) => m.from.startsWith('movil#') && m.sticker != null)
           .sticker!;
       final imagen = find.byWidgetPredicate(
-        (w) => w is StickerImage && w.path == suyo.path,
+        (w) => w is StickerImage && w.id == suyo.id,
       );
       await waitFor(imagen);
       await tester.longPress(imagen);
@@ -438,8 +438,9 @@ void main() {
           .messages(index: 0)
           .lastWhere((m) => m.file != null)
           .file!;
-      expect(adjunto.path, isNotNull);
-      expect(File(adjunto.path!).readAsBytesSync(), contenido);
+      expect(adjunto.downloaded, isTrue);
+      final abierto = await esperar(lacre.openFile(id: adjunto.id));
+      expect(File(abierto).readAsBytesSync(), contenido);
       marca('archivo descargado');
     }
 
@@ -450,7 +451,7 @@ void main() {
         .where((h) => h != store.profile!.handle)
         .toList();
     for (final h in otros) {
-      await hasta(() => lacre.avatarPath(handle: h) != null);
+      await hasta(() => lacre.avatarBytes(handle: h) != null);
       marca('foto de ${h.split('#').first}');
     }
     await tester.pump(const Duration(seconds: 1));

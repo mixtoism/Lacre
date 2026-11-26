@@ -15,14 +15,23 @@
 use chacha20poly1305::aead::{Aead, KeyInit};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use curve25519_dalek::montgomery::MontgomeryPoint;
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
 use crate::{Error, cbor_from, cbor_to};
 
-const SIGN_DOMAIN: &[u8] = b"p2message/envelope/v2\0";
-const KDF_CONTEXT: &str = "p2message/envelope/v2 seal";
+const SIGN_DOMAIN: &[u8] = b"p2message/envelope/v3\0";
+const KDF_CONTEXT: &str = "p2message/envelope/v3 seal";
+/// Antigüedad máxima de un sobre (D-042): los buzones los guardan 14 días;
+/// uno más viejo es una repetición.
+pub const MAX_AGE: u64 = 15 * 24 * 3600;
+/// Adelanto de reloj tolerado al remitente.
+pub const MAX_SKEW: u64 = 24 * 3600;
+
+fn now() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
 /// Clave efímera + etiqueta de Poly1305.
 const MIN_SEALED: usize = 32 + 16;
 
@@ -39,14 +48,16 @@ pub struct Envelope {
 #[derive(Serialize, Deserialize)]
 struct Inner {
     from: [u8; 32],
+    /// Cuándo se selló (segundos Unix), firmado con el resto (D-042).
+    sent: u64,
     #[serde(with = "serde_bytes")]
     sig: Vec<u8>,
     #[serde(with = "serde_bytes")]
     payload: Vec<u8>,
 }
 
-fn signed_bytes(to: &[u8; 32], eph: &[u8], payload: &[u8]) -> Vec<u8> {
-    [SIGN_DOMAIN, to, eph, payload].concat()
+fn signed_bytes(to: &[u8; 32], eph: &[u8], sent: u64, payload: &[u8]) -> Vec<u8> {
+    [SIGN_DOMAIN, to, eph, &sent.to_be_bytes(), payload].concat()
 }
 
 fn derive_key(eph: &MontgomeryPoint, recipient: &MontgomeryPoint, shared: &MontgomeryPoint) -> Result<Key, Error> {
@@ -61,6 +72,10 @@ fn derive_key(eph: &MontgomeryPoint, recipient: &MontgomeryPoint, shared: &Montg
 impl Envelope {
     /// Sella `plaintext` para el dispositivo `to`, firmado por `sender`.
     pub fn seal(sender: &SigningKey, to: &[u8; 32], plaintext: &[u8]) -> Result<Self, Error> {
+        Self::seal_at(sender, to, plaintext, now())
+    }
+
+    fn seal_at(sender: &SigningKey, to: &[u8; 32], plaintext: &[u8], sent: u64) -> Result<Self, Error> {
         let recipient = VerifyingKey::from_bytes(to).map_err(|_| Error::InvalidKey)?.to_montgomery();
         let mut eph_secret = [0u8; 32];
         rand::rngs::OsRng.fill_bytes(&mut eph_secret);
@@ -68,7 +83,8 @@ impl Envelope {
         let key = derive_key(&eph, &recipient, &recipient.mul_clamped(eph_secret))?;
         let inner = Inner {
             from: sender.verifying_key().to_bytes(),
-            sig: sender.sign(&signed_bytes(to, eph.as_bytes(), plaintext)).to_bytes().to_vec(),
+            sent,
+            sig: sender.sign(&signed_bytes(to, eph.as_bytes(), sent, plaintext)).to_bytes().to_vec(),
             payload: plaintext.to_vec(),
         };
         // La clave es única por sobre (clave efímera nueva): el nonce puede ser fijo.
@@ -90,7 +106,20 @@ impl Envelope {
 
     /// Descifra con la clave del dispositivo destinatario y verifica la
     /// firma interior. Devuelve el remitente y el contenido.
+    ///
+    /// Rechaza sobres sellados hace más de [`MAX_AGE`] o con fecha futura
+    /// (más allá de [`MAX_SKEW`]): una repetición antigua no se acepta
+    /// aunque ya no esté entre los identificadores vistos.
     pub fn open(&self, recipient: &SigningKey) -> Result<([u8; 32], Vec<u8>), Error> {
+        self.open_dated(recipient).map(|(from, _, payload)| (from, payload))
+    }
+
+    /// Como [`Envelope::open`], pero también devuelve cuándo se selló.
+    pub fn open_dated(&self, recipient: &SigningKey) -> Result<([u8; 32], u64, Vec<u8>), Error> {
+        self.open_at(recipient, now())
+    }
+
+    fn open_at(&self, recipient: &SigningKey, now: u64) -> Result<([u8; 32], u64, Vec<u8>), Error> {
         if self.to != recipient.verifying_key().to_bytes() {
             return Err(Error::Codec("el sobre es para otro dispositivo".into()));
         }
@@ -104,10 +133,16 @@ impl Envelope {
             .map_err(|_| Error::Codec("no se pudo descifrar el sobre".into()))?;
         let inner: Inner = cbor_from(&inner)?;
         let from = VerifyingKey::from_bytes(&inner.from).map_err(|_| Error::InvalidKey)?;
+        if from.is_weak() {
+            return Err(Error::InvalidKey);
+        }
         let sig = Signature::from_slice(&inner.sig).map_err(|_| Error::BadSignature)?;
-        from.verify(&signed_bytes(&self.to, eph.as_bytes(), &inner.payload), &sig)
+        from.verify_strict(&signed_bytes(&self.to, eph.as_bytes(), inner.sent, &inner.payload), &sig)
             .map_err(|_| Error::BadSignature)?;
-        Ok((inner.from, inner.payload))
+        if inner.sent.saturating_add(MAX_AGE) < now || inner.sent > now.saturating_add(MAX_SKEW) {
+            return Err(Error::Codec("sobre caducado o con fecha futura".into()));
+        }
+        Ok((inner.from, inner.sent, inner.payload))
     }
 
     /// Identificador estable, para confirmar entregas y descartar duplicados.
@@ -168,11 +203,24 @@ mod tests {
         let key = derive_key(&eph, &recipient, &recipient.mul_clamped(eph_secret)).unwrap();
         let inner = Inner {
             from: alice.verifying_key().to_bytes(),
-            sig: mallory.sign(&signed_bytes(&to, eph.as_bytes(), b"hola")).to_bytes().to_vec(),
+            sent: now(),
+            sig: mallory.sign(&signed_bytes(&to, eph.as_bytes(), now(), b"hola")).to_bytes().to_vec(),
             payload: b"hola".to_vec(),
         };
         let ct = ChaCha20Poly1305::new(&key).encrypt(&Nonce::default(), cbor_to(&inner).unwrap().as_slice()).unwrap();
         let env = Envelope { to, sealed: [eph.as_bytes().as_slice(), &ct].concat() };
         assert!(matches!(env.open(&bob), Err(Error::BadSignature)));
+    }
+
+    #[test]
+    fn stale_or_future_envelopes_are_rejected() {
+        let (alice, bob) = (generate_key(), generate_key());
+        let to = bob.verifying_key().to_bytes();
+        let t = 1_800_000_000;
+        let env = Envelope::seal_at(&alice, &to, b"hola", t).unwrap();
+        assert!(env.open_at(&bob, t + MAX_AGE).is_ok());
+        assert!(env.open_at(&bob, t + MAX_AGE + 1).is_err());
+        assert!(env.open_at(&bob, t - MAX_SKEW).is_ok());
+        assert!(env.open_at(&bob, t - MAX_SKEW - 1).is_err());
     }
 }

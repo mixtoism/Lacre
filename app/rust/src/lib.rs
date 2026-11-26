@@ -4,3 +4,7 @@ mod frb_generated;
 mod android;
 #[cfg(target_os = "linux")]
 mod keystore;
+#[cfg(target_os = "macos")]
+mod keystore_macos;
+#[cfg(windows)]
+mod keystore_windows;

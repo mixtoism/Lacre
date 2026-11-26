@@ -78,7 +78,7 @@ sleep 2
 say a "init pcana"; say b "init pcbea"
 wait_for a "identidad creada"; wait_for b "identidad creada"
 wait_for c "link "
-LINK_C=$(last c 'link [a-z2-7]*' | awk '{print $2}')
+LINK_C=$(last c 'link [a-z2-7:]*' | awk '{print $2}')
 qr_of() { # nodo: espera a que su código lleve la dirección onion
   local end=$((SECONDS + 300))
   while :; do

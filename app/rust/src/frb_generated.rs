@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1583078365;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1344581230;
 
 // Section: executor
 
@@ -153,14 +153,14 @@ fn wire__crate__api__lacre__add_sticker_impl(
         },
     )
 }
-fn wire__crate__api__lacre__avatar_path_impl(
+fn wire__crate__api__lacre__avatar_bytes_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "avatar_path",
+            debug_name: "avatar_bytes",
             port: None,
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
         },
@@ -178,7 +178,7 @@ fn wire__crate__api__lacre__avatar_path_impl(
             deserializer.end();
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
-                    let output_ok = crate::api::lacre::avatar_path(api_handle)?;
+                    let output_ok = crate::api::lacre::avatar_bytes(api_handle)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
@@ -553,6 +553,37 @@ fn wire__crate__api__lacre__event_stream_impl(
         },
     )
 }
+fn wire__crate__api__lacre__forget_opened_files_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "forget_opened_files",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::lacre::forget_opened_files()?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__lacre__init_app_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -916,6 +947,42 @@ fn wire__crate__api__lacre__messages_impl(
         },
     )
 }
+fn wire__crate__api__lacre__open_file_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "open_file",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                    (move || async move {
+                        let output_ok = crate::api::lacre::open_file(api_id).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__lacre__profile_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1046,6 +1113,38 @@ fn wire__crate__api__lacre__remove_sticker_impl(
             transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                 (move || {
                     let output_ok = crate::api::lacre::remove_sticker(api_id)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
+fn wire__crate__api__lacre__safety_number_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "safety_number",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_handle = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::lacre::safety_number(api_handle)?;
                     std::result::Result::Ok(output_ok)
                 })(),
             )
@@ -1338,6 +1437,38 @@ fn wire__crate__api__lacre__status_impl(
         },
     )
 }
+fn wire__crate__api__lacre__sticker_bytes_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "sticker_bytes",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+                (move || {
+                    let output_ok = crate::api::lacre::sticker_bytes(api_id)?;
+                    std::result::Result::Ok(output_ok)
+                })(),
+            )
+        },
+    )
+}
 fn wire__crate__api__lacre__stickers_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -1483,7 +1614,7 @@ impl SseDecode for crate::api::lacre::ChatInfo {
         let mut var_last = <Option<crate::api::lacre::Message>>::sse_decode(deserializer);
         let mut var_request = <bool>::sse_decode(deserializer);
         let mut var_peer = <Option<String>>::sse_decode(deserializer);
-        let mut var_avatar = <Option<String>>::sse_decode(deserializer);
+        let mut var_avatar = <bool>::sse_decode(deserializer);
         return crate::api::lacre::ChatInfo {
             index: var_index,
             name: var_name,
@@ -1531,12 +1662,12 @@ impl SseDecode for crate::api::lacre::FileAttachment {
         let mut var_id = <String>::sse_decode(deserializer);
         let mut var_name = <String>::sse_decode(deserializer);
         let mut var_size = <u64>::sse_decode(deserializer);
-        let mut var_path = <Option<String>>::sse_decode(deserializer);
+        let mut var_downloaded = <bool>::sse_decode(deserializer);
         return crate::api::lacre::FileAttachment {
             id: var_id,
             name: var_name,
             size: var_size,
-            path: var_path,
+            downloaded: var_downloaded,
         };
     }
 }
@@ -1805,11 +1936,7 @@ impl SseDecode for crate::api::lacre::Sticker {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_id = <String>::sse_decode(deserializer);
-        let mut var_path = <String>::sse_decode(deserializer);
-        return crate::api::lacre::Sticker {
-            id: var_id,
-            path: var_path,
-        };
+        return crate::api::lacre::Sticker { id: var_id };
     }
 }
 
@@ -1934,20 +2061,21 @@ fn pde_ffi_dispatcher_primary_impl(
         11 => wire__crate__api__lacre__create_identity_impl(port, ptr, rust_vec_len, data_len),
         14 => wire__crate__api__lacre__download_file_impl(port, ptr, rust_vec_len, data_len),
         15 => wire__crate__api__lacre__event_stream_impl(port, ptr, rust_vec_len, data_len),
-        16 => wire__crate__api__lacre__init_app_impl(port, ptr, rust_vec_len, data_len),
-        17 => wire__crate__api__lacre__invite_device_impl(port, ptr, rust_vec_len, data_len),
-        20 => wire__crate__api__lacre__join_identity_impl(port, ptr, rust_vec_len, data_len),
-        22 => wire__crate__api__lacre__link_code_impl(port, ptr, rust_vec_len, data_len),
-        23 => wire__crate__api__lacre__link_device_impl(port, ptr, rust_vec_len, data_len),
-        28 => wire__crate__api__lacre__qr_payload_impl(port, ptr, rust_vec_len, data_len),
-        29 => wire__crate__api__lacre__remove_member_impl(port, ptr, rust_vec_len, data_len),
-        32 => wire__crate__api__lacre__send_impl(port, ptr, rust_vec_len, data_len),
-        33 => wire__crate__api__lacre__send_file_impl(port, ptr, rust_vec_len, data_len),
-        34 => wire__crate__api__lacre__send_sticker_impl(port, ptr, rust_vec_len, data_len),
-        35 => wire__crate__api__lacre__set_avatar_impl(port, ptr, rust_vec_len, data_len),
-        37 => wire__crate__api__lacre__start_impl(port, ptr, rust_vec_len, data_len),
-        38 => wire__crate__api__lacre__status_impl(port, ptr, rust_vec_len, data_len),
-        41 => wire__crate__api__lacre__unlink_device_impl(port, ptr, rust_vec_len, data_len),
+        17 => wire__crate__api__lacre__init_app_impl(port, ptr, rust_vec_len, data_len),
+        18 => wire__crate__api__lacre__invite_device_impl(port, ptr, rust_vec_len, data_len),
+        21 => wire__crate__api__lacre__join_identity_impl(port, ptr, rust_vec_len, data_len),
+        23 => wire__crate__api__lacre__link_code_impl(port, ptr, rust_vec_len, data_len),
+        24 => wire__crate__api__lacre__link_device_impl(port, ptr, rust_vec_len, data_len),
+        28 => wire__crate__api__lacre__open_file_impl(port, ptr, rust_vec_len, data_len),
+        30 => wire__crate__api__lacre__qr_payload_impl(port, ptr, rust_vec_len, data_len),
+        31 => wire__crate__api__lacre__remove_member_impl(port, ptr, rust_vec_len, data_len),
+        35 => wire__crate__api__lacre__send_impl(port, ptr, rust_vec_len, data_len),
+        36 => wire__crate__api__lacre__send_file_impl(port, ptr, rust_vec_len, data_len),
+        37 => wire__crate__api__lacre__send_sticker_impl(port, ptr, rust_vec_len, data_len),
+        38 => wire__crate__api__lacre__set_avatar_impl(port, ptr, rust_vec_len, data_len),
+        40 => wire__crate__api__lacre__start_impl(port, ptr, rust_vec_len, data_len),
+        41 => wire__crate__api__lacre__status_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__lacre__unlink_device_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1961,7 +2089,7 @@ fn pde_ffi_dispatcher_sync_impl(
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
         3 => wire__crate__api__lacre__add_sticker_impl(ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__lacre__avatar_path_impl(ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__lacre__avatar_bytes_impl(ptr, rust_vec_len, data_len),
         5 => wire__crate__api__lacre__block_impl(ptr, rust_vec_len, data_len),
         6 => wire__crate__api__lacre__blocked_impl(ptr, rust_vec_len, data_len),
         7 => wire__crate__api__lacre__cancel_invite_impl(ptr, rust_vec_len, data_len),
@@ -1969,18 +2097,21 @@ fn pde_ffi_dispatcher_sync_impl(
         9 => wire__crate__api__lacre__chats_impl(ptr, rust_vec_len, data_len),
         12 => wire__crate__api__lacre__delete_chat_impl(ptr, rust_vec_len, data_len),
         13 => wire__crate__api__lacre__devices_impl(ptr, rust_vec_len, data_len),
-        18 => wire__crate__api__lacre__is_blocked_impl(ptr, rust_vec_len, data_len),
-        19 => wire__crate__api__lacre__is_invite_impl(ptr, rust_vec_len, data_len),
-        21 => wire__crate__api__lacre__keep_sticker_impl(ptr, rust_vec_len, data_len),
-        24 => wire__crate__api__lacre__max_file_bytes_impl(ptr, rust_vec_len, data_len),
-        25 => wire__crate__api__lacre__max_sticker_bytes_impl(ptr, rust_vec_len, data_len),
-        26 => wire__crate__api__lacre__messages_impl(ptr, rust_vec_len, data_len),
-        27 => wire__crate__api__lacre__profile_impl(ptr, rust_vec_len, data_len),
-        30 => wire__crate__api__lacre__remove_sticker_impl(ptr, rust_vec_len, data_len),
-        31 => wire__crate__api__lacre__search_impl(ptr, rust_vec_len, data_len),
-        36 => wire__crate__api__lacre__set_power_impl(ptr, rust_vec_len, data_len),
-        39 => wire__crate__api__lacre__stickers_impl(ptr, rust_vec_len, data_len),
-        40 => wire__crate__api__lacre__unblock_impl(ptr, rust_vec_len, data_len),
+        16 => wire__crate__api__lacre__forget_opened_files_impl(ptr, rust_vec_len, data_len),
+        19 => wire__crate__api__lacre__is_blocked_impl(ptr, rust_vec_len, data_len),
+        20 => wire__crate__api__lacre__is_invite_impl(ptr, rust_vec_len, data_len),
+        22 => wire__crate__api__lacre__keep_sticker_impl(ptr, rust_vec_len, data_len),
+        25 => wire__crate__api__lacre__max_file_bytes_impl(ptr, rust_vec_len, data_len),
+        26 => wire__crate__api__lacre__max_sticker_bytes_impl(ptr, rust_vec_len, data_len),
+        27 => wire__crate__api__lacre__messages_impl(ptr, rust_vec_len, data_len),
+        29 => wire__crate__api__lacre__profile_impl(ptr, rust_vec_len, data_len),
+        32 => wire__crate__api__lacre__remove_sticker_impl(ptr, rust_vec_len, data_len),
+        33 => wire__crate__api__lacre__safety_number_impl(ptr, rust_vec_len, data_len),
+        34 => wire__crate__api__lacre__search_impl(ptr, rust_vec_len, data_len),
+        39 => wire__crate__api__lacre__set_power_impl(ptr, rust_vec_len, data_len),
+        42 => wire__crate__api__lacre__sticker_bytes_impl(ptr, rust_vec_len, data_len),
+        43 => wire__crate__api__lacre__stickers_impl(ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__lacre__unblock_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2057,7 +2188,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::lacre::FileAttachment {
             self.id.into_into_dart().into_dart(),
             self.name.into_into_dart().into_dart(),
             self.size.into_into_dart().into_dart(),
-            self.path.into_into_dart().into_dart(),
+            self.downloaded.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2190,11 +2321,7 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Status> for crate::api
 // Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::lacre::Sticker {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.id.into_into_dart().into_dart(),
-            self.path.into_into_dart().into_dart(),
-        ]
-        .into_dart()
+        [self.id.into_into_dart().into_dart()].into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::lacre::Sticker {}
@@ -2311,7 +2438,7 @@ impl SseEncode for crate::api::lacre::ChatInfo {
         <Option<crate::api::lacre::Message>>::sse_encode(self.last, serializer);
         <bool>::sse_encode(self.request, serializer);
         <Option<String>>::sse_encode(self.peer, serializer);
-        <Option<String>>::sse_encode(self.avatar, serializer);
+        <bool>::sse_encode(self.avatar, serializer);
     }
 }
 
@@ -2339,7 +2466,7 @@ impl SseEncode for crate::api::lacre::FileAttachment {
         <String>::sse_encode(self.id, serializer);
         <String>::sse_encode(self.name, serializer);
         <u64>::sse_encode(self.size, serializer);
-        <Option<String>>::sse_encode(self.path, serializer);
+        <bool>::sse_encode(self.downloaded, serializer);
     }
 }
 
@@ -2556,7 +2683,6 @@ impl SseEncode for crate::api::lacre::Sticker {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.id, serializer);
-        <String>::sse_encode(self.path, serializer);
     }
 }
 

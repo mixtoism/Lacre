@@ -14,8 +14,8 @@ DECISIONES.md.
 2. **Cifrado en disco** (D-012, D-022): historial, estado MLS, claves y
    demás estado en claro en el disco. Cifrarlo con una clave guardada en el
    almacén del sistema (Keystore en Android, Secret Service en Linux).
-   → **Hecho (D-033)**, salvo fotos, stickers, archivos y Tor (punto 8)
-   y macOS/Windows/iOS.
+   → **Hecho (D-033, D-042)**: llavero también en macOS (Llavero) y
+   Windows (DPAPI); sin clave la app no arranca. Falta Tor (punto 8) e iOS.
 3. **Frase de recuperación** (D-004): 24 palabras para la clave raíz. Sin
    ella, si se pierde el dispositivo primario no se pueden vincular
    dispositivos nuevos. También: transferir el rol de primario.
@@ -26,14 +26,23 @@ DECISIONES.md.
 ## Seguridad
 
 5. **Vinculación segura** (D-011): QR bidireccional con secreto de un solo
-   uso y confirmación visual en los dos dispositivos.
+   uso y confirmación visual en los dos dispositivos. → **Secreto de un solo
+   uso hecho (D-039).** Queda la confirmación visual.
 6. **Historial al vincular** (D-011): un dispositivo nuevo solo ve los
    mensajes posteriores a su entrada.
 7. **Límite de escrituras en la DHT** (D-005): validar un registro cuesta un
-   Argon2; limitar la tasa por peer. Probar en redes grandes.
-8. **Fotos, stickers y archivos cifrados en disco** (D-033): quedan en claro
-   porque la interfaz los abre directamente. También el estado de Tor
-   (claves del servicio onion).
+   Argon2; limitar la tasa por peer. → **Hecho (D-042).** Queda probar en
+   redes grandes y frente a Sybil.
+8. **Fotos, stickers y archivos cifrados en disco** (D-033): → **Hecho**
+   (las copias para abrir con otra app van a `abiertos/` y se borran). La
+   clave onion ya no se guarda en disco (D-044). Queda proteger contra la
+   vuelta a una versión anterior de un archivo (D-042).
+8b. **Auditoría externa** (D-042): del protocolo y del código, antes de
+   recomendar Lacre para uso real. Hechos: `cargo audit` en CI, pruebas de
+   robustez y fuzzing guiado por cobertura de los decodificadores (también
+   en CI), fecha firmada en los sobres (D-042) y número de seguridad
+   (D-043). Quedan la auditoría en sí, fuzzing continuo y marcar contactos
+   verificados.
 
 ## Red
 

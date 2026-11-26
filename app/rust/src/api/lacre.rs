@@ -95,25 +95,25 @@ pub struct Message {
 
 impl From<StoredMessage> for Message {
     fn from(m: StoredMessage) -> Self {
-        let sticker = m.sticker.and_then(|id| sticker(id).ok());
+        let sticker = m.sticker.map(|id| Sticker { id });
         let file = m.file.map(|f| {
-            let path = app().ok().and_then(|a| a.file_path(&f.id).ok().flatten());
-            FileAttachment { path: path.map(|p| p.to_string_lossy().into_owned()), id: f.id, name: f.name, size: f.size }
+            let downloaded = app().is_ok_and(|a| a.file_ready(&f.id));
+            FileAttachment { downloaded, id: f.id, name: f.name, size: f.size }
         });
         Self { from: m.from, text: m.text, sent_at: m.sent_at as i64, mine: m.mine, notice: m.notice, sticker, file }
     }
 }
 
-/// Sticker guardado en el dispositivo.
+/// Sticker guardado en el dispositivo. La imagen (PNG, GIF, WebP o JPEG)
+/// va cifrada en disco: se pide con [`sticker_bytes`].
 pub struct Sticker {
     pub id: String,
-    /// Archivo de la imagen (PNG, GIF, WebP o JPEG).
-    pub path: String,
 }
 
-fn sticker(id: String) -> Result<Sticker> {
-    let path = app()?.sticker_path(&id)?.to_string_lossy().into_owned();
-    Ok(Sticker { id, path })
+/// Imagen de un sticker, descifrada.
+#[frb(sync)]
+pub fn sticker_bytes(id: String) -> Result<Vec<u8>> {
+    app()?.sticker_bytes(&id)
 }
 
 /// Archivo enviado o recibido en un chat.
@@ -121,8 +121,9 @@ pub struct FileAttachment {
     pub id: String,
     pub name: String,
     pub size: u64,
-    /// Dónde está en este dispositivo, si ya se descargó.
-    pub path: Option<String>,
+    /// Ya está entero en este dispositivo (cifrado: para abrirlo,
+    /// [`open_file`]).
+    pub downloaded: bool,
 }
 
 pub struct ChatMembers {
@@ -145,8 +146,9 @@ pub struct ChatInfo {
     pub request: bool,
     /// La otra persona, si es un chat 1:1.
     pub peer: Option<String>,
-    /// Foto de la otra persona (solo en chats aceptados).
-    pub avatar: Option<String>,
+    /// Hay foto de la otra persona (solo en chats aceptados); se pide con
+    /// [`avatar_bytes`].
+    pub avatar: bool,
 }
 
 /// Mensaje encontrado por `search`.
@@ -248,20 +250,36 @@ pub fn start(data_dir: String, lan_only: bool, data_key: Option<Vec<u8>>) -> Res
     profile()
 }
 
-/// Clave del llavero del sistema. Si no hay llavero y el estado aún no está
-/// cifrado, se sigue sin cifrar (el perfil lo indica).
+/// Clave de datos del escritorio (D-033, D-042): Secret Service en Linux,
+/// Llavero en macOS y DPAPI en Windows. Si no se puede obtener, la app no
+/// arranca: nunca se guarda el estado sin cifrar (como alternativa queda
+/// `LACRE_DATA_KEY`).
+#[allow(unreachable_code)]
 fn desktop_key(data: &Path) -> Result<Option<[u8; 32]>> {
-    #[cfg(target_os = "linux")]
-    {
-        let sealed = lacre_node::app::has_sealed_state(data);
-        match RT.block_on(crate::keystore::load_or_create(data, !sealed)) {
-            Ok(k) => return Ok(Some(k)),
-            Err(e) if sealed => return Err(e.context("no se pudo obtener la clave de datos")),
-            Err(e) => tracing::warn!("estado sin cifrar: {e:#}"),
+    let create = !lacre_node::app::has_sealed_state(data);
+    let found: Result<[u8; 32]> = {
+        #[cfg(target_os = "linux")]
+        {
+            RT.block_on(crate::keystore::load_or_create(data, create))
         }
-    }
-    let _ = data;
-    Ok(None)
+        #[cfg(target_os = "macos")]
+        {
+            crate::keystore_macos::load_or_create(data, create)
+        }
+        #[cfg(windows)]
+        {
+            crate::keystore_windows::load_or_create(data, create)
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+        {
+            let _ = create;
+            Err(anyhow::anyhow!("plataforma sin almacén de claves"))
+        }
+    };
+    let key = found.context(
+        "no se pudo obtener la clave de datos del llavero del sistema; desbloquéalo o define LACRE_DATA_KEY",
+    )?;
+    Ok(Some(key))
 }
 
 /// Reenvía los avisos del nodo al suscriptor que haya en cada momento.
@@ -424,7 +442,7 @@ pub fn chats() -> Result<Vec<ChatInfo>> {
             last: c.last.map(Into::into),
             request: c.request,
             peer: c.peer,
-            avatar: c.avatar.map(|p| p.to_string_lossy().into_owned()),
+            avatar: c.avatar,
         })
         .collect())
 }
@@ -480,13 +498,13 @@ pub fn max_sticker_bytes() -> u32 {
 /// Colección propia de stickers, del más reciente al más antiguo.
 #[frb(sync)]
 pub fn stickers() -> Result<Vec<Sticker>> {
-    app()?.stickers().into_iter().map(sticker).collect()
+    Ok(app()?.stickers().into_iter().map(|id| Sticker { id }).collect())
 }
 
 /// Añade una imagen a la colección.
 #[frb(sync)]
 pub fn add_sticker(bytes: Vec<u8>) -> Result<Sticker> {
-    sticker(app()?.add_sticker(&bytes)?)
+    Ok(Sticker { id: app()?.add_sticker(&bytes)? })
 }
 
 /// Añade a la colección un sticker recibido.
@@ -526,11 +544,31 @@ pub async fn send_file(index: u32, path: String) -> Result<SendResult> {
     .await
 }
 
-/// Descarga un archivo recibido y devuelve dónde quedó. El progreso llega
-/// como [`UiEvent::FileProgress`].
-pub async fn download_file(id: String) -> Result<String> {
+/// Descarga un archivo recibido (queda cifrado en disco). El progreso
+/// llega como [`UiEvent::FileProgress`].
+pub async fn download_file(id: String) -> Result<()> {
     let app = app()?;
-    on_rt(async move { Ok(app.download(&id).await?.to_string_lossy().into_owned()) }).await
+    on_rt(async move { app.download(&id).await }).await
+}
+
+/// Descifra un archivo descargado para abrirlo con otra aplicación y
+/// devuelve la ruta de la copia. Las copias se borran con
+/// [`forget_opened_files`] y al arrancar o parar el nodo.
+pub async fn open_file(id: String) -> Result<String> {
+    let app = app()?;
+    on_rt(async move {
+        let a = app.clone();
+        let path = tokio::task::spawn_blocking(move || a.open_file(&id)).await??;
+        Ok(path.to_string_lossy().into_owned())
+    })
+    .await
+}
+
+/// Borra las copias descifradas de los archivos abiertos.
+#[frb(sync)]
+pub fn forget_opened_files() -> Result<()> {
+    app()?.forget_opened();
+    Ok(())
 }
 
 pub async fn send(index: u32, text: String) -> Result<SendResult> {
@@ -585,10 +623,16 @@ pub fn is_blocked(handle: String) -> Result<bool> {
     Ok(app()?.is_blocked(&handle))
 }
 
-/// Foto de perfil de una persona (o la nuestra), si la tenemos.
+/// Número de seguridad con una persona (D-043): 12 grupos de 5 cifras.
 #[frb(sync)]
-pub fn avatar_path(handle: String) -> Result<Option<String>> {
-    Ok(app()?.avatar_path(&handle).map(|p| p.to_string_lossy().into_owned()))
+pub fn safety_number(handle: String) -> Result<String> {
+    app()?.safety_number(&handle)
+}
+
+/// Foto de perfil de una persona (o la nuestra), descifrada, si la tenemos.
+#[frb(sync)]
+pub fn avatar_bytes(handle: String) -> Result<Option<Vec<u8>>> {
+    Ok(app()?.avatar(&handle)?.1)
 }
 
 /// Pone (o quita, con `None`) nuestra foto de perfil: PNG, GIF, WebP o JPEG

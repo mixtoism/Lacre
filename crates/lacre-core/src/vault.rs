@@ -1,27 +1,41 @@
-//! Cifrado del estado en disco (D-033).
+//! Cifrado del estado en disco (D-033, D-042).
 //!
 //! Con una clave de datos (la guarda el almacén del sistema: Keystore,
 //! Secret Service…), los archivos de estado se escriben cifrados con
-//! XChaCha20-Poly1305. El nombre del archivo va como dato asociado, para que
-//! no se puedan intercambiar unos por otros. Sin clave se escriben en claro,
-//! y los archivos en claro se siguen leyendo (migración).
+//! XChaCha20-Poly1305. La ruta relativa al directorio de datos va como dato
+//! asociado, para que no se puedan intercambiar unos por otros (en la v1
+//! solo iba el nombre del archivo, y dos `oferta.cbor` de carpetas
+//! distintas eran intercambiables). Sin clave se escriben en claro.
+//!
+//! Con clave, leer un archivo en claro o en formato v1 es un error: solo
+//! [`migrate`] los acepta, para reescribirlos en v2. Así nadie puede colar
+//! un archivo en claro en lugar de uno cifrado.
 //!
 //! La clave es del proceso: hay un nodo por proceso.
 
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use rand::RngCore;
 
-/// Cabecera de un archivo cifrado.
-const MAGIC: &[u8; 8] = b"P2MVLT1\0";
+/// Cabeceras de un archivo cifrado: v1 (dato asociado = nombre) y v2
+/// (dato asociado = ruta relativa al directorio de datos).
+const MAGIC_V1: &[u8; 8] = b"P2MVLT1\0";
+const MAGIC: &[u8; 8] = b"P2MVLT2\0";
+const AAD_V2: &[u8] = b"p2message/vault/v2\0";
 const NONCE: usize = 24;
 
+/// Clave de datos que comparten las pruebas del crate (la clave es global
+/// del proceso y las pruebas corren en paralelo).
+#[cfg(test)]
+pub(crate) const TEST_KEY: [u8; 32] = [7; 32];
+
 static KEY: OnceLock<[u8; 32]> = OnceLock::new();
+static ROOT: OnceLock<PathBuf> = OnceLock::new();
 
 /// Fija la clave de datos del proceso. Falla si ya había otra.
 pub fn set_key(key: [u8; 32]) -> io::Result<()> {
@@ -31,18 +45,40 @@ pub fn set_key(key: [u8; 32]) -> io::Result<()> {
     Ok(())
 }
 
+/// Fija el directorio de datos, respecto al que se calculan las rutas que
+/// van como dato asociado. Sin él se usa la ruta tal cual.
+pub fn set_root(dir: &Path) -> io::Result<()> {
+    if ROOT.get_or_init(|| dir.to_path_buf()) != dir {
+        return Err(io::Error::other("ya hay otro directorio de datos"));
+    }
+    Ok(())
+}
+
 /// Hay clave: lo que se escriba irá cifrado.
 pub fn enabled() -> bool {
     KEY.get().is_some()
 }
 
-/// El contenido está cifrado con este formato.
+/// El contenido está cifrado con alguno de los formatos.
 pub fn is_sealed(data: &[u8]) -> bool {
-    data.starts_with(MAGIC)
+    data.starts_with(MAGIC) || data.starts_with(MAGIC_V1)
 }
 
-fn aad(path: &Path) -> Vec<u8> {
+fn aad_v1(path: &Path) -> Vec<u8> {
     path.file_name().map(|n| n.as_encoded_bytes().to_vec()).unwrap_or_default()
+}
+
+/// Ruta relativa al directorio de datos, con `/` en todos los sistemas.
+fn aad(path: &Path) -> Vec<u8> {
+    let rel = ROOT.get().and_then(|r| path.strip_prefix(r).ok()).unwrap_or(path);
+    let parts: Vec<&[u8]> = rel
+        .components()
+        .filter_map(|c| match c {
+            Component::Normal(n) => Some(n.as_encoded_bytes()),
+            _ => None,
+        })
+        .collect();
+    [AAD_V2, &parts.join(&b'/')].concat()
 }
 
 fn invalid(msg: String) -> io::Error {
@@ -64,10 +100,22 @@ pub fn seal(path: &Path, plain: &[u8]) -> Vec<u8> {
     out
 }
 
-/// Descifra lo leído de `path`. Lo que no está cifrado se devuelve tal cual.
+/// Descifra lo leído de `path`. Sin clave, lo que no está cifrado se
+/// devuelve tal cual; con clave, solo vale el formato v2.
 pub fn open(path: &Path, data: Vec<u8>) -> io::Result<Vec<u8>> {
-    if !is_sealed(&data) {
+    open_with(path, data, false)
+}
+
+fn open_with(path: &Path, data: Vec<u8>, legacy: bool) -> io::Result<Vec<u8>> {
+    let v2 = data.starts_with(MAGIC);
+    if !v2 && !data.starts_with(MAGIC_V1) {
+        if enabled() && !legacy {
+            return Err(invalid(format!("{} está en claro y debería estar cifrado", path.display())));
+        }
         return Ok(data);
+    }
+    if !v2 && !legacy {
+        return Err(invalid(format!("{} tiene el formato cifrado antiguo sin migrar", path.display())));
     }
     let key = KEY
         .get()
@@ -77,8 +125,9 @@ pub fn open(path: &Path, data: Vec<u8>) -> io::Result<Vec<u8>> {
         return Err(invalid(format!("{} está truncado", path.display())));
     }
     let (nonce, ct) = body.split_at(NONCE);
+    let aad = if v2 { aad(path) } else { aad_v1(path) };
     XChaCha20Poly1305::new(key.into())
-        .decrypt(XNonce::from_slice(nonce), Payload { msg: ct, aad: &aad(path) })
+        .decrypt(XNonce::from_slice(nonce), Payload { msg: ct, aad: &aad })
         .map_err(|_| invalid(format!("no se pudo descifrar {} (¿otra clave de datos?)", path.display())))
 }
 
@@ -115,17 +164,18 @@ pub fn write(path: &Path, plain: &[u8]) -> io::Result<()> {
     fs::rename(tmp, path)
 }
 
-/// Vuelve a escribir cifrado un archivo que está en claro. Devuelve si lo
-/// hizo.
+/// Vuelve a escribir en v2 un archivo que está en claro o en v1. Devuelve
+/// si lo hizo.
 pub fn migrate(path: &Path) -> io::Result<bool> {
     if !enabled() {
         return Ok(false);
     }
     let Ok(data) = fs::read(path) else { return Ok(false) };
-    if is_sealed(&data) {
+    if data.starts_with(MAGIC) {
         return Ok(false);
     }
-    write(path, &data)?;
+    let plain = open_with(path, data, true)?;
+    write(path, &plain)?;
     Ok(true)
 }
 
@@ -137,12 +187,15 @@ mod tests {
     fn seal_open_roundtrip() {
         let dir = tempfile::tempdir().unwrap();
         let a = dir.path().join("a.cbor");
-        // En claro antes de tener clave; se migra después.
-        write(&a, b"hola").unwrap();
-        assert_eq!(fs::read(&a).unwrap(), b"hola");
-        set_key([7; 32]).unwrap();
+        // Un archivo en claro de antes de tener clave; se migra después.
+        // (Otra prueba puede haber fijado ya la clave: se escribe a mano.)
+        fs::write(&a, b"hola").unwrap();
+        set_key(TEST_KEY).unwrap();
         assert!(set_key([8; 32]).is_err());
+        // Con clave, en claro no se acepta hasta migrarlo.
+        assert_eq!(read(&a).unwrap_err().kind(), io::ErrorKind::InvalidData);
         assert!(migrate(&a).unwrap());
+        assert!(!migrate(&a).unwrap());
         let raw = fs::read(&a).unwrap();
         assert!(is_sealed(&raw) && !raw.windows(4).any(|w| w == b"hola"));
         assert_eq!(read(&a).unwrap(), b"hola");
@@ -156,5 +209,22 @@ mod tests {
         fs::write(&a, &bad).unwrap();
         assert!(read_opt(&a).is_err());
         assert!(read_opt(&dir.path().join("no")).unwrap().is_none());
+        // El mismo nombre en otra carpeta tampoco (v2).
+        write(&a, b"hola").unwrap();
+        let sub = dir.path().join("sub");
+        fs::create_dir_all(&sub).unwrap();
+        fs::copy(&a, sub.join("a.cbor")).unwrap();
+        assert!(read(&sub.join("a.cbor")).is_err());
+        // Un v1 se lee solo para migrarlo.
+        let v1 = dir.path().join("v1.cbor");
+        let mut nonce = [0u8; NONCE];
+        rand::rngs::OsRng.fill_bytes(&mut nonce);
+        let ct = XChaCha20Poly1305::new((&[7u8; 32]).into())
+            .encrypt(XNonce::from_slice(&nonce), Payload { msg: b"viejo".as_slice(), aad: &aad_v1(&v1) })
+            .unwrap();
+        fs::write(&v1, [MAGIC_V1.as_slice(), &nonce, &ct].concat()).unwrap();
+        assert!(read(&v1).is_err());
+        assert!(migrate(&v1).unwrap());
+        assert_eq!(read(&v1).unwrap(), b"viejo");
     }
 }

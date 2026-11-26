@@ -18,6 +18,13 @@ use crate::proto::MAX_ENVELOPE;
 const MAX_PER_RECIPIENT: usize = 500;
 /// Destinatarios distintos.
 const MAX_RECIPIENTS: usize = 2000;
+/// Bytes por destinatario y en total: sin ellos el peor caso era de
+/// cientos de GB (D-042).
+const MAX_BYTES_PER_RECIPIENT: usize = 16 << 20;
+const MAX_TOTAL_BYTES: usize = 256 << 20;
+/// Segundos mínimos entre escrituras del buzón a disco: cada una reescribe
+/// el archivo entero. Lo pendiente se guarda con [`Mailbox::flush`].
+const SAVE_EVERY: u64 = 10;
 /// Tiempo máximo que se guarda un sobre.
 const TTL_SECS: u64 = 14 * 24 * 3600;
 /// Bytes máximos por respuesta a `Fetch` (el límite del protocolo es 10 MiB).
@@ -55,6 +62,11 @@ pub struct Mailbox {
     boxes: Boxes,
     /// No se guarda: tras reiniciar se empieza de nuevo por el primer intento.
     pushes: HashMap<[u8; 32], Push>,
+    /// Bytes de sobres guardados.
+    bytes: usize,
+    /// Hay cambios sin escribir y cuándo se escribió por última vez.
+    dirty: bool,
+    saved_at: u64,
 }
 
 impl Mailbox {
@@ -69,13 +81,32 @@ impl Mailbox {
             None => Boxes::default(),
         };
         let pushes = boxes.0.keys().map(|to| (*to, Push { next: first_push(), tries: 0 })).collect();
-        let mut mb = Self { path, boxes, pushes };
+        let mut mb = Self { path, boxes, pushes, bytes: 0, dirty: false, saved_at: now() };
         mb.prune();
         Ok(mb)
     }
 
-    fn save(&self) -> Result<()> {
-        write_private(&self.path, &cbor_to(&self.boxes)?)
+    /// Marca cambios y los escribe si hace `SAVE_EVERY` que no se escribía.
+    fn save(&mut self) -> Result<()> {
+        self.dirty = true;
+        if now() >= self.saved_at + SAVE_EVERY {
+            self.flush()?;
+        }
+        Ok(())
+    }
+
+    /// Escribe a disco lo pendiente.
+    pub fn flush(&mut self) -> Result<()> {
+        if self.dirty {
+            write_private(&self.path, &cbor_to(&self.boxes)?)?;
+            self.dirty = false;
+            self.saved_at = now();
+        }
+        Ok(())
+    }
+
+    fn queue_bytes(q: &VecDeque<Stored>) -> usize {
+        q.iter().map(|s| s.env.sealed.len()).sum()
     }
 
     fn prune(&mut self) {
@@ -86,6 +117,7 @@ impl Mailbox {
         self.boxes.0.retain(|_, q| !q.is_empty());
         let boxes = &self.boxes.0;
         self.pushes.retain(|to, _| boxes.contains_key(to));
+        self.bytes = boxes.values().map(Self::queue_bytes).sum();
     }
 
     /// Guarda un sobre recibido de la red. No se sabe de quién es: solo se
@@ -100,15 +132,29 @@ impl Mailbox {
             bail!("buzón lleno");
         }
         let to = env.to;
+        let size = env.sealed.len();
         let q = self.boxes.0.entry(to).or_default();
         let id = env.id();
         if q.iter().any(|s| s.env.id() == id) {
             return Ok(());
         }
-        if q.len() >= MAX_PER_RECIPIENT {
-            // Se descarta el más antiguo: el remitente aún tiene otras copias.
-            q.pop_front();
+        // Se descartan los más antiguos de ese destinatario: el remitente
+        // aún tiene otras copias. Así un destinatario no llena el de otros.
+        let mut used = Self::queue_bytes(q);
+        let before = used;
+        while !q.is_empty() && (q.len() >= MAX_PER_RECIPIENT || used + size > MAX_BYTES_PER_RECIPIENT) {
+            used -= q.pop_front().map_or(0, |s| s.env.sealed.len());
         }
+        if self.bytes - (before - used) + size > MAX_TOTAL_BYTES {
+            if q.is_empty() {
+                self.boxes.0.remove(&to);
+            }
+            // Lo descartado para hacer sitio ya no está.
+            self.bytes -= before - used;
+            self.dirty |= before != used;
+            bail!("buzón lleno");
+        }
+        self.bytes = self.bytes - (before - used) + size;
         q.push_back(Stored { at: now(), env });
         self.pushes.entry(to).or_insert_with(|| Push { next: first_push(), tries: 0 });
         self.save()
@@ -159,7 +205,9 @@ impl Mailbox {
     /// Borra los sobres confirmados por su destinatario.
     pub fn ack(&mut self, to: &[u8; 32], ids: &[[u8; 32]]) -> Result<()> {
         let Some(q) = self.boxes.0.get_mut(to) else { return Ok(()) };
+        let before = Self::queue_bytes(q);
         q.retain(|s| !ids.contains(&s.env.id()));
+        self.bytes -= before - Self::queue_bytes(q);
         if q.is_empty() {
             self.boxes.0.remove(to);
             self.pushes.remove(to);
@@ -192,6 +240,26 @@ mod tests {
         // Entregado: no queda nada que programar.
         mb.ack(&to, &[env.id()]).unwrap();
         assert!(!mb.has(&to) && mb.pushes.is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn byte_limits() {
+        let dir = std::env::temp_dir().join(format!("lacre-mailbox-{}", rand::random::<u64>()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut mb = Mailbox::open(dir.join("mailbox.cbor")).unwrap();
+        let alice = generate_key();
+        let to = generate_key().verifying_key().to_bytes();
+        let big = vec![0u8; MAX_ENVELOPE - 1024];
+        let n = MAX_BYTES_PER_RECIPIENT / big.len() + 5;
+        for _ in 0..n {
+            mb.deposit(Envelope::seal(&alice, &to, &big).unwrap()).unwrap();
+        }
+        assert!(mb.bytes <= MAX_BYTES_PER_RECIPIENT);
+        assert_eq!(mb.bytes, Mailbox::queue_bytes(&mb.boxes.0[&to]));
+        mb.flush().unwrap();
+        let again = Mailbox::open(dir.join("mailbox.cbor")).unwrap();
+        assert_eq!(again.bytes, mb.bytes);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

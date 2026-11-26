@@ -280,7 +280,21 @@ impl MlsEngine {
     /// Entra en un grupo con un Welcome. Si ya teníamos un grupo con el
     /// mismo id (nos expulsaron y vuelven a añadirnos), lo sustituye solo si
     /// `may_replace(group_id)` lo permite.
+    ///
+    /// Es atómico (D-042): OpenMLS borra el KeyPackage al preparar el
+    /// Welcome, antes de comprobarlo entero, y un Welcome alterado (o con
+    /// credenciales incoherentes) dejaría sin él al válido. Si algo falla, el
+    /// estado vuelve a como estaba.
     pub fn join(&self, welcome: &[u8], may_replace: impl FnOnce(&[u8]) -> bool) -> Result<Vec<u8>, Error> {
+        let snapshot = self.provider.storage.values.read().unwrap().clone();
+        let result = self.join_inner(welcome, may_replace);
+        if result.is_err() {
+            *self.provider.storage.values.write().unwrap() = snapshot;
+        }
+        result
+    }
+
+    fn join_inner(&self, welcome: &[u8], may_replace: impl FnOnce(&[u8]) -> bool) -> Result<Vec<u8>, Error> {
         let msg = MlsMessageIn::tls_deserialize_exact(welcome).map_err(mls_err)?;
         let MlsMessageBodyIn::Welcome(welcome) = msg.extract() else {
             return Err(Error::Mls("se esperaba un Welcome".into()));
@@ -338,8 +352,18 @@ impl MlsEngine {
         let processed = group
             .process_message(&self.provider, protocol)
             .map_err(mls_err)?;
-        let basic = BasicCredential::try_from(processed.credential().clone()).map_err(mls_err)?;
-        let sender: MemberId = cbor_from(basic.identity())?;
+        // Solo hojas del grupo (nada de commits externos ni remitentes de
+        // fuera) y con la credencial atada a su clave de firma (D-040).
+        let Sender::Member(index) = processed.sender() else {
+            return Err(Error::Mls("remitente que no es miembro del grupo".into()));
+        };
+        let leaf = group
+            .member_at(*index)
+            .ok_or_else(|| Error::Mls("hoja del remitente inexistente".into()))?;
+        let sender = member_of(&leaf.credential, &leaf.signature_key)?;
+        if member_of(processed.credential(), &leaf.signature_key)? != sender {
+            return Err(Error::Mls("credencial del mensaje distinta de la de su hoja".into()));
+        }
         let result = match processed.into_content() {
             ProcessedMessageContent::ApplicationMessage(app) => {
                 Incoming::Application {
@@ -353,6 +377,14 @@ impl MlsEngine {
                     return Err(Error::Mls("commit de un dispositivo que no es el committer".into()));
                 }
                 let removed_self = staged.self_removed();
+                // Las hojas nuevas o actualizadas deben ser coherentes antes
+                // de aplicar el commit.
+                for leaf in staged.add_proposals().map(|p| p.add_proposal().key_package().leaf_node().clone())
+                    .chain(staged.update_proposals().map(|p| p.update_proposal().leaf_node().clone()))
+                    .chain(staged.update_path_leaf_node().cloned())
+                {
+                    member_of(leaf.credential(), leaf.signature_key().as_slice())?;
+                }
                 group
                     .merge_staged_commit(&self.provider, *staged)
                     .map_err(mls_err)?;
@@ -515,6 +547,9 @@ mod tests {
 
     #[test]
     fn state_survives_reopen() {
+        // La clave de datos es global del proceso y otra prueba la fija: se
+        // fija aquí la misma para no depender del orden (vault::tests).
+        vault::set_key(vault::TEST_KEY).unwrap();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("mls.json");
         let root = generate_key();

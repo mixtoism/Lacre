@@ -3,7 +3,7 @@
 //! Lo firma la clave raíz y enumera los dispositivos autorizados. Es lo que
 //! se obtiene al resolver un handle. Ver `docs/DECISIONES.md` (D-004, D-005).
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
 use crate::identity::{Handle, validate_name};
@@ -12,6 +12,8 @@ use crate::{Error, cbor_from, cbor_to};
 pub const RECORD_VERSION: u8 = 1;
 const SIGN_DOMAIN: &[u8] = b"p2message/identity-record/v1\0";
 pub const MAX_DEVICES: usize = 16;
+/// Longitud máxima (en caracteres) del nombre de un dispositivo.
+pub const MAX_LABEL: usize = 64;
 /// Tamaño máximo aceptado al leer de la red, antes de decodificar.
 pub const MAX_RECORD_BYTES: usize = 8 * 1024;
 
@@ -138,12 +140,16 @@ impl SignedRecord {
             return Err(Error::InvalidRecord(format!("versión {} no soportada", record.v)));
         }
         let root = VerifyingKey::from_bytes(&record.root_pk).map_err(|_| Error::InvalidKey)?;
-        let sig = Signature::from_slice(&self.sig).map_err(|_| Error::BadSignature)?;
-        root.verify(&[SIGN_DOMAIN, &self.body].concat(), &sig)
-            .map_err(|_| Error::BadSignature)?;
-        if record.devices.is_empty() || record.devices.len() > MAX_DEVICES {
-            return Err(Error::InvalidRecord("número de dispositivos inválido".into()));
+        // Estricta: sin claves de orden pequeño ni firmas maleables (D-042).
+        if root.is_weak() {
+            return Err(Error::InvalidKey);
         }
+        let sig = Signature::from_slice(&self.sig).map_err(|_| Error::BadSignature)?;
+        root.verify_strict(&[SIGN_DOMAIN, &self.body].concat(), &sig)
+            .map_err(|_| Error::BadSignature)?;
+        validate_devices(&record)?;
+        // Todo lo barato antes del Argon2 del sufijo.
+        validate_name(&record.name)?;
         let handle = Handle::for_key(&record.name, &root)?;
         Ok(VerifiedRecord {
             record,
@@ -162,6 +168,31 @@ impl SignedRecord {
     }
 }
 
+/// Lista de dispositivos bien formada: entre 1 y `MAX_DEVICES`, sin
+/// repetidos, ninguno igual a la raíz, claves válidas y nombres cortos sin
+/// caracteres de control.
+fn validate_devices(record: &IdentityRecord) -> Result<(), Error> {
+    let bad = |why: &str| Err(Error::InvalidRecord(why.into()));
+    if record.devices.is_empty() || record.devices.len() > MAX_DEVICES {
+        return bad("número de dispositivos inválido");
+    }
+    for (i, d) in record.devices.iter().enumerate() {
+        if record.devices[..i].iter().any(|o| o.device_pk == d.device_pk) {
+            return bad("dispositivo repetido");
+        }
+        if d.device_pk == record.root_pk {
+            return bad("la clave raíz no puede ser un dispositivo");
+        }
+        if VerifyingKey::from_bytes(&d.device_pk).map_or(true, |k| k.is_weak()) {
+            return bad("clave de dispositivo inválida");
+        }
+        if d.label.chars().count() > MAX_LABEL || d.label.chars().any(char::is_control) {
+            return bad("nombre de dispositivo inválido");
+        }
+    }
+    Ok(())
+}
+
 /// De varios registros candidatos (p. ej. respuestas de la DHT), elige el
 /// válido para `handle` con mayor `seq`.
 pub fn best_record<'a>(
@@ -172,6 +203,42 @@ pub fn best_record<'a>(
         .into_iter()
         .filter_map(|b| SignedRecord::from_bytes(b).ok()?.verify_for(handle).ok())
         .max_by_key(|v| v.record.seq)
+}
+
+/// Candidatos que se llegan a verificar al resolver un handle.
+pub const MAX_CANDIDATES: usize = 16;
+
+/// Elige el registro de `handle` entre los candidatos. Con `pinned` (la
+/// raíz que ya conocemos de ese contacto o la del QR) solo valen los de esa
+/// raíz. Sin ella, si varias raíces distintas reclaman el mismo handle (el
+/// sufijo tiene 40 bits) no se elige ninguna: sería suplantable (D-041).
+pub fn select_record<'a>(
+    handle: &Handle,
+    candidates: impl IntoIterator<Item = &'a [u8]>,
+    pinned: Option<&[u8; 32]>,
+) -> Result<Option<VerifiedRecord>, Error> {
+    // Filtros baratos (raíz fijada, nombre) antes de verificar, y como
+    // mucho `MAX_CANDIDATES` verificaciones: cada raíz nueva cuesta un
+    // Argon2 (D-042).
+    let valid: Vec<VerifiedRecord> = candidates
+        .into_iter()
+        .filter_map(|b| {
+            let signed = SignedRecord::from_bytes(b).ok()?;
+            let rec: IdentityRecord = cbor_from(&signed.body).ok()?;
+            let wanted = rec.name == handle.name && pinned.is_none_or(|p| &rec.root_pk == p);
+            wanted.then_some(signed)
+        })
+        .take(MAX_CANDIDATES)
+        .filter_map(|s| s.verify_for(handle).ok())
+        .collect();
+    if let Some(first) = valid.first()
+        && valid.iter().any(|v| v.record.root_pk != first.record.root_pk)
+    {
+        return Err(Error::InvalidRecord(format!(
+            "varias identidades distintas dicen ser {handle}; añádelo con su QR"
+        )));
+    }
+    Ok(valid.into_iter().max_by_key(|v| v.record.seq))
 }
 
 #[cfg(test)]
@@ -230,5 +297,19 @@ mod tests {
         let handle = Handle::for_key("pablo", &root.verifying_key()).unwrap();
         let best = best_record(&handle, [old.as_slice(), b"basura", new.as_slice()]).unwrap();
         assert_eq!(best.record.devices.len(), 2);
+    }
+
+    #[test]
+    fn select_record_pins_root_and_reports_conflicts() {
+        let (root, rec) = sample();
+        let good = rec.sign(&root).unwrap().to_bytes().unwrap();
+        let handle = Handle::for_key("pablo", &root.verifying_key()).unwrap();
+        // Otra raíz con el mismo handle no la podemos fabricar en un test
+        // (40 bits de Argon2), pero sí comprobar el filtrado por raíz.
+        let pinned = root.verifying_key().to_bytes();
+        let got = select_record(&handle, [good.as_slice()], Some(&pinned)).unwrap().unwrap();
+        assert_eq!(got.record.root_pk, pinned);
+        assert!(select_record(&handle, [good.as_slice()], Some(&[9u8; 32])).unwrap().is_none());
+        assert!(select_record(&handle, [b"basura".as_slice()], None).unwrap().is_none());
     }
 }

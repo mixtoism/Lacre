@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/l10n.dart';
+import '../src/rust/api/lacre.dart' as lacre;
 import '../store.dart';
 
 /// Ejecuta una acción y muestra el error, si lo hay.
@@ -117,20 +118,45 @@ class CodeBox extends StatelessWidget {
   }
 }
 
+/// Imágenes descifradas por el núcleo (fotos y stickers van cifrados en
+/// disco). Siempre la misma lista de bytes para la misma clave, para que la
+/// caché de imágenes de Flutter la reconozca.
+final _images = <String, Uint8List?>{};
+
+Uint8List? _cached(String key, Uint8List? Function() load) =>
+    _images.putIfAbsent(key, () {
+      try {
+        return load();
+      } catch (_) {
+        return null;
+      }
+    });
+
+/// Foto de perfil de un handle (`null`: sin foto).
+Uint8List? avatarOf(String handle) =>
+    _cached('a:$handle', () => lacre.avatarBytes(handle: handle));
+
+/// Olvida las fotos descifradas (llegó una nueva).
+void forgetAvatars() => _images.removeWhere((k, _) => k.startsWith('a:'));
+
+/// Imagen de un sticker (no cambia nunca: su id es su hash).
+Uint8List? stickerOf(String id) =>
+    _cached('s:$id', () => lacre.stickerBytes(id: id));
+
 /// Foto de perfil redonda; sin foto, la inicial sobre un color que sale del
 /// nombre (siempre el mismo para la misma persona).
 class Avatar extends StatelessWidget {
   const Avatar({
     super.key,
     required this.name,
-    this.path,
+    this.image,
     this.radius = 20,
     this.group = false,
   });
 
   /// Handle o nombre del chat.
   final String name;
-  final String? path;
+  final Uint8List? image;
   final double radius;
 
   /// Chat de grupo sin foto: icono de grupo en vez de inicial.
@@ -138,12 +164,9 @@ class Avatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final path = this.path;
-    if (path != null) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: FileImage(File(path)),
-      );
+    final image = this.image;
+    if (image != null) {
+      return CircleAvatar(radius: radius, backgroundImage: MemoryImage(image));
     }
     final label = name.split('#').first.trim();
     final hue = (name.hashCode % 360).abs().toDouble();

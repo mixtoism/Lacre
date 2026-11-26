@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'l10n/l10n.dart';
 import 'src/rust/api/lacre.dart' as lacre;
+import 'ui/common.dart' show avatarOf, forgetAvatars;
 
 /// Canal con el código nativo de Android (LacreApp.kt): clave de datos,
 /// servicio en segundo plano, avisos y abrir archivos.
@@ -52,8 +53,8 @@ class Store extends ChangeNotifier {
   /// Descargas en curso: id del archivo → fracción descargada.
   final downloads = <String, double>{};
 
-  /// Archivos descargados en esta sesión: id → ruta.
-  final downloaded = <String, String>{};
+  /// Archivos descargados en esta sesión.
+  final downloaded = <String>{};
 
   Timer? _statusTimer;
 
@@ -242,7 +243,7 @@ class Store extends ChangeNotifier {
         notices.add(text);
         _notify(index, 'Lacre', text);
       case lacre.UiEvent_Avatar():
-        _avatars.clear();
+        forgetAvatars();
       case lacre.UiEvent_ChatsChanged():
         break;
       case lacre.UiEvent_Message(:final index, :final message, :final local):
@@ -381,16 +382,12 @@ class Store extends ChangeNotifier {
   lacre.ChatInfo? chat(int index) =>
       chats.where((c) => c.index == index).firstOrNull;
 
-  /// Fotos de perfil por handle (`null`: sin foto). Se vacía cuando llega
-  /// una nueva.
-  final _avatars = <String, String?>{};
-
-  String? avatar(String handle) =>
-      _avatars.putIfAbsent(handle, () => lacre.avatarPath(handle: handle));
+  /// Foto de perfil de un handle (`null`: sin foto), descifrada.
+  Uint8List? avatar(String handle) => avatarOf(handle);
 
   Future<void> setAvatar(Uint8List? image) async {
     await lacre.setAvatar(image: image);
-    _avatars.clear();
+    forgetAvatars();
     notifyListeners();
   }
 
@@ -428,13 +425,12 @@ class Store extends ChangeNotifier {
   }
 
   /// Descarga un archivo recibido; el progreso queda en [downloads].
-  Future<String> download(String id) async {
+  Future<void> download(String id) async {
     downloads[id] = 0;
     notifyListeners();
     try {
-      final path = await lacre.downloadFile(id: id);
-      downloaded[id] = path;
-      return path;
+      await lacre.downloadFile(id: id);
+      downloaded.add(id);
     } finally {
       downloads.remove(id);
       notifyListeners();

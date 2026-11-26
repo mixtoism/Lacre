@@ -28,6 +28,9 @@ const ARGON_M_KIB: u32 = 64 * 1024;
 const ARGON_T: u32 = 3;
 const ARGON_P: u32 = 1;
 
+/// Sufijos memorizados como mucho (cada entrada ocupa unos 50 bytes).
+const SUFFIX_CACHE: usize = 4096;
+
 pub const NAME_MIN: usize = 3;
 pub const NAME_MAX: usize = 32;
 
@@ -44,6 +47,13 @@ pub fn handle_suffix(root_pk: &VerifyingKey) -> String {
     if let Some(s) = cache.lock().unwrap().get(root_pk.as_bytes()) {
         return s.clone();
     }
+    // De uno en uno: cada cálculo reserva 64 MiB y quien nos manda claves
+    // nuevas a propósito no debe poder multiplicarlo (D-042).
+    static ARGON: Mutex<()> = Mutex::new(());
+    let _turn = ARGON.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(s) = cache.lock().unwrap().get(root_pk.as_bytes()) {
+        return s.clone();
+    }
     let params = Params::new(ARGON_M_KIB, ARGON_T, ARGON_P, Some(SUFFIX_BYTES))
         .expect("parámetros de Argon2 válidos");
     let mut out = [0u8; SUFFIX_BYTES];
@@ -51,7 +61,12 @@ pub fn handle_suffix(root_pk: &VerifyingKey) -> String {
         .hash_password_into(root_pk.as_bytes(), SUFFIX_SALT, &mut out)
         .expect("Argon2 con parámetros fijos no falla");
     let suffix = BASE32_NOPAD.encode(&out).to_lowercase();
-    cache.lock().unwrap().insert(*root_pk.as_bytes(), suffix.clone());
+    let mut cache = cache.lock().unwrap();
+    // Memoria acotada aunque lleguen muchas claves distintas.
+    if cache.len() >= SUFFIX_CACHE {
+        cache.clear();
+    }
+    cache.insert(*root_pk.as_bytes(), suffix.clone());
     suffix
 }
 
@@ -121,6 +136,27 @@ impl FromStr for Handle {
 }
 
 /// Codificación compacta de una clave pública (para QR y códigos de enlace).
+/// Número de seguridad de dos identidades (D-043): 60 cifras en 12 grupos de
+/// 5, iguales para las dos partes. Se calcula con las claves raíz completas,
+/// así que comprobarlo en persona (o por otro canal) descarta que alguien
+/// esté suplantando un handle, por mucho cómputo que gaste en su sufijo.
+pub fn safety_number(a: &[u8; 32], b: &[u8; 32]) -> String {
+    let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+    let mut out = [0u8; 60];
+    blake3::Hasher::new_derive_key("p2message/safety-number/v1")
+        .update(lo)
+        .update(hi)
+        .finalize_xof()
+        .fill(&mut out);
+    out.chunks(5)
+        .map(|c| {
+            let n = c.iter().fold(0u64, |acc, &x| acc << 8 | u64::from(x));
+            format!("{:05}", n % 100_000)
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub fn encode_key(pk: &VerifyingKey) -> String {
     BASE32_NOPAD.encode(pk.as_bytes()).to_lowercase()
 }
@@ -168,4 +204,15 @@ mod tests {
         let k = generate_key().verifying_key();
         assert_eq!(decode_key(&encode_key(&k)).unwrap(), k);
     }
+
+    #[test]
+    fn safety_number_is_symmetric_and_distinct() {
+        let (a, b, c) = ([1u8; 32], [2u8; 32], [3u8; 32]);
+        let ab = safety_number(&a, &b);
+        assert_eq!(ab, safety_number(&b, &a));
+        assert_ne!(ab, safety_number(&a, &c));
+        assert_eq!(ab.len(), 12 * 5 + 11);
+        assert!(ab.split(' ').all(|g| g.len() == 5 && g.bytes().all(|d| d.is_ascii_digit())));
+    }
+
 }

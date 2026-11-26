@@ -470,6 +470,30 @@ abstract class AppLocalizations {
   /// **'Saldrán del chat todos sus dispositivos y no recibirá los mensajes nuevos.'**
   String get removeBody;
 
+  /// No description provided for @safetyTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Número de seguridad con {handle}'**
+  String safetyTitle(String handle);
+
+  /// No description provided for @safetyBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Comparadlo en persona o por otro canal (una llamada). Si coincide con el que ve en su dispositivo, nadie está suplantando a esta persona.'**
+  String get safetyBody;
+
+  /// No description provided for @safetyNumber.
+  ///
+  /// In es, this message translates to:
+  /// **'número de seguridad'**
+  String get safetyNumber;
+
+  /// No description provided for @close.
+  ///
+  /// In es, this message translates to:
+  /// **'Cerrar'**
+  String get close;
+
   /// No description provided for @remove.
   ///
   /// In es, this message translates to:

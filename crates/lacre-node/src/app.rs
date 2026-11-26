@@ -7,6 +7,7 @@
 //! este dispositivo se serializan con `send_lock` para que los commits
 //! lleguen antes que los mensajes de la época siguiente.
 
+use zeroize::Zeroizing;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -19,14 +20,14 @@ use futures::future::join_all;
 use libp2p::multiaddr::Protocol;
 use libp2p::{Multiaddr, PeerId};
 use lacre_core::identity::{Handle, decode_key, encode_key, generate_key, handle_suffix};
-use lacre_core::envelope::Envelope;
+use lacre_core::envelope::{self, Envelope};
 use lacre_core::mls::{Incoming, KeyPackage, MemberId, MlsEngine, verify_key_package};
 use lacre_core::record::{
-    IdentityRecord, SignedRecord, VerifiedRecord, best_record, dht_key, key_package_key, mailbox_key,
+    IdentityRecord, SignedRecord, VerifiedRecord, dht_key, select_record, key_package_key, mailbox_key,
 };
 use lacre_core::{cbor_from, cbor_to, vault};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::files::{self, FileOffer, Files, Partial, StoredOffer};
 use crate::history::{FileRef, History, StoredMessage};
@@ -40,6 +41,9 @@ use crate::sticker::{self, Stickers};
 /// Mensajes MLS que no se pudieron procesar (p. ej. de una época futura) y
 /// se reintentan tras el siguiente commit.
 const MAX_PENDING: usize = 128;
+/// Cupo de la cola de reintentos por grupo y para grupos desconocidos (D-042).
+const MAX_PENDING_PER_GROUP: usize = 32;
+const MAX_PENDING_UNKNOWN: usize = 32;
 const MAX_ATTEMPTS: u8 = 5;
 /// Copias remotas de cada sobre para un dispositivo desconectado (además
 /// de la que guarda el propio remitente).
@@ -48,8 +52,22 @@ const MAILBOX_REPLICAS: usize = 3;
 /// `DELIVER_WINDOW` segundos (D-034).
 const DELIVER_BUDGET: usize = 300;
 const DELIVER_WINDOW: u64 = 600;
-/// Ids de sobres ya procesados que se recuerdan para descartar duplicados.
-const MAX_SEEN: usize = 5000;
+/// KeyPackages de un solo uso que se generan por peer y en total en cada
+/// ventana de `KP_WINDOW` segundos; pasado el cupo, el otro usa el de
+/// último recurso de la DHT (D-042).
+const KP_PER_PEER: usize = 8;
+const KP_TOTAL: usize = 100;
+const KP_WINDOW: u64 = 3600;
+/// Segundos mínimos entre sincronizaciones de un grupo pedidas por aviso.
+const HINT_EVERY: u64 = 20;
+/// Caracteres de un mensaje de texto que se guardan.
+const MAX_TEXT: usize = 16 * 1024;
+/// Mensajes que se guardan de un chat aún sin aceptar.
+const MAX_REQUEST_MESSAGES: usize = 50;
+/// Solicitudes de chat pendientes a la vez; más se rechazan.
+const MAX_REQUESTS: usize = 50;
+/// Ids de sobres vigentes que se recuerdan para descartar duplicados (D-042).
+const MAX_SEEN: usize = 20_000;
 /// Antigüedad a partir de la cual se renueva el KeyPackage de último recurso.
 const LAST_RESORT_MAX_AGE: u64 = 7 * 24 * 3600;
 /// Cada cuánto se hace ping a los miembros de los chats: por debajo del
@@ -98,8 +116,8 @@ pub struct ChatSummary {
     pub request: bool,
     /// La otra persona, si es un chat 1:1.
     pub peer: Option<String>,
-    /// Foto de la otra persona (1:1 aceptado).
-    pub avatar: Option<PathBuf>,
+    /// Hay foto de la otra persona (1:1 aceptado).
+    pub avatar: bool,
 }
 
 /// Mensaje encontrado por [`App::search`].
@@ -190,7 +208,7 @@ struct State {
     /// (mensaje, intentos)
     pending: Vec<(Vec<u8>, u8)>,
     /// Sobres ya procesados (pueden llegar copias desde varios buzones).
-    seen: VecDeque<[u8; 32]>,
+    seen: Seen,
     blocked: Blocked,
     /// Grupos aceptados en otro dispositivo nuestro de los que aún no
     /// tenemos el Welcome.
@@ -229,6 +247,16 @@ pub struct App {
     delivered: Mutex<HashMap<PeerId, (u64, usize)>>,
     /// Invitación para vincular que muestra ahora este dispositivo (D-037).
     invite: Mutex<Option<Invite>>,
+    /// Secreto del código de vinculación que muestra este dispositivo
+    /// nuevo: solo se acepta un `LinkGrant` que lo traiga (D-039).
+    link_secret: Mutex<Option<Invite>>,
+    /// KeyPackages generados para cada peer y en total (D-042): cada uno
+    /// deja una clave privada guardada.
+    kp_limit: Mutex<(RateLimit<PeerId>, RateLimit<()>)>,
+    /// Última sincronización pedida por aviso de cada grupo.
+    hinted: Mutex<HashMap<Vec<u8>, u64>>,
+    /// Depósitos en nuestro buzón por peer.
+    deposit_limit: Mutex<RateLimit<PeerId>>,
     events: tokio::sync::mpsc::UnboundedSender<Event>,
     /// Runtime donde se lanzan las tareas que siguen a una llamada síncrona.
     rt: tokio::runtime::Handle,
@@ -243,16 +271,52 @@ struct Delivery {
     failed: usize,
 }
 
+/// Cupo por clave en ventanas de tiempo fijas, con un número acotado de
+/// claves a la vez (D-042).
+struct RateLimit<K> {
+    per_key: usize,
+    window: u64,
+    max_keys: usize,
+    used: HashMap<K, (u64, usize)>,
+}
+
+impl<K: std::hash::Hash + Eq> RateLimit<K> {
+    fn new(per_key: usize, window: u64, max_keys: usize) -> Self {
+        Self { per_key, window, max_keys, used: HashMap::new() }
+    }
+
+    /// Cuenta un uso de `key`; `false` si ya agotó su cupo.
+    fn take(&mut self, key: K) -> bool {
+        let t = now();
+        if self.used.len() >= self.max_keys {
+            let window = self.window;
+            self.used.retain(|_, (start, _)| *start + window > t);
+            if self.used.len() >= self.max_keys && !self.used.contains_key(&key) {
+                return false;
+            }
+        }
+        let (start, n) = self.used.entry(key).or_insert((t, 0));
+        if *start + self.window <= t {
+            *start = t;
+            *n = 0;
+        }
+        *n += 1;
+        *n <= self.per_key
+    }
+}
+
 pub(crate) fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
 fn read_key(path: &Path) -> Result<Option<SigningKey>> {
+    // Las copias intermedias de la clave se borran de la memoria (D-042).
     let Some(bytes) = vault::read_opt(path)? else { return Ok(None) };
-    let bytes: [u8; 32] = bytes
-        .try_into()
-        .map_err(|_| anyhow!("clave corrupta en {}", path.display()))?;
-    Ok(Some(SigningKey::from_bytes(&bytes)))
+    let bytes = Zeroizing::new(bytes);
+    let key: Zeroizing<[u8; 32]> = Zeroizing::new(
+        bytes.as_slice().try_into().map_err(|_| anyhow!("clave corrupta en {}", path.display()))?,
+    );
+    Ok(Some(SigningKey::from_bytes(&key)))
 }
 
 /// Escribe un archivo de estado: atómico, solo para el usuario y cifrado si
@@ -266,25 +330,13 @@ pub(crate) fn read_private(path: &Path) -> Result<Option<Vec<u8>>> {
     Ok(vault::read_opt(path)?)
 }
 
-/// Como [`write_private`], pero siempre en claro: fotos y stickers, que la
-/// interfaz abre directamente.
-pub(crate) fn write_plain(path: &Path, bytes: &[u8]) -> Result<()> {
-    use std::io::Write;
-    let tmp = path.with_extension("tmp");
-    let mut opts = fs::OpenOptions::new();
-    opts.write(true).create(true).truncate(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        opts.mode(0o600);
-    }
-    opts.open(&tmp)?.write_all(bytes)?;
-    fs::rename(tmp, path)?;
-    Ok(())
-}
+/// Copias descifradas de archivos abiertos con otras aplicaciones.
+pub const OPENED: &str = "abiertos";
 
 /// Archivos de estado que van cifrados (D-033), relativos al directorio de
-/// datos. Además: `avatars/index.cbor` y `files/*/oferta.cbor`.
+/// datos. Además: todo `avatars/` y `media/` (fotos y stickers) y
+/// `files/*/oferta.cbor`. Los archivos van cifrados con su propia clave
+/// (ver [`files`]) y se migran al abrir el nodo.
 const STATE_FILES: &[&str] = &[
     "device.key", "root.key", "identity.cbor", "mls.json", "chats.cbor", "seen.cbor",
     "mailbox.cbor", "history.cbor", "contacts.cbor", "lastresort.kp", "blocked.cbor",
@@ -294,7 +346,11 @@ const STATE_FILES: &[&str] = &[
 /// Cifra los archivos de estado que aún estén en claro. Devuelve cuántos.
 pub fn migrate_to_vault(dir: &Path) -> Result<usize> {
     let mut paths: Vec<PathBuf> = STATE_FILES.iter().map(|f| dir.join(f)).collect();
-    paths.push(dir.join("avatars").join("index.cbor"));
+    for sub in ["avatars", "media"] {
+        if let Ok(entries) = fs::read_dir(dir.join(sub)) {
+            paths.extend(entries.flatten().map(|e| e.path()).filter(|p| p.is_file()));
+        }
+    }
     if let Ok(entries) = fs::read_dir(dir.join("files")) {
         paths.extend(entries.flatten().map(|e| e.path().join("oferta.cbor")));
     }
@@ -318,8 +374,62 @@ pub fn load_device_key(dir: &Path) -> Result<SigningKey> {
         return Ok(k);
     }
     let k = generate_key();
-    write_private(&path, &k.to_bytes())?;
+    write_private(&path, Zeroizing::new(k.to_bytes()).as_slice())?;
     Ok(k)
+}
+
+/// Sobres ya procesados (D-042). Cada id se recuerda con su fecha de
+/// sellado hasta que el sobre caduca ([`envelope::MAX_AGE`]); a partir de
+/// ahí `open` ya lo rechaza solo, así que ninguna repetición se acepta. Si
+/// llegan más de [`MAX_SEEN`] sobres vigentes (una inundación), se olvida el
+/// más antiguo y `floor` sube a su fecha: lo sellado antes se trata como
+/// repetido. Así un sobre legítimo que tarda días en llegar por un buzón solo
+/// se pierde bajo inundación, nunca por tráfico normal.
+#[derive(Serialize, Deserialize, Default)]
+struct Seen {
+    ids: VecDeque<([u8; 32], u64)>,
+    floor: u64,
+}
+
+impl Seen {
+    /// Lee `seen.cbor`; el formato anterior (solo ids) se migra con la fecha
+    /// actual, que los mantiene hasta que caduquen.
+    fn from_bytes(b: &[u8]) -> Result<Self> {
+        if let Ok(s) = cbor_from(b) {
+            return Ok(s);
+        }
+        let old: VecDeque<[u8; 32]> = cbor_from(b)?;
+        let now = now();
+        Ok(Seen { ids: old.into_iter().map(|i| (i, now)).collect(), floor: 0 })
+    }
+
+    fn contains(&self, id: &[u8; 32]) -> bool {
+        self.ids.iter().any(|(i, _)| i == id)
+    }
+
+    /// Apunta un sobre sellado en `sent`. `false` si ya se vio o es anterior
+    /// a `floor`.
+    fn insert(&mut self, id: [u8; 32], sent: u64, now: u64) -> bool {
+        if sent < self.floor || self.contains(&id) {
+            return false;
+        }
+        // Fuera los caducados (con margen por relojes adelantados).
+        let horizon = now.saturating_sub(envelope::MAX_AGE + envelope::MAX_SKEW);
+        self.ids.retain(|(_, t)| *t >= horizon);
+        self.ids.push_back((id, sent));
+        while self.ids.len() > MAX_SEEN {
+            let (pos, t) = self
+                .ids
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, (_, t))| *t)
+                .map(|(p, (_, t))| (p, *t))
+                .unwrap();
+            self.ids.remove(pos);
+            self.floor = self.floor.max(t + 1);
+        }
+        true
+    }
 }
 
 /// Destino de un chat: un handle o el contenido de un QR
@@ -492,16 +602,55 @@ struct Invite {
     until: Instant,
 }
 
-/// Código de vinculación de un dispositivo nuevo: su clave y, desde D-037,
-/// direcciones por las que llamarlo (`clave[@dirección…]`).
-fn parse_link_code(code: &str) -> Result<([u8; 32], Vec<Multiaddr>), LinkError> {
+/// Código de vinculación de un dispositivo nuevo: su clave, un secreto de
+/// un solo uso (D-039) y, desde D-037, direcciones por las que llamarlo
+/// (`clave:secreto[@dirección…]`).
+type ParsedLinkCode = ([u8; 32], Vec<u8>, Vec<Multiaddr>);
+
+fn parse_link_code(code: &str) -> Result<ParsedLinkCode, LinkError> {
     let mut parts = code.trim().split('@');
-    let key = decode_key(parts.next().unwrap_or("").trim()).map_err(|_| LinkError::BadCode)?;
-    Ok((key.to_bytes(), parts.filter_map(|a| a.trim().parse().ok()).collect()))
+    let (key, secret) = parts.next().unwrap_or("").trim().split_once(':').ok_or(LinkError::BadCode)?;
+    let key = decode_key(key).map_err(|_| LinkError::BadCode)?.to_bytes();
+    let secret = data_encoding::BASE32_NOPAD
+        .decode(secret.to_uppercase().as_bytes())
+        .map_err(|_| LinkError::BadCode)?;
+    if secret.len() != 16 {
+        return Err(LinkError::BadCode);
+    }
+    Ok((key, secret, parts.filter_map(|a| a.trim().parse().ok()).collect()))
+}
+
+/// Token vigente de `slot` o uno nuevo si no hay o caducó.
+fn current_token(slot: &Mutex<Option<Invite>>) -> [u8; 16] {
+    let mut inv = slot.lock().unwrap();
+    match inv.as_ref() {
+        Some(i) if i.until > Instant::now() => i.token,
+        _ => {
+            let mut token = [0u8; 16];
+            rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut token);
+            *inv = Some(Invite { token, until: Instant::now() + INVITE_TTL });
+            token
+        }
+    }
+}
+
+/// Consume el token de `slot` si coincide con `token` y no ha caducado.
+/// Compara hashes: no revela por tiempos cuánto del token coincide.
+fn take_token(slot: &Mutex<Option<Invite>>, token: &[u8]) -> bool {
+    let mut inv = slot.lock().unwrap();
+    let valid = inv
+        .as_ref()
+        .is_some_and(|i| i.until > Instant::now() && blake3::hash(&i.token) == blake3::hash(token));
+    if valid {
+        *inv = None;
+    }
+    valid
 }
 
 /// Invitación: (clave del primario, token, direcciones).
-fn parse_invite(code: &str) -> Result<([u8; 32], Vec<u8>, Vec<Multiaddr>), LinkError> {
+type ParsedInvite = ([u8; 32], Vec<u8>, Vec<Multiaddr>);
+
+fn parse_invite(code: &str) -> Result<ParsedInvite, LinkError> {
     let rest = code.trim().strip_prefix(INVITE_PREFIX).ok_or(LinkError::BadCode)?;
     let mut parts = rest.split('@');
     let (key, token) = parts.next().unwrap_or("").split_once(':').ok_or(LinkError::BadCode)?;
@@ -533,8 +682,9 @@ impl App {
             None => Vec::new(),
         };
         let seen = match read_private(&dir.join("seen.cbor"))? {
-            Some(b) => cbor_from(&b)?,
-            None => VecDeque::new(),
+            // Formato anterior: solo la lista de ids.
+            Some(b) => Seen::from_bytes(&b)?,
+            None => Seen::default(),
         };
         let mailbox = Mailbox::open(dir.join("mailbox.cbor"))?;
         let history = History::open(dir.join("history.cbor"))?;
@@ -548,7 +698,17 @@ impl App {
                 .collect(),
             None => HashMap::new(),
         };
-        let files = Files::open(&dir);
+        let mut files = Files::open(&dir);
+        if vault::enabled() {
+            match files.migrate() {
+                Ok(0) => {}
+                Ok(n) => info!("{n} archivos recibidos cifrados en disco"),
+                Err(e) => warn!("no se pudieron cifrar los archivos recibidos: {e:#}"),
+            }
+        }
+        // Copias descifradas para abrir con otras aplicaciones: no deben
+        // sobrevivir al nodo.
+        let _ = fs::remove_dir_all(dir.join(OPENED));
         let blocked = Blocked::open(&dir)?;
         let avatars = Avatars::open(&dir)?;
         Ok(Arc::new(Self {
@@ -578,6 +738,10 @@ impl App {
             pushing: Default::default(),
             delivered: Mutex::new(HashMap::new()),
             invite: Mutex::new(None),
+            link_secret: Mutex::new(None),
+            hinted: Mutex::new(HashMap::new()),
+            deposit_limit: Mutex::new(RateLimit::new(DELIVER_BUDGET, DELIVER_WINDOW, 4096)),
+            kp_limit: Mutex::new((RateLimit::new(KP_PER_PEER, KP_WINDOW, 4096), RateLimit::new(KP_TOTAL, KP_WINDOW, 1))),
             rt: tokio::runtime::Handle::current(),
             events,
         }))
@@ -639,9 +803,9 @@ impl App {
 
     // ---------------------------------------------------------- stickers
 
-    /// Ruta de un sticker guardado (de un mensaje o de la colección).
-    pub fn sticker_path(&self, id: &str) -> Result<PathBuf> {
-        self.stickers.lock().unwrap().path(id)
+    /// Bytes de un sticker guardado (de un mensaje o de la colección).
+    pub fn sticker_bytes(&self, id: &str) -> Result<Vec<u8>> {
+        self.stickers.lock().unwrap().read(id)
     }
 
     /// Colección propia de stickers, del más reciente al más antiguo.
@@ -674,23 +838,32 @@ impl App {
         Ok(FileRef { id, name: offer.name.clone(), size: offer.size })
     }
 
-    /// Ruta del archivo si ya está entero en este dispositivo.
-    pub fn file_path(&self, id: &str) -> Result<Option<PathBuf>> {
-        let mut files = self.files.lock().unwrap();
-        let (done, _) = files.path(id)?;
-        Ok(done.exists().then_some(done))
+    /// El archivo ya está entero en este dispositivo.
+    pub fn file_ready(&self, id: &str) -> bool {
+        self.files.lock().unwrap().complete(id)
+    }
+
+    /// Descifra un archivo descargado para abrirlo con otra aplicación. La
+    /// copia va a `abiertos/` y se borra al parar o arrancar el nodo.
+    pub fn open_file(&self, id: &str) -> Result<PathBuf> {
+        self.files.lock().unwrap().export(id, &self.dir.join(OPENED))
+    }
+
+    /// Borra las copias descifradas de los archivos abiertos.
+    pub fn forget_opened(&self) {
+        let _ = fs::remove_dir_all(self.dir.join(OPENED));
     }
 
     /// Descarga un archivo de los dispositivos del grupo que lo tengan
     /// (primero quien lo envió). Si se interrumpe, la siguiente vez sigue
     /// donde se quedó.
-    pub async fn download(self: &Arc<Self>, id: &str) -> Result<PathBuf> {
+    pub async fn download(self: &Arc<Self>, id: &str) -> Result<()> {
         let (stored, (done, part)) = {
             let mut files = self.files.lock().unwrap();
             (files.get(id)?, files.path(id)?)
         };
         if done.exists() {
-            return Ok(done);
+            return Ok(());
         }
         {
             let st = self.state.lock().unwrap();
@@ -703,7 +876,7 @@ impl App {
         }
         let result = self.fetch_file(id, stored, &done, &part).await;
         self.downloading.lock().unwrap().remove(id);
-        result.map(|()| done)
+        result
     }
 
     async fn fetch_file(&self, id: &str, stored: StoredOffer, done: &Path, part: &Path) -> Result<()> {
@@ -857,10 +1030,13 @@ impl App {
         }
     }
 
-    /// Código para que el primario vincule este dispositivo: la clave y las
-    /// direcciones por las que llamarlo desde otra red (D-037).
+    /// Código para que el primario vincule este dispositivo: la clave, un
+    /// secreto de un solo uso (D-039) y las direcciones por las que llamarlo
+    /// desde otra red (D-037). Mientras siga vigente se reutiliza el secreto.
     pub async fn link_code(&self) -> String {
-        let mut code = self.device_code();
+        let token = current_token(&self.link_secret);
+        let mut code =
+            format!("{}:{}", self.device_code(), data_encoding::BASE32_NOPAD.encode(&token).to_lowercase());
         self.append_addrs(&mut code).await;
         code
     }
@@ -878,7 +1054,7 @@ impl App {
             let mut rec = IdentityRecord::new(&root, name)?;
             rec.add_device(self.device_pk(), "primario")?;
             let verified = rec.sign(&root)?.verify()?;
-            write_private(&self.dir.join("root.key"), &root.to_bytes())?;
+            write_private(&self.dir.join("root.key"), Zeroizing::new(root.to_bytes()).as_slice())?;
             st.root = Some(root);
             self.set_identity(&mut st, verified.clone())?;
             verified
@@ -951,7 +1127,7 @@ impl App {
         if self.state.lock().unwrap().root.is_none() {
             bail!("solo el dispositivo primario puede vincular otros");
         }
-        let (device, addrs) = parse_link_code(code)?;
+        let (device, secret, addrs) = parse_link_code(code)?;
         if device == self.device_pk() {
             return Err(LinkError::BadCode.into());
         }
@@ -960,7 +1136,7 @@ impl App {
         let was_linked = self.state.lock().unwrap().identity.as_ref().is_some_and(|v| v.record.has_device(&device));
         let label = clean_label(label);
         let verified = self.edit_devices(|rec| Ok(rec.add_device(device, &label)?)).await?;
-        let grant = Request::LinkGrant { record: verified.signed.to_bytes()? };
+        let grant = Request::LinkGrant { record: verified.signed.to_bytes()?, secret };
         let refused = match self.net.request(peer, grant).await {
             Ok(Response::Ack) => None,
             Ok(Response::Error(why)) => Some(LinkError::Refused(why)),
@@ -990,18 +1166,7 @@ impl App {
         if self.state.lock().unwrap().root.is_none() {
             bail!("solo el dispositivo primario puede vincular otros");
         }
-        let token = {
-            let mut inv = self.invite.lock().unwrap();
-            match inv.as_ref() {
-                Some(i) if i.until > Instant::now() => i.token,
-                _ => {
-                    let mut token = [0u8; 16];
-                    rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut token);
-                    *inv = Some(Invite { token, until: Instant::now() + INVITE_TTL });
-                    token
-                }
-            }
-        };
+        let token = current_token(&self.invite);
         let mut code = format!(
             "{INVITE_PREFIX}{}:{}",
             self.device_code(),
@@ -1075,7 +1240,12 @@ impl App {
         let mut st = self.state.lock().unwrap();
         match &st.identity {
             None => {}
-            Some(cur) if cur.record.root_pk == verified.record.root_pk => {}
+            // Un registro anterior no puede deshacer cambios (D-039).
+            Some(cur) if cur.record.root_pk == verified.record.root_pk => {
+                if verified.record.seq < cur.record.seq {
+                    bail!("el registro es más antiguo que el que ya tenemos");
+                }
+            }
             Some(_) => bail!("este dispositivo ya pertenece a otra identidad"),
         }
         let handle = verified.handle.clone();
@@ -1133,17 +1303,30 @@ impl App {
 
     /// Resuelve un handle en la DHT y verifica el registro.
     pub async fn resolve(&self, handle: &Handle) -> Result<VerifiedRecord> {
+        self.resolve_pinned(handle, None).await
+    }
+
+    /// Como `resolve`, pero solo acepta la raíz `root` (la del QR). Si ya
+    /// conocíamos a ese contacto, su raíz queda fijada (D-041).
+    pub async fn resolve_pinned(&self, handle: &Handle, root: Option<[u8; 32]>) -> Result<VerifiedRecord> {
         let mut candidates = self.net.get_records(dht_key(&handle.suffix)).await?;
+        let mut pinned = root;
         {
             let st = self.state.lock().unwrap();
-            if let Some(own) = st.identity.as_ref().filter(|v| &v.handle == handle) {
-                candidates.push(own.signed.to_bytes()?);
-            }
-            if let Some(c) = st.contacts.values().find(|v| &v.handle == handle) {
-                candidates.push(c.signed.to_bytes()?);
+            let known = st
+                .identity
+                .as_ref()
+                .filter(|v| &v.handle == handle)
+                .or_else(|| st.contacts.values().find(|v| &v.handle == handle));
+            if let Some(k) = known {
+                if pinned.is_some_and(|p| p != k.record.root_pk) {
+                    bail!("{handle} ya era otra identidad: el QR no coincide con la que conocías");
+                }
+                pinned = Some(k.record.root_pk);
+                candidates.push(k.signed.to_bytes()?);
             }
         }
-        let best = best_record(handle, candidates.iter().map(Vec::as_slice))
+        let best = select_record(handle, candidates.iter().map(Vec::as_slice), pinned.as_ref())?
             .with_context(|| format!("no se encontró {handle} en la red"))?;
         let mut st = self.state.lock().unwrap();
         let known = st.contacts.get(&best.record.root_pk).map(|c| c.record.seq);
@@ -1153,6 +1336,30 @@ impl App {
             write_private(&self.dir.join("contacts.cbor"), &cbor_to(&all)?)?;
         }
         Ok(best)
+    }
+
+    /// Comprueba contra el registro firmado (resolviéndolo si hace falta)
+    /// que el dispositivo de `m` pertenece a la raíz que declara. `handle`
+    /// es el participante cuyo sufijo coincide con esa raíz.
+    async fn device_verified(&self, m: &MemberId, handle: &str) -> bool {
+        if Self::device_known(&self.state.lock().unwrap(), m) == Some(true) {
+            return true;
+        }
+        // Sin registro o con uno que quizá esté desfasado: a la red.
+        match handle.parse::<Handle>() {
+            Ok(h) => self.resolve_pinned(&h, Some(m.root_pk)).await.is_ok_and(|r| r.record.has_device(&m.device_pk)),
+            Err(_) => false,
+        }
+    }
+
+    /// ¿Está el dispositivo de `m` en el registro firmado de su raíz?
+    /// `None` si aún no tenemos ese registro.
+    fn device_known(st: &State, m: &MemberId) -> Option<bool> {
+        st.identity
+            .as_ref()
+            .filter(|v| v.record.root_pk == m.root_pk)
+            .or_else(|| st.contacts.get(&m.root_pk))
+            .map(|v| v.record.has_device(&m.device_pk))
     }
 
     /// Nombre para mostrar de un dispositivo. Si aún no tenemos el registro
@@ -1237,12 +1444,7 @@ impl App {
         let mut participants = vec![me.to_string()];
         for t in &targets {
             self.dial_and_wait(&t.addrs).await;
-            let rec = self.resolve(&t.handle).await?;
-            if let Some(root) = t.root
-                && root.to_bytes() != rec.record.root_pk
-            {
-                bail!("la clave del QR no coincide con la de {}", t.handle);
-            }
+            self.resolve_pinned(&t.handle, t.root.map(|r| r.to_bytes())).await?;
             if !participants.contains(&t.handle.to_string()) {
                 participants.push(t.handle.to_string());
             }
@@ -1289,18 +1491,26 @@ impl App {
         Ok(chat)
     }
 
+    /// Número de seguridad con una persona conocida (D-043). Si coincide con
+    /// el que ve ella, su handle no está suplantado.
+    pub fn safety_number(&self, handle: &str) -> Result<String> {
+        let st = self.state.lock().unwrap();
+        let me = st.identity.as_ref().context("aún no tienes identidad")?;
+        let other = st
+            .contacts
+            .values()
+            .find(|v| v.handle.to_string() == handle)
+            .with_context(|| format!("{handle} no es un contacto conocido"))?;
+        Ok(lacre_core::identity::safety_number(&me.record.root_pk, &other.record.root_pk))
+    }
+
     /// Añade personas a un chat existente (solo el committer).
     pub async fn add_members(self: &Arc<Self>, index: usize, targets: Vec<Target>) -> Result<()> {
         let chat = self.editable_chat(index)?;
         let mut meta = chat.meta.clone();
         for t in &targets {
             self.dial_and_wait(&t.addrs).await;
-            let rec = self.resolve(&t.handle).await?;
-            if let Some(root) = t.root
-                && root.to_bytes() != rec.record.root_pk
-            {
-                bail!("la clave del QR no coincide con la de {}", t.handle);
-            }
+            self.resolve_pinned(&t.handle, t.root.map(|r| r.to_bytes())).await?;
             if !meta.participants.contains(&t.handle.to_string()) {
                 meta.participants.push(t.handle.to_string());
             }
@@ -1375,7 +1585,7 @@ impl App {
                     .max_by_key(|m| m.sent_at)
                     .cloned();
                 let peer = direct_peer(c, &my_suffix);
-                let avatar = peer.as_ref().filter(|_| c.accepted).and_then(|p| avatars.path(&suffix_of(p)));
+                let avatar = peer.as_ref().filter(|_| c.accepted).is_some_and(|p| avatars.path(&suffix_of(p)).is_some());
                 ChatSummary { index, name, devices, active: c.active, last, request: !c.accepted, peer, avatar }
             })
             .collect()
@@ -1592,7 +1802,7 @@ impl App {
                 }
             }
         }
-        hits.sort_by(|a, b| b.message.sent_at.cmp(&a.message.sent_at));
+        hits.sort_by_key(|h| std::cmp::Reverse(h.message.sent_at));
         hits.truncate(MAX_HITS);
         Ok(hits)
     }
@@ -1784,9 +1994,9 @@ impl App {
         self.my_suffix().map_or(0, |s| self.avatars.lock().unwrap().version(&s))
     }
 
-    /// Ruta de la foto de perfil de un handle (o de la nuestra).
-    pub fn avatar_path(&self, handle: &str) -> Option<PathBuf> {
-        self.avatars.lock().unwrap().path(&suffix_of(handle))
+    /// Foto de perfil de un handle (o la nuestra): (versión, bytes).
+    pub fn avatar(&self, handle: &str) -> Result<(u64, Option<Vec<u8>>)> {
+        self.avatars.lock().unwrap().read(&suffix_of(handle))
     }
 
     /// Cambia (o quita, con `None`) nuestra foto y la anuncia en los chats
@@ -1995,7 +2205,13 @@ impl App {
         let this = self.clone();
         tokio::spawn(async move {
             let me = this.device_pk();
-            let due = this.mailbox.lock().unwrap().due();
+            let due = {
+                let mut mb = this.mailbox.lock().unwrap();
+                if let Err(e) = mb.flush() {
+                    warn!("buzón: {e:#}");
+                }
+                mb.due()
+            };
             let pushes = due.into_iter().filter(|to| *to != me).map(|to| {
                 let this = this.clone();
                 async move {
@@ -2051,18 +2267,19 @@ impl App {
     /// de su remitente.
     async fn open_envelope(self: &Arc<Self>, env: Envelope) -> Result<()> {
         let id = env.id();
+        if self.state.lock().unwrap().seen.contains(&id) {
+            return Ok(());
+        }
+        // Solo cuentan como vistos los sobres auténticos: la basura no debe
+        // poder desplazar de la lista los ids reales (D-042).
+        let (from, sent, plaintext) = env.open_dated(&self.device)?;
         {
             let mut st = self.state.lock().unwrap();
-            if st.seen.contains(&id) {
+            if !st.seen.insert(id, sent, now()) {
                 return Ok(());
-            }
-            st.seen.push_back(id);
-            if st.seen.len() > MAX_SEEN {
-                st.seen.pop_front();
             }
             write_private(&self.dir.join("seen.cbor"), &cbor_to(&st.seen)?)?;
         }
-        let (from, plaintext) = env.open(&self.device)?;
         let req: Request = cbor_from(&plaintext)?;
         // Solo lo que tiene sentido diferir; nada de peticiones a buzones.
         if !matches!(req, Request::Welcome { .. } | Request::Mls(_) | Request::SyncHint { .. } | Request::Accepted { .. } | Request::Blocks { .. }) {
@@ -2090,7 +2307,9 @@ impl App {
             Ok(resp) => resp,
             Err(e) => {
                 debug!(%peer, "petición rechazada: {e:#}");
-                Response::Error(e.to_string())
+                // Solo el mensaje externo (sin la cadena de causas, que puede
+                // llevar rutas o detalles internos) y acotado (D-042).
+                Response::Error(e.to_string().chars().take(200).collect())
             }
         };
         self.net.respond(channel, resp).await;
@@ -2098,23 +2317,32 @@ impl App {
 
     async fn on_request(self: &Arc<Self>, peer: PeerId, req: Request) -> Result<Response> {
         match req {
-            Request::KeyPackage => Ok(Response::KeyPackage(self.with_mls(|m| Ok(m.key_package()?))?)),
-            Request::LinkGrant { record } => {
-                self.accept_grant(SignedRecord::from_bytes(&record)?.verify()?)?;
+            Request::KeyPackage => {
+                {
+                    let mut l = self.kp_limit.lock().unwrap();
+                    if !l.0.take(peer) || !l.1.take(()) {
+                        bail!("demasiadas peticiones de KeyPackage");
+                    }
+                }
+                Ok(Response::KeyPackage(self.with_mls(|m| Ok(m.key_package()?))?))
+            }
+            Request::LinkGrant { record, secret } => {
+                // Solo de quien leyó nuestro código (D-039) y desde un
+                // dispositivo de esa misma identidad.
+                let verified = SignedRecord::from_bytes(&record)?.verify()?;
+                let sender = device_pk_of(&peer).context("peer sin clave Ed25519")?;
+                if !verified.record.has_device(&sender) {
+                    bail!("la vinculación no viene de esa identidad");
+                }
+                if !take_token(&self.link_secret, &secret) {
+                    bail!("el código de vinculación no vale o ha caducado");
+                }
+                self.accept_grant(verified)?;
                 Ok(Response::Ack)
             }
             Request::Join { token, label } => {
-                {
-                    // Comparación de hashes: no revela por tiempos cuánto
-                    // del token coincide.
-                    let mut inv = self.invite.lock().unwrap();
-                    let valid = inv
-                        .as_ref()
-                        .is_some_and(|i| i.until > Instant::now() && blake3::hash(&i.token) == blake3::hash(&token));
-                    if !valid {
-                        bail!("la invitación no vale o ha caducado");
-                    }
-                    *inv = None;
+                if !take_token(&self.invite, &token) {
+                    bail!("la invitación no vale o ha caducado");
                 }
                 let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
                 let label = clean_label(&label);
@@ -2138,6 +2366,12 @@ impl App {
                 let (group_id, old) = {
                     let st = self.state.lock().unwrap();
                     let mls = st.mls.as_ref().context("sin identidad")?;
+                    // Que nadie pueda llenarnos de grupos (cada uno es estado
+                    // MLS en disco) a base de invitaciones (D-042).
+                    let pending = st.chats.iter().filter(|c| c.active && !c.accepted && !c.left).count();
+                    if pending >= MAX_REQUESTS {
+                        bail!("demasiadas solicitudes pendientes");
+                    }
                     let group_id = mls.join(&welcome, |gid| {
                         st.chats.iter().any(|c| c.group_id == gid && c.meta.committer == meta.committer)
                     })?;
@@ -2149,12 +2383,20 @@ impl App {
                     .find(|m| m.device_pk == meta.committer)
                     .context("el committer no es miembro del grupo")?;
                 let invited_by = participant_of(&meta.participants, &committer.root_pk);
+                // La raíz que declara su credencial solo vale si el registro
+                // firmado de esa raíz incluye al committer (D-040). Si no, no
+                // puede saltarse la solicitud haciéndose pasar por nosotros o
+                // por un contacto de confianza.
+                let verified = self.device_verified(&committer, &invited_by).await;
+                if !verified {
+                    warn!("Welcome de un committer que no está en el registro de su identidad");
+                }
                 let index = {
                     let mut st = self.state.lock().unwrap();
                     // Solicitud (D-029) salvo que venga de nosotros o de
                     // alguien con quien ya hablamos.
                     let accepted = st.pre_accepted.remove(&group_id)
-                        || old.as_ref().map_or_else(
+                        || verified && old.as_ref().map_or_else(
                             || self.is_mine_in(&st, &committer.root_pk) || self.trusted(&st, &suffix_of(&invited_by)),
                             // Si salimos y nos vuelven a añadir, es otra
                             // vez una solicitud (D-031).
@@ -2220,6 +2462,11 @@ impl App {
                 Ok(Response::Ack)
             }
             Request::Deposit(env) => {
+                // Cupo por peer (los depósitos anónimos llegan con identidad
+                // efímera: el límite de verdad es el de bytes del buzón).
+                if !self.deposit_limit.lock().unwrap().take(peer) {
+                    bail!("demasiados depósitos");
+                }
                 self.mailbox.lock().unwrap().deposit(env)?;
                 Ok(Response::Ack)
             }
@@ -2331,6 +2578,29 @@ impl App {
                 Ok(Response::Chunk(self.files.lock().unwrap().serve(&file, index, &token)?))
             }
             Request::SyncHint { group_id } => {
+                // Solo de un dispositivo del grupo o de una persona del grupo
+                // (uno recién vinculado aún no es miembro), y como mucho una
+                // sincronización por aviso cada `HINT_EVERY` (D-042).
+                let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
+                let members = self.with_mls(|m| Ok(m.members(&group_id)?))?;
+                let allowed = members.iter().any(|m| m.device_pk == device) || {
+                    let st = self.state.lock().unwrap();
+                    members.iter().any(|m| {
+                        Self::device_known(&st, &MemberId { root_pk: m.root_pk, device_pk: device }) == Some(true)
+                    })
+                };
+                if !allowed {
+                    bail!("aviso de sincronización de alguien ajeno al grupo");
+                }
+                {
+                    let t = now();
+                    let mut last = self.hinted.lock().unwrap();
+                    if last.get(&group_id).is_some_and(|at| at + HINT_EVERY > t) {
+                        return Ok(Response::Ack);
+                    }
+                    last.retain(|_, at| *at + HINT_EVERY > t);
+                    last.insert(group_id.clone(), t);
+                }
                 let this = self.clone();
                 tokio::spawn(async move {
                     if let Err(e) = this.sync_group(&group_id).await {
@@ -2352,14 +2622,18 @@ impl App {
         let chat = st.chats.iter().find(|c| c.group_id == group_id).cloned();
         let Some(chat) = chat else {
             // Puede llegar antes que el Welcome.
-            Self::defer(&mut st, bytes, attempts);
+            Self::defer(&mut st, &group_id, false, bytes, attempts);
             return Ok(None);
         };
         match mls.process(&bytes, &chat.meta.committer) {
             Ok(Incoming::Application { sender, body, .. }) => {
                 let msg: AppMessage = cbor_from(&body)?;
                 let index = st.chats.iter().position(|c| c.group_id == group_id).unwrap();
-                let mine = st.identity.as_ref().is_some_and(|v| v.record.root_pk == sender.root_pk);
+                // La raíz que declara la credencial solo cuenta si su registro
+                // firmado incluye el dispositivo (D-040): una hoja que diga
+                // ser nuestra sin estar en nuestro registro no es nuestra.
+                let forged = Self::device_known(&st, &sender) == Some(false);
+                let mine = !forged && st.identity.as_ref().is_some_and(|v| v.record.root_pk == sender.root_pk);
                 // Ya salimos: nada de lo que llegue lo vuelve a mostrar.
                 if chat.left {
                     return Ok(None);
@@ -2372,7 +2646,7 @@ impl App {
                         drop(st);
                         let message = StoredMessage { from: String::new(), text: "Saliste del chat desde otro dispositivo".into(), sent_at: msg.sent_at, mine: true, notice: true, sticker: None, file: None };
                         self.record(index, &group_id, message, false);
-                    } else if chat.meta.committer == self.device_pk() {
+                    } else if chat.meta.committer == self.device_pk() && !forged {
                         st.leaves.push((group_id, sender.root_pk));
                     }
                     return Ok(None);
@@ -2405,11 +2679,29 @@ impl App {
                 drop(st);
                 // La foto se pide después (`fetch_avatars`), si la persona
                 // comparte con nosotros algún chat aceptado.
-                if msg.avatar > 0 {
+                if msg.avatar > 0 && !forged {
                     self.avatars.lock().unwrap().saw(&sender_suffix, msg.avatar, sender.device_pk)?;
                 }
                 if msg.text.is_empty() && msg.sticker.is_none() && msg.file.is_none() {
                     return Ok(None);
+                }
+                let mut msg = msg;
+                // Texto acotado (el sobre ya limita el tamaño, pero cada
+                // mensaje reescribe el historial entero).
+                if msg.text.chars().count() > MAX_TEXT {
+                    msg.text = msg.text.chars().take(MAX_TEXT).collect();
+                }
+                // De una solicitud aún sin aceptar (D-029) solo se guardan
+                // unos pocos mensajes, y sin stickers (hasta 200 KB cada uno).
+                // Las ofertas de archivo sí (pocos KB): el contenido no se
+                // puede descargar hasta aceptar (D-042).
+                if !chat.accepted {
+                    if self.history.lock().unwrap().count(&group_id) >= MAX_REQUEST_MESSAGES {
+                        return Ok(None);
+                    }
+                    if msg.sticker.take().is_some() {
+                        msg.text = "[sticker no guardado: acepta el chat para recibirlos]".into();
+                    }
                 }
                 let sticker = match msg.sticker {
                     Some(b) => Some(self.stickers.lock().unwrap().put(&b).context("sticker recibido")?),
@@ -2439,7 +2731,7 @@ impl App {
             }
             Ok(Incoming::Ignored) => Ok(None),
             Err(e) => {
-                Self::defer(&mut st, bytes, attempts);
+                Self::defer(&mut st, &group_id, true, bytes, attempts);
                 Err(e.into())
             }
         }
@@ -2449,7 +2741,13 @@ impl App {
     /// autorizado por el registro de su persona.
     async fn verify_members(&self, group_id: &[u8]) {
         let Ok(chat) = self.chat(group_id) else { return };
-        let Ok(members) = self.with_mls(|m| Ok(m.members(group_id)?)) else { return };
+        let members = match self.with_mls(|m| Ok(m.members(group_id)?)) {
+            Ok(m) => m,
+            Err(e) => {
+                warn!("miembros del grupo ilegibles: {e:#}");
+                return;
+            }
+        };
         let mut authorized = HashSet::new();
         for p in &chat.meta.participants {
             if let Ok(h) = p.parse::<Handle>()
@@ -2551,10 +2849,26 @@ impl App {
         self.fetch_avatars();
     }
 
-    fn defer(st: &mut State, bytes: Vec<u8>, attempts: u8) {
-        if attempts + 1 < MAX_ATTEMPTS && st.pending.len() < MAX_PENDING {
-            st.pending.push((bytes, attempts + 1));
+    /// Guarda un mensaje para reintentarlo. Con cupo por grupo y menos sitio
+    /// para grupos desconocidos (D-042): cualquiera puede mandarnos mensajes
+    /// de grupos inventados y no deben desplazar a los de nuestros chats.
+    fn defer(st: &mut State, group_id: &[u8], known: bool, bytes: Vec<u8>, attempts: u8) {
+        if attempts + 1 >= MAX_ATTEMPTS || st.pending.len() >= MAX_PENDING {
+            return;
         }
+        let ids: Vec<Vec<u8>> =
+            st.pending.iter().filter_map(|(b, _)| lacre_core::mls::group_id_of(b).ok()).collect();
+        let same = ids.iter().filter(|g| g.as_slice() == group_id).count();
+        if same >= MAX_PENDING_PER_GROUP {
+            return;
+        }
+        if !known {
+            let unknown = ids.iter().filter(|g| !st.chats.iter().any(|c| &c.group_id == *g)).count();
+            if unknown >= MAX_PENDING_UNKNOWN {
+                return;
+            }
+        }
+        st.pending.push((bytes, attempts + 1));
     }
 
     fn retry_pending(&self) {
@@ -2568,4 +2882,69 @@ impl App {
 /// Nombre de dispositivo sin espacios sobrantes y de longitud acotada.
 fn clean_label(label: &str) -> String {
     label.trim().chars().take(MAX_LABEL).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn link_code_requires_secret() {
+        let key = encode_key(&generate_key().verifying_key());
+        assert!(matches!(parse_link_code(&key), Err(LinkError::BadCode)));
+        let secret = data_encoding::BASE32_NOPAD.encode(&[7u8; 16]).to_lowercase();
+        let (_, s, addrs) = parse_link_code(&format!("{key}:{secret}@/ip4/1.2.3.4/tcp/1")).unwrap();
+        assert_eq!(s, vec![7u8; 16]);
+        assert_eq!(addrs.len(), 1);
+        let short = data_encoding::BASE32_NOPAD.encode(&[7u8; 8]).to_lowercase();
+        assert!(parse_link_code(&format!("{key}:{short}")).is_err());
+    }
+
+    #[test]
+    fn tokens_are_single_use() {
+        let slot = Mutex::new(None);
+        let t = current_token(&slot);
+        assert_eq!(t, current_token(&slot), "se reutiliza mientras está vigente");
+        assert!(!take_token(&slot, &[0u8; 16]));
+        assert!(take_token(&slot, &t));
+        assert!(!take_token(&slot, &t), "un solo uso");
+        let t2 = current_token(&slot);
+        slot.lock().unwrap().as_mut().unwrap().until = Instant::now() - Duration::from_secs(1);
+        assert!(!take_token(&slot, &t2), "caducado");
+    }
+}
+
+#[cfg(test)]
+mod seen_tests {
+    use super::*;
+
+    #[test]
+    fn seen_rejects_replays_and_forgets_expired() {
+        let t = 1_800_000_000;
+        let mut s = Seen::default();
+        assert!(s.insert([1; 32], t, t));
+        assert!(!s.insert([1; 32], t, t));
+        // Al caducar se olvida sin subir el suelo.
+        let later = t + envelope::MAX_AGE + envelope::MAX_SKEW + 1;
+        assert!(s.insert([2; 32], later, later));
+        assert!(!s.contains(&[1; 32]));
+        assert_eq!(s.floor, 0);
+        // Bajo inundación se olvida el más antiguo y el suelo sube.
+        for i in 0..MAX_SEEN as u64 {
+            let mut id = [0u8; 32];
+            id[..8].copy_from_slice(&i.to_le_bytes());
+            id[31] = 9;
+            assert!(s.insert(id, later + 1 + i, later));
+        }
+        assert_eq!(s.ids.len(), MAX_SEEN);
+        assert!(!s.contains(&[2; 32]));
+        assert!(!s.insert([2; 32], later, later));
+    }
+
+    #[test]
+    fn seen_reads_old_format() {
+        let old: VecDeque<[u8; 32]> = VecDeque::from([[7; 32]]);
+        let s = Seen::from_bytes(&cbor_to(&old).unwrap()).unwrap();
+        assert!(s.contains(&[7; 32]));
+    }
 }

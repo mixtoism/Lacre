@@ -75,6 +75,11 @@ impl History {
         Ok(())
     }
 
+    /// Mensajes guardados de un chat.
+    pub fn count(&self, group_id: &[u8]) -> usize {
+        self.chats.get(group_id).map_or(0, Vec::len)
+    }
+
     pub fn get(&self, group_id: &[u8]) -> Vec<StoredMessage> {
         self.chats.get(group_id).cloned().unwrap_or_default()
     }

@@ -131,7 +131,7 @@ class _ChatListPageState extends State<ChatListPage> {
                       children: [
                         Avatar(
                           name: handle,
-                          path: store.avatar(handle),
+                          image: store.avatar(handle),
                           radius: 18,
                         ),
                         const SizedBox(width: 12),

@@ -232,6 +232,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'All their devices will leave the chat and they won\'t receive new messages.';
 
   @override
+  String safetyTitle(String handle) {
+    return 'Safety number with $handle';
+  }
+
+  @override
+  String get safetyBody =>
+      'Compare it in person or over another channel (a call). If it matches the one on their device, nobody is impersonating this person.';
+
+  @override
+  String get safetyNumber => 'safety number';
+
+  @override
+  String get close => 'Close';
+
+  @override
   String get remove => 'Remove';
 
   @override

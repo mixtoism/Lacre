@@ -41,6 +41,35 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
+  seguridad:
+    # Pruebas del núcleo, avisos de clippy como errores y dependencias con
+    # vulnerabilidades conocidas (RustSec). Falla si hay alguna.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Dependencias del sistema
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
+      - name: Pruebas
+        run: cargo test --workspace --locked
+      - name: Clippy
+        run: cargo clippy --workspace --locked -- -D clippy::correctness -D clippy::suspicious
+      - name: Auditoría de dependencias
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+      - name: Fuzzing breve de los decodificadores
+        run: scripts/fuzz.sh 60
+      - name: Casos que fallaron en el fuzzing
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts/
+          if-no-files-found: ignore
+
   android:
     needs: version
     runs-on: ubuntu-latest

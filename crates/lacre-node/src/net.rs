@@ -21,7 +21,7 @@ use libp2p::multiaddr::Protocol;
 use libp2p::request_response::{self, OutboundRequestId, ProtocolSupport, ResponseChannel};
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent, behaviour::toggle::Toggle};
 use libp2p::{
-    Multiaddr, PeerId, StreamProtocol, Swarm, dcutr, identify, identity, mdns, noise, relay, tcp, upnp, yamux,
+    Multiaddr, PeerId, StreamProtocol, Swarm, connection_limits, dcutr, identify, identity, mdns, noise, relay, tcp, upnp, yamux,
 };
 use lacre_core::mls::verify_key_package;
 use lacre_core::record::{SignedRecord, dht_key, key_package_key};
@@ -32,6 +32,8 @@ use crate::peers::PeerCache;
 use crate::proto::{Request, Response};
 use crate::tor::{TorDialer, TorTransport};
 
+/// Máximo de peers recordados en `dialed` y `hops` (D-042).
+const MAX_TRACKED: usize = 1024;
 const KAD_PROTOCOL: StreamProtocol = StreamProtocol::new("/p2m/kad/1.0.0");
 pub(crate) const MSG_PROTOCOL: StreamProtocol = StreamProtocol::new("/p2m/msg/1");
 /// Reservas simultáneas en relays (D-018).
@@ -43,6 +45,14 @@ const RECORD_GRACE: Duration = Duration::from_millis(1500);
 /// Sin ninguna conexión, cada cuánto se vuelve a llamar a los nodos de
 /// arranque. Al arrancar Tor aún no está listo y el primer intento por onion
 /// suele fallar.
+/// Registros entrantes que se validan a la vez; los que lleguen con todas
+/// las plazas ocupadas se descartan (el emisor los volverá a publicar).
+const MAX_VALIDATING: usize = 2;
+/// Registros que se aceptan para validar de cada peer por ventana.
+const PUT_BUDGET: u32 = 20;
+const PUT_WINDOW: Duration = Duration::from_secs(600);
+/// Peers distintos de los que se lleva la cuenta a la vez.
+const PUT_PEERS: usize = 4096;
 const REDIAL_EVERY: Duration = Duration::from_secs(30);
 /// En reposo (D-034), las tareas periódicas se agrupan en este intervalo.
 pub const LOW_POWER_EVERY: Duration = Duration::from_secs(12 * 60);
@@ -64,6 +74,9 @@ impl Default for Power {
 
 #[derive(NetworkBehaviour)]
 struct Behaviour {
+    /// Primero, para que las conexiones de más se rechacen antes de que las
+    /// vea ningún otro protocolo (D-042).
+    limits: connection_limits::Behaviour,
     kad: kad::Behaviour<kad::store::MemoryStore>,
     mdns: Toggle<mdns::tokio::Behaviour>,
     identify: identify::Behaviour,
@@ -242,7 +255,7 @@ pub(crate) fn dns_config() -> (ResolverConfig, ResolverOpts) {
 /// así que `PeerId` == dispositivo (D-008).
 pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::Receiver<NetEvent>, PeerId)> {
     let keypair = identity::Keypair::ed25519_from_bytes(device_secret)?;
-    let tor = cfg.tor.as_deref().map(TorTransport::new).transpose()?;
+    let tor = cfg.tor.as_deref().map(|d| TorTransport::new(d, &device_secret)).transpose()?;
     let onion = tor.as_ref().map(TorTransport::address);
     let courier_tor = tor.as_ref().map(|t| Arc::new(t.isolated_dialer()));
     let tor_client = tor.as_ref().map(TorTransport::client);
@@ -278,7 +291,14 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
             // Sin direcciones públicas Kademlia se pondría en modo cliente y
             // nadie nos guardaría en su tabla; en esta PoC todos son servidores.
             kad.set_mode(Some(Mode::Server));
+            // Un relay público atiende a muchos nodos; uno normal, a pocos.
+            let incoming = if cfg.relay_server { 2048 } else { 256 };
+            let limits = connection_limits::ConnectionLimits::default()
+                .with_max_pending_incoming(Some(64))
+                .with_max_established_incoming(Some(incoming))
+                .with_max_established_per_peer(Some(4));
             Ok(Behaviour {
+                limits: connection_limits::Behaviour::new(limits),
                 kad,
                 mdns: match cfg.mdns {
                     true => Some(mdns::tokio::Behaviour::new(mdns::Config::default(), peer_id)?),
@@ -336,6 +356,8 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
         dialed: HashMap::new(),
         relays: HashMap::new(),
         hops: HashSet::new(),
+        validating: Arc::new(tokio::sync::Semaphore::new(MAX_VALIDATING)),
+        put_budget: HashMap::new(),
         bootstrap,
         cache,
         relay_server: cfg.relay_server,
@@ -348,12 +370,15 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
     Ok((Client { tx, power: Arc::new(power), tor: courier_tor }, ev_rx, peer_id))
 }
 
+/// Búsqueda en la DHT en curso: valores recibidos y a quién devolverlos.
+type PendingGet = (Vec<Vec<u8>>, oneshot::Sender<Vec<Vec<u8>>>);
+
 struct Network {
     swarm: Swarm<Behaviour>,
     self_tx: mpsc::Sender<Command>,
     events: mpsc::Sender<NetEvent>,
     puts: HashMap<QueryId, oneshot::Sender<Result<()>>>,
-    gets: HashMap<QueryId, (Vec<Vec<u8>>, oneshot::Sender<Vec<Vec<u8>>>)>,
+    gets: HashMap<QueryId, PendingGet>,
     requests: HashMap<OutboundRequestId, oneshot::Sender<Result<Response>>>,
     closest: HashMap<QueryId, oneshot::Sender<Vec<PeerId>>>,
     /// Dirección directa por la que marcamos a cada peer (para reservar
@@ -363,6 +388,11 @@ struct Network {
     relays: HashMap<PeerId, ListenerId>,
     /// Peers que ofrecen relay (para volver a reservar al salir del reposo).
     hops: HashSet<PeerId>,
+    /// Validaciones de registros entrantes en curso (D-042).
+    validating: Arc<tokio::sync::Semaphore>,
+    /// Registros entrantes que ha intentado guardar cada peer en la ventana
+    /// actual: (inicio de la ventana, cuántos).
+    put_budget: HashMap<PeerId, (std::time::Instant, u32)>,
     bootstrap: Vec<Multiaddr>,
     cache: Option<PeerCache>,
     relay_server: bool,
@@ -578,6 +608,9 @@ impl Network {
                 if let ConnectedPoint::Dialer { address, .. } = &endpoint
                     && !is_relayed(address)
                 {
+                    if self.dialed.len() >= MAX_TRACKED && !self.dialed.contains_key(&peer_id) {
+                        self.forget_stale();
+                    }
                     self.dialed.insert(peer_id, address.clone());
                     // Sin esperar a identify: si es el único peer (un QR, un
                     // nodo de arranque), la primera búsqueda ya puede usarlo.
@@ -620,6 +653,9 @@ impl Network {
                     }
                 }
                 if info.protocols.contains(&relay::HOP_PROTOCOL_NAME) {
+                    if self.hops.len() >= MAX_TRACKED && !self.hops.contains(&peer_id) {
+                        self.forget_stale();
+                    }
                     self.hops.insert(peer_id);
                     if !(self.power.borrow().low && self.onion_ready) {
                         self.reserve_relay(peer_id);
@@ -636,6 +672,17 @@ impl Network {
             SwarmEvent::Behaviour(BehaviourEvent::Rr(ev)) => self.on_rr(ev).await,
             _ => {}
         }
+    }
+
+    /// Olvida direcciones y relays de peers con los que ya no hay conexión
+    /// ni reserva, para que esas tablas no crezcan sin límite (D-042).
+    fn forget_stale(&mut self) {
+        let keep = |p: &PeerId, swarm: &Swarm<Behaviour>, relays: &HashMap<PeerId, ListenerId>| {
+            relays.contains_key(p) || swarm.is_connected(p)
+        };
+        let (swarm, relays) = (&self.swarm, &self.relays);
+        self.dialed.retain(|p, _| keep(p, swarm, relays));
+        self.hops.retain(|p| keep(p, swarm, relays));
     }
 
     /// Reserva un hueco en un relay para que nos puedan llamar aunque
@@ -655,15 +702,48 @@ impl Network {
         }
     }
 
+    /// Cuenta un registro entrante de `peer`; `false` si agotó su cupo.
+    fn take_put_budget(&mut self, peer: PeerId) -> bool {
+        let now = std::time::Instant::now();
+        if self.put_budget.len() >= PUT_PEERS {
+            self.put_budget.retain(|_, (start, _)| now.duration_since(*start) < PUT_WINDOW);
+            if self.put_budget.len() >= PUT_PEERS && !self.put_budget.contains_key(&peer) {
+                return false;
+            }
+        }
+        let (start, used) = self.put_budget.entry(peer).or_insert((now, 0));
+        if now.duration_since(*start) >= PUT_WINDOW {
+            *start = now;
+            *used = 0;
+        }
+        *used += 1;
+        *used <= PUT_BUDGET
+    }
+
     fn on_kad(&mut self, ev: kad::Event) {
         match ev {
             kad::Event::InboundRequest {
                 request: kad::InboundRequest::PutRecord { record: Some(record), source, .. },
             } => {
-                // Validar cuesta un Argon2 (memorizado por clave raíz): fuera
-                // del bucle del swarm.
+                // Lo mismo que ya tenemos no hace falta validarlo otra vez.
+                if self.kad().store_mut().get(&record.key).is_some_and(|r| r.value == record.value) {
+                    return;
+                }
+                // Validar cuesta un Argon2 de 64 MiB (memorizado por clave
+                // raíz): fuera del bucle del swarm, con pocas plazas y un
+                // presupuesto por peer para que no se pueda agotar la
+                // memoria o la CPU mandando claves nuevas (D-042).
+                if !self.take_put_budget(source) {
+                    debug!(%source, "demasiados registros DHT de este peer");
+                    return;
+                }
+                let Ok(permit) = self.validating.clone().try_acquire_owned() else {
+                    debug!(%source, "validación de registros saturada: descartado");
+                    return;
+                };
                 let tx = self.self_tx.clone();
                 tokio::task::spawn_blocking(move || {
+                    let _permit = permit;
                     if is_valid_record(&record) {
                         let _ = tx.blocking_send(Command::StoreValidated(record));
                     } else {

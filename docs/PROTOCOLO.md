@@ -26,8 +26,8 @@ en el repositorio (crates `lacre-core` y `lacre-node`) en la fecha indicada. Si
 este documento y el código no coinciden, manda el código y este documento
 tiene un error.
 
-Lacre es todavía una prueba de concepto: no ha pasado ninguna auditoría
-independiente. La versión 1 del protocolo **no** es estable y puede cambiar
+Lacre ha pasado una revisión de seguridad interna (D-039 a D-042), pero
+ninguna auditoría independiente. La versión 1 del protocolo **no** es estable y puede cambiar
 sin mantener la compatibilidad.
 
 «Lacre» es el nombre de trabajo del protocolo. Los identificadores que viajan
@@ -256,8 +256,16 @@ vuelve a firmar y publicar el registro.
 
 ### 4.4. Códigos y QR
 
-- **Código de dispositivo**: `BASE32(device_pk)` (52 caracteres). Se usa
-  para vincular dispositivos (§12.1).
+- **Código de dispositivo**: `BASE32(device_pk)` (52 caracteres). Identifica
+  un dispositivo (por ejemplo, para desvincularlo).
+- **Código de vincular** (§12.1):
+
+```
+link-code = BASE32(device_pk) ":" BASE32(secret) *( "@" multiaddr )
+```
+
+  `secret` son 16 bytes aleatorios de un solo uso que el dispositivo nuevo
+  genera y guarda 10 minutos. Un código sin secreto NO DEBE aceptarse.
 - **QR de contacto**:
 
 ```
@@ -339,7 +347,16 @@ Cada dispositivo DEBERÍA publicar un servicio onion v3 (Arti), con puerto
 virtual **4001**, y anunciar su dirección como
 `/onion3/<56 caracteres BASE32>:4001` mediante identify y la DHT. Así se le
 puede llamar aunque esté detrás de CGNAT. La clave del servicio onion es
-distinta de la del dispositivo.
+distinta de la del dispositivo. La implementación de referencia (D-044) la
+deriva de ella y no la guarda en disco:
+
+```
+semilla   = BLAKE3-KDF("p2message/onion-id/v1", device_sk)
+onion_key = Ed25519 con semilla `semilla` (forma expandida, como pide Arti)
+```
+
+Conocer la clave pública del dispositivo no permite calcular la dirección
+onion. Otras implementaciones PUEDEN generar la clave onion como quieran.
 
 ### 6.4. NAT
 
@@ -399,7 +416,7 @@ El apéndice A tiene el esquema completo.
 | `KeyPackage`      | Un committer, para pedir un KeyPackage nuevo      | `KeyPackage(kp)`  |
 | `Welcome{welcome, meta}` | El committer, al añadir el dispositivo a un grupo | `Ack`      |
 | `Mls(bytes)`      | Un miembro del grupo: mensaje MLS (aplicación o commit) | `Ack`       |
-| `LinkGrant{record}` | El primario, al vincular un dispositivo nuevo (§12.1) | `Ack`        |
+| `LinkGrant{record, secret}` | El primario, al vincular un dispositivo nuevo (§12.1) | `Ack`        |
 | `SyncHint{group_id}` | Un miembro, para pedir al committer que sincronice | `Ack`         |
 | `Deposit(env)`    | Cualquiera (normalmente un mensajero), para dejar un sobre | `Ack`     |
 | `Fetch`           | El destinatario, para pedir sus sobres            | `Envelopes{list, more}` |
@@ -423,9 +440,16 @@ verificado del sobre.
   del grupo resultante (§8.4).
 - `Mls`: solo se aplican los commits firmados por el committer del grupo
   (§8.5).
-- `LinkGrant`: el registro DEBE ser válido e incluir al dispositivo receptor.
-  Si el receptor ya tiene identidad, el registro DEBE ser de la misma
-  `root_pk`.
+- `LinkGrant`: el registro DEBE ser válido e incluir al dispositivo receptor
+  y al remitente. `secret` DEBE coincidir con el secreto vigente del código
+  de vincular del receptor (comparación en tiempo constante) y se consume al
+  usarlo. Si el receptor ya tiene identidad, el registro DEBE ser de la
+  misma `root_pk` y su `seq` NO DEBE ser menor que el guardado.
+- `Welcome`, `Mls`: la hoja del remitente DEBE tener una credencial que
+  corresponda a su clave de firma, y su dispositivo DEBE estar en el
+  registro de su `root_pk`. Lo mismo vale para todas las hojas que añade o
+  cambia un commit (D-040). Un Welcome solo se acepta sin preguntar si el
+  committer está verificado así.
 - `Fetch` y `AckEnvelopes` actúan **solo** sobre los sobres cuyo `to` es el
   par autenticado. Nadie más puede leerlos ni borrarlos.
 - `Accepted` y `Blocks`: el remitente DEBE ser un dispositivo del registro
@@ -606,9 +630,11 @@ Para sellar `payload` para `to`:
 R      = Montgomery(to)                      ; Ed25519 → X25519
 e      = 32 bytes aleatorios;   E = X25519(e, 9)
 S      = X25519(e, R);  si S = 0^32 → error
-k      = BLAKE3-KDF("p2message/envelope/v2 seal", E || R || S)
-sig    = Ed25519-Sign(sender, "p2message/envelope/v2\0" || to || E || payload)
-inner  = CBOR({ from: sender_pk (Bytes32), sig: bstr, payload: bstr })
+k      = BLAKE3-KDF("p2message/envelope/v3 seal", E || R || S)
+sent   = hora actual, segundos Unix (uint)
+sig    = Ed25519-Sign(sender, "p2message/envelope/v3\0" || to || E
+                              || u64be(sent) || payload)
+inner  = CBOR({ from: sender_pk (Bytes32), sent: uint, sig: bstr, payload: bstr })
 sealed = E || ChaCha20-Poly1305(k, nonce = 0^12, aad = "", inner)
 ```
 
@@ -617,8 +643,13 @@ la clave efímera es nueva cada vez.
 
 Al abrir un sobre, el destinatario comprueba que `to` es su clave, calcula
 `S = X25519(escalar(device_sk), E)`, deriva `k`, descifra, y verifica `sig`
-con `from` sobre `to || E || payload`. Como la firma cubre `to` y `E`, nadie
-puede volver a sellar un contenido firmado para otro destinatario.
+con `from` sobre `to || E || u64be(sent) || payload`. Como la firma cubre `to`
+y `E`, nadie puede volver a sellar un contenido firmado para otro
+destinatario; como cubre `sent`, nadie puede cambiar su fecha.
+
+El destinatario DEBE rechazar un sobre con `sent + 15 días < ahora` (más
+viejo que lo que guarda un buzón, §10.4) o con `sent > ahora + 1 día`
+(reloj del remitente demasiado adelantado).
 
 - `payload` es el CBOR de una `Request`. Dentro de un sobre solo se admiten
   `Welcome`, `Mls`, `SyncHint`, `Accepted` y `Blocks`. El resto DEBE
@@ -626,7 +657,11 @@ puede volver a sellar un contenido firmado para otro destinatario.
 - Una vez abierto, el contenido se procesa como si el remitente `from` lo
   hubiera enviado directamente (§7.3).
 - El identificador del sobre es `BLAKE3(sealed)`. El destinatario recuerda
-  los últimos 5000 identificadores para descartar duplicados.
+  los identificadores, con su `sent`, de los sobres abiertos que aún no han
+  caducado, y descarta los repetidos. Si pasan de 20 000, olvida el de
+  `sent` más antiguo y desde entonces rechaza todo sobre con `sent` igual o
+  anterior (un «suelo»). Así ninguna repetición se acepta: o el id sigue
+  recordado, o el sobre ya caducó, o queda por debajo del suelo.
 - Antes de guardar un sobre, un buzón (que no puede descifrarlo) solo
   comprueba que `to` es una clave Ed25519 válida y que `sealed` mide al
   menos 48 bytes y como mucho 256 KiB.
@@ -716,10 +751,13 @@ FileOffer = {
 
 ### 12.1. Vinculación
 
-1. El dispositivo nuevo genera su clave y muestra su código (§4.4).
-2. El primario añade el código a su registro (incrementando `seq`), lo
-   publica y envía `LinkGrant{record}` al dispositivo nuevo.
-3. El dispositivo nuevo comprueba el registro (§7.3) y adopta esa identidad.
+1. El dispositivo nuevo genera su clave y muestra su código de vincular
+   (§4.4).
+2. El primario añade el dispositivo a su registro (incrementando `seq`), lo
+   publica y envía `LinkGrant{record, secret}` al dispositivo nuevo, con el
+   secreto que leyó del código de vincular (§4.4).
+3. El dispositivo nuevo comprueba el registro y el secreto (§7.3) y adopta
+   esa identidad.
 4. El primario sincroniza los grupos de los que es committer y envía
    `SyncHint` a los committers de los demás.
 
@@ -751,17 +789,38 @@ cumpleaños, unas 2^20 evaluaciones). Por eso, quien guarda un contacto DEBERÍA
 fijar su `root_pk` y avisar si cambia. El QR (§4.4) transmite la clave
 completa y evita este riesgo.
 
+La implementación de referencia (D-041) fija la `root_pk` de cada contacto
+y de la propia identidad, y trata como error un QR con otra raíz. Si para
+un handle sin fijar hay registros válidos de raíces distintas, no elige
+ninguno («handle ambiguo»). Verifica como mucho 16 candidatos.
+
+Para comprobar la raíz de un contacto sin QR, las dos partes comparan su
+**número de seguridad** (D-043):
+
+```
+o      = BLAKE3-XOF(derive_key "p2message/safety-number/v1",
+                    min(root_a, root_b) || max(root_a, root_b))[0..60]
+grupo_i = u40be(o[5i .. 5i+5]) mod 100000,  i = 0..11   ; 5 cifras con ceros
+número = grupo_0 " " grupo_1 " " … " " grupo_11
+```
+
+El orden se toma comparando los 32 bytes de cada clave lexicográficamente.
+Si los dos números coinciden, cada parte tiene fijada la raíz de la otra.
+
 ### 13.2. Pérdida o robo de la clave raíz
 
 Quien tenga la clave raíz puede añadir dispositivos al registro y, así, entrar
 en todos los grupos de la persona en la siguiente sincronización. Todavía no
 hay frase de recuperación ni forma de transferir el papel de primario.
 
-### 13.3. Vinculación sin confirmación
+### 13.3. Vinculación
 
-Un dispositivo sin identidad acepta el primer `LinkGrant` válido que lo
-incluya. Quien conozca su código puede vincularlo a una identidad ajena. Está
-previsto un QR bidireccional con un secreto de un solo uso.
+El `LinkGrant` solo se acepta con el secreto de un solo uso del código de
+vincular (D-039). Quien vea ese código en sus 10 minutos de vida puede
+adelantarse al dueño. El código fallaría después al dueño, que lo notaría.
+No hay confirmación visual en los dos dispositivos. Tras vincular, la lista
+de dispositivos muestra todos los del registro, y el primario puede
+desvincular uno desconocido.
 
 ### 13.4. Committer único
 
@@ -778,26 +837,41 @@ antes de una versión estable.
 
 ### 13.6. Miembros no autorizados
 
-La verificación de §8.6 solo avisa. Un committer comprometido, o un registro
-que no se pudo resolver, puede dejar en el grupo una hoja que no figure en el
-registro de su persona. Se recomienda que una versión futura rechace esos
-grupos o los aísle.
+Desde D-040 se rechazan los commits con hojas cuya credencial no corresponda
+a su clave de firma. Los mensajes de un dispositivo que se sabe ajeno a la
+raíz que dice ser se tratan como falsificados. La verificación de §8.6 con el
+registro resuelto de la DHT sigue solo avisando: un registro que no se pudo
+resolver puede dejar en el grupo una hoja aún sin comprobar.
 
 ### 13.7. Denegación de servicio
 
-- Comprobar un registro cuesta un Argon2id (memorizado por clave). Un
-  atacante puede inundar la DHT con registros de claves nuevas. Está
-  pendiente limitar la tasa por peer.
-- Los buzones limitan por destinatario, así que un atacante puede llenar el
-  buzón de una víctima (500 sobres) y desplazar sobres legítimos. Para
-  compensarlo, el remitente guarda su propia copia y deposita en 3 buzones.
-- `KeyPackage` responde a cualquiera y genera material de clave cada vez.
+- Comprobar un registro cuesta un Argon2id (memorizado por clave). Desde
+  D-042:
+  - cada peer puede pedir 20 validaciones cada 10 min;
+  - hay como mucho 2 a la vez;
+  - un registro idéntico al guardado no se revalida;
+  - las firmas, el nombre y los dispositivos se comprueban antes de
+    Argon2.
+
+  Un atacante con muchas identidades de libp2p puede multiplicar ese cupo.
+- Los buzones limitan por destinatario a 500 sobres y 16 MiB, y en total a
+  256 MiB. Un atacante puede llenar el buzón de una víctima y desplazar sobres
+  legítimos. Para compensarlo, el remitente guarda su propia copia y deposita
+  en 3 buzones.
+- `KeyPackage` responde a cualquiera y genera material de clave cada vez. Se
+  limita a 8 por peer y 100 en total por hora.
+- El nodo acepta como mucho 64 peticiones simultáneas y limita las conexiones
+  entrantes (D-042).
 
 ### 13.8. Repetición y orden
 
-MLS protege contra la repetición de mensajes de grupo. Los sobres se
-deduplican por identificador. `sent_at` lo declara el remitente y no es
-fiable para ordenar mensajes.
+MLS protege contra la repetición de mensajes de grupo. Los sobres llevan una
+fecha de sellado firmada y caducan a los 15 días; dentro de ese plazo se
+deduplican por identificador, que se marca como visto solo después de abrir
+bien el sobre (§10.2). Un buzón puede retrasar un sobre hasta que caduque,
+pero no repetirlo ni cambiarle la fecha. La fecha depende del reloj del
+remitente, así que `sent_at` (y `sent`) no son fiables para ordenar
+mensajes.
 
 ### 13.9. Secreto hacia delante de los sobres
 
@@ -837,8 +911,10 @@ cualquiera de ellos rompe la compatibilidad:
 | `/p2m/v1/id/`, `/p2m/v1/kp/`, `/p2m/v1/mbox/`, `/p2m/v1/name/` | Espacio de claves de la DHT |
 | `p2message/handle-suffix/v1`               | Sal del sufijo del handle |
 | `p2message/identity-record/v1\0`           | Dominio de la firma del registro |
-| `p2message/envelope/v2\0`                  | Dominio de la firma del sobre |
-| `p2message/envelope/v2 seal`               | Contexto de la KDF del sobre |
+| `p2message/envelope/v3\0`                  | Dominio de la firma del sobre |
+| `p2message/envelope/v3 seal`               | Contexto de la KDF del sobre |
+| `p2message/safety-number/v1`               | Contexto del número de seguridad |
+| `p2message/onion-id/v1`                    | Contexto de la clave onion (implementación) |
 | `p2message/v1 rendezvous relays`           | Contexto del infohash de encuentro |
 | `p2message 2026 file id`, `p2message 2026 file token` | Contextos de la KDF de archivos |
 | `p2m:`                                     | Prefijo del QR          |
@@ -908,7 +984,7 @@ ByteList = [ * uint .size 1 ]       ; lista de enteros 0..255
 Request = "KeyPackage"
         / { "Welcome":      { welcome: bstr, meta: ChatMeta } }
         / { "Mls":          bstr }
-        / { "LinkGrant":    { record: ByteList } }    ; CBOR de SignedRecord
+        / { "LinkGrant":    { record: bstr, secret: bstr } } ; record: CBOR de SignedRecord
         / { "SyncHint":     { group_id: ByteList } }
         / { "Deposit":      Envelope }
         / "Fetch"
@@ -935,7 +1011,7 @@ ChatMeta = {
 }
 
 Envelope = { to: Bytes32, sealed: bstr }
-EnvelopeInner = { from: Bytes32, sig: bstr, payload: bstr }
+EnvelopeInner = { from: Bytes32, sent: uint, sig: bstr, payload: bstr }
 
 BlockEntry = { handle: tstr, blocked: bool, at: uint }
 
@@ -999,7 +1075,9 @@ FileOffer = { name: tstr, size: uint, key: Bytes32, hashes: bstr }
 | Primera entrega activa                      | 60 s + 0-30 s | 10.6 |
 | Reintentos de entrega activa                | 5 min, 30 min, 2 h | 10.6 |
 | Sobres aceptados por `Deliver`              | 300 por peer cada 10 min | 10.6 |
-| Identificadores de sobre recordados         | 5000       | 10.2 |
+| Identificadores de sobre recordados (máx.)  | 20 000     | 10.2 |
+| Antigüedad máxima de un sobre               | 15 días    | 10.2 |
+| Adelanto de reloj tolerado en un sobre      | 1 día      | 10.2 |
 | Archivo / trozo                             | 100 MiB / 256 KiB | 11 |
 
 ## Apéndice C. Relación con el registro de decisiones

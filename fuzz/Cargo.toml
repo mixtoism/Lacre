@@ -1,0 +1,61 @@
+# Objetivos de fuzzing guiado por cobertura (D-042). Necesita Rust nightly y
+# cargo-fuzz:
+#   rustup toolchain install nightly
+#   cargo install cargo-fuzz
+#   cargo +nightly fuzz run sobre        # o registro, mls, peticion, destino
+# Fuera del workspace para que `cargo build` normal no lo compile.
+[package]
+name = "lacre-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+lacre-core = { path = "../crates/lacre-core" }
+lacre-node = { path = "../crates/lacre-node" }
+ed25519-dalek = "2"
+
+[workspace]
+
+[[bin]]
+name = "registro"
+path = "fuzz_targets/registro.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sobre"
+path = "fuzz_targets/sobre.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mls"
+path = "fuzz_targets/mls.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "peticion"
+path = "fuzz_targets/peticion.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "destino"
+path = "fuzz_targets/destino.rs"
+test = false
+doc = false
+bench = false
+
+[profile.release]
+debug = 1

@@ -13,6 +13,9 @@ use crate::app::{self, App, Event};
 use crate::net::{self, NetConfig, NetEvent};
 use crate::rendezvous;
 
+/// Máximo de peticiones entrantes atendidas a la vez (D-042).
+const MAX_INBOUND: usize = 64;
+
 pub struct Options {
     /// Directorio de datos del dispositivo.
     pub data: PathBuf,
@@ -78,6 +81,7 @@ pub fn start(opts: Options) -> Result<Node> {
     match opts.data_key {
         Some(key) => {
             lacre_core::vault::set_key(key)?;
+            lacre_core::vault::set_root(&opts.data)?;
             let n = app::migrate_to_vault(&opts.data)?;
             if n > 0 {
                 tracing::info!("{n} archivos de estado cifrados");
@@ -109,13 +113,25 @@ pub fn start(opts: Options) -> Result<Node> {
 
     {
         let app = app.clone();
+        // Peticiones entrantes atendidas a la vez (D-042): por encima, se
+        // descartan sin trabajo, para que un par no agote memoria
+        // ni CPU abriendo miles de peticiones.
+        let inflight = Arc::new(tokio::sync::Semaphore::new(MAX_INBOUND));
         tokio::spawn(async move {
             while let Some(ev) = net_events.recv().await {
                 let app = app.clone();
                 match ev {
-                    NetEvent::Request(req) => {
-                        tokio::spawn(async move { app.handle_inbound(req).await });
-                    }
+                    NetEvent::Request(req) => match inflight.clone().try_acquire_owned() {
+                        Ok(permit) => {
+                            tokio::spawn(async move {
+                                app.handle_inbound(req).await;
+                                drop(permit);
+                            });
+                        }
+                        // Al soltar el canal el otro recibe un error de
+                        // «sin respuesta» y puede reintentar más tarde.
+                        Err(_) => drop(req),
+                    },
                     NetEvent::Connected(peer) => {
                         tokio::spawn(async move {
                             app.on_connected(peer).await;

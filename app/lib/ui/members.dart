@@ -48,6 +48,41 @@ class _MembersPageState extends State<MembersPage> {
     if (mounted) setState(() => _removing = null);
   }
 
+  /// Número de seguridad (D-043): las dos partes deben ver el mismo.
+  Future<void> _safety(String handle) async {
+    final number = await guard(
+      context,
+      () async => lacre.safetyNumber(handle: handle),
+    );
+    if (number == null || !mounted) return;
+    // 12 grupos de 5 cifras en 3 filas, más fáciles de comparar en voz alta.
+    final groups = number.split(' ');
+    final rows = [
+      for (var i = 0; i < groups.length; i += 4)
+        groups.skip(i).take(4).join(' '),
+    ].join('\n');
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l.safetyTitle(handle)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CodeBox(text: rows, what: context.l.safetyNumber),
+            const SizedBox(height: 16),
+            Text(context.l.safetyBody),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l.close),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -75,9 +110,10 @@ class _MembersPageState extends State<MembersPage> {
                 ),
               for (final p in members.participants)
                 ListTile(
-                  leading: Avatar(name: p, path: widget.store.avatar(p)),
+                  leading: Avatar(name: p, image: widget.store.avatar(p)),
                   title: Text(p.split('#').first),
                   subtitle: Text(p),
+                  onTap: p == members.me ? null : () => _safety(p),
                   trailing: p == members.me
                       ? Text(context.l.you)
                       : _removing == p

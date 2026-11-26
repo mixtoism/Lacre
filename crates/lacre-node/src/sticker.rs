@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, bail};
 use lacre_core::{cbor_from, cbor_to};
 
-use crate::app::{read_private, write_plain, write_private};
+use crate::app::{read_private, write_private};
 
 /// Tamaño máximo de un sticker. Cabe con holgura en un sobre de buzón
 /// (`MAX_ENVELOPE`) junto con el cifrado MLS.
@@ -109,7 +109,7 @@ impl Stickers {
         let path = self.dir.join(&id);
         if !path.exists() {
             fs::create_dir_all(&self.dir)?;
-            write_plain(&path, bytes)?;
+            write_private(&path, bytes)?;
         }
         Ok(id)
     }
@@ -129,7 +129,7 @@ impl Stickers {
 
     pub fn read(&self, id: &str) -> Result<Vec<u8>> {
         let path = self.path(id)?;
-        fs::read(&path).with_context(|| format!("no se pudo leer {}", path.display()))
+        read_private(&path)?.with_context(|| format!("no se pudo leer {}", path.display()))
     }
 
     pub fn list(&self) -> &[String] {

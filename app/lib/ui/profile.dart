@@ -152,7 +152,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     Avatar(
                       name: profile.handle!,
-                      path: widget.store.avatar(profile.handle!),
+                      image: widget.store.avatar(profile.handle!),
                       radius: 56,
                     ),
                     if (_busy)

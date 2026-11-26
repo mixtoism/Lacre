@@ -9,8 +9,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'lacre.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `app`, `desktop_key`, `forward_events`, `link_result`, `on_rt`, `parse_targets`, `sticker`
+// These functions are ignored because they are not marked as `pub`: `app`, `desktop_key`, `forward_events`, `link_result`, `on_rt`, `parse_targets`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `from`, `from`, `from`
+
+/// Imagen de un sticker, descifrada.
+Uint8List stickerBytes({required String id}) =>
+    RustLib.instance.api.crateApiLacreStickerBytes(id: id);
 
 /// Arranca el nodo con los datos de `data_dir`. Llamarla otra vez no hace
 /// nada (devuelve el perfil). Con `lan_only` no usa Tor ni busca relays en
@@ -144,10 +148,20 @@ BigInt maxFileBytes() => RustLib.instance.api.crateApiLacreMaxFileBytes();
 Future<SendResult> sendFile({required int index, required String path}) =>
     RustLib.instance.api.crateApiLacreSendFile(index: index, path: path);
 
-/// Descarga un archivo recibido y devuelve dónde quedó. El progreso llega
-/// como [`UiEvent::FileProgress`].
-Future<String> downloadFile({required String id}) =>
+/// Descarga un archivo recibido (queda cifrado en disco). El progreso
+/// llega como [`UiEvent::FileProgress`].
+Future<void> downloadFile({required String id}) =>
     RustLib.instance.api.crateApiLacreDownloadFile(id: id);
+
+/// Descifra un archivo descargado para abrirlo con otra aplicación y
+/// devuelve la ruta de la copia. Las copias se borran con
+/// [`forget_opened_files`] y al arrancar o parar el nodo.
+Future<String> openFile({required String id}) =>
+    RustLib.instance.api.crateApiLacreOpenFile(id: id);
+
+/// Borra las copias descifradas de los archivos abiertos.
+void forgetOpenedFiles() =>
+    RustLib.instance.api.crateApiLacreForgetOpenedFiles();
 
 Future<SendResult> send({required int index, required String text}) =>
     RustLib.instance.api.crateApiLacreSend(index: index, text: text);
@@ -178,9 +192,13 @@ List<String> blocked() => RustLib.instance.api.crateApiLacreBlocked();
 bool isBlocked({required String handle}) =>
     RustLib.instance.api.crateApiLacreIsBlocked(handle: handle);
 
-/// Foto de perfil de una persona (o la nuestra), si la tenemos.
-String? avatarPath({required String handle}) =>
-    RustLib.instance.api.crateApiLacreAvatarPath(handle: handle);
+/// Número de seguridad con una persona (D-043): 12 grupos de 5 cifras.
+String safetyNumber({required String handle}) =>
+    RustLib.instance.api.crateApiLacreSafetyNumber(handle: handle);
+
+/// Foto de perfil de una persona (o la nuestra), descifrada, si la tenemos.
+Uint8List? avatarBytes({required String handle}) =>
+    RustLib.instance.api.crateApiLacreAvatarBytes(handle: handle);
 
 /// Pone (o quita, con `None`) nuestra foto de perfil: PNG, GIF, WebP o JPEG
 /// de hasta 128 KB y 512 px de lado.
@@ -201,8 +219,9 @@ class ChatInfo {
   /// La otra persona, si es un chat 1:1.
   final String? peer;
 
-  /// Foto de la otra persona (solo en chats aceptados).
-  final String? avatar;
+  /// Hay foto de la otra persona (solo en chats aceptados); se pide con
+  /// [`avatar_bytes`].
+  final bool avatar;
 
   const ChatInfo({
     required this.index,
@@ -212,7 +231,7 @@ class ChatInfo {
     this.last,
     required this.request,
     this.peer,
-    this.avatar,
+    required this.avatar,
   });
 
   @override
@@ -300,19 +319,20 @@ class FileAttachment {
   final String name;
   final BigInt size;
 
-  /// Dónde está en este dispositivo, si ya se descargó.
-  final String? path;
+  /// Ya está entero en este dispositivo (cifrado: para abrirlo,
+  /// [`open_file`]).
+  final bool downloaded;
 
   const FileAttachment({
     required this.id,
     required this.name,
     required this.size,
-    this.path,
+    required this.downloaded,
   });
 
   @override
   int get hashCode =>
-      id.hashCode ^ name.hashCode ^ size.hashCode ^ path.hashCode;
+      id.hashCode ^ name.hashCode ^ size.hashCode ^ downloaded.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -322,7 +342,7 @@ class FileAttachment {
           id == other.id &&
           name == other.name &&
           size == other.size &&
-          path == other.path;
+          downloaded == other.downloaded;
 }
 
 /// Mensaje encontrado por `search`.
@@ -494,25 +514,20 @@ class Status {
           onion == other.onion;
 }
 
-/// Sticker guardado en el dispositivo.
+/// Sticker guardado en el dispositivo. La imagen (PNG, GIF, WebP o JPEG)
+/// va cifrada en disco: se pide con [`sticker_bytes`].
 class Sticker {
   final String id;
 
-  /// Archivo de la imagen (PNG, GIF, WebP o JPEG).
-  final String path;
-
-  const Sticker({required this.id, required this.path});
+  const Sticker({required this.id});
 
   @override
-  int get hashCode => id.hashCode ^ path.hashCode;
+  int get hashCode => id.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Sticker &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          path == other.path;
+      other is Sticker && runtimeType == other.runtimeType && id == other.id;
 }
 
 @freezed

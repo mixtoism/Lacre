@@ -31,6 +31,15 @@ log = "0.4.34"
 secret-service = { version = "5.2.0", features = ["rt-tokio-crypto-rust"] }
 rand = "0.8"
 
+# Clave de datos en el Llavero de macOS y con DPAPI en Windows (D-042).
+[target.'cfg(target_os = "macos")'.dependencies.security-framework]
+version = "3"
+[target.'cfg(target_os = "macos")'.dependencies.rand]
+version = "0.8"
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.60", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+rand = "0.8"
+
 # En macOS, liblzma (lo usa Tor para descomprimir directorios) se enlazaría con
 # la de Homebrew, que no entra en la biblioteca estática ni es universal.
 [target.'cfg(target_os = "macos")'.dependencies]

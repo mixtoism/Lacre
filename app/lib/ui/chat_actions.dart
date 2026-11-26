@@ -130,7 +130,7 @@ class ChatAvatar extends StatelessWidget {
     final peer = chat.peer;
     return Avatar(
       name: peer ?? chat.name,
-      path: chat.avatar,
+      image: chat.avatar && peer != null ? avatarOf(peer) : null,
       radius: radius,
       group: peer == null,
     );

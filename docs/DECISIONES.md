@@ -3,7 +3,9 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-044),
+2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
+puede afirmar que sea segura.
 
 ---
 
@@ -151,6 +153,9 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   - Se conservan las claves de 5 épocas pasadas.
 
 ## D-011 · Vinculación de dispositivos (PoC)
+
+> **Sustituida en parte por D-039:** el `LinkGrant` solo se acepta con el
+> secreto de un solo uso del código de vincular.
 
 - **Decisión:** el dispositivo nuevo muestra su *código* (su clave pública en
   base32). En el primario, `link <código>` lo añade al registro, lo publica y
@@ -870,6 +875,11 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
   - En escritorio la app solo recibe mientras está abierta.
 
 ## D-033 · Cifrado del estado en disco
+
+> **Sustituida en parte por D-042:** el formato pasa a v2 (`P2MVLT2`, con la
+> ruta en el AAD). En el escritorio ya no se sigue sin cifrar si falta el
+> llavero: hay llavero en Linux, macOS y Windows, y sin clave la app no
+> arranca.
 - **Contexto:** claves, historial, chats y estado MLS iban en claro con
   permisos `0600` (D-012). Con el dispositivo robado o una copia del disco se
   leía todo. Decidido sin preguntar.
@@ -898,7 +908,9 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
     poder usar la app en un escritorio mínimo.
 - **Limitaciones:**
   - Siguen en claro los stickers, las fotos de perfil, los archivos
-    descargados y el estado de Tor (pendiente, hoja de ruta).
+    descargados y el estado de Tor (pendiente, hoja de ruta). *(Los
+    primeros, cifrados desde D-042; la clave onion, fuera del disco desde
+    D-044.)*
   - La clave se desbloquea con el dispositivo (Keystore) o con la sesión
     (llavero): protege el disco apagado o copiado, no un móvil desbloqueado.
   - Sin la clave (llavero borrado, Keystore restablecido), el estado no se
@@ -1177,6 +1189,299 @@ Estado: prueba de concepto (PoC) en Linux, 2026-10-05.
     DHT.
   - Si una comprobación no basta (Tor tarda en arrancar, buzones lentos),
     lo que falte llega en la siguiente.
+
+## D-039 · Vincular solo con un secreto de un solo uso; sin vuelta atrás del registro
+- **Contexto:** revisión de seguridad interna. Hasta ahora el dispositivo
+  nuevo aceptaba el primer `LinkGrant` válido que lo nombrara (D-011). Quien
+  supiera su clave pública (que viaja en el código de vincular y en la red)
+  podía adelantarse y meterlo en una identidad ajena. Además, un `LinkGrant`
+  con un registro viejo de la misma raíz deshacía revocaciones.
+- **Decisión:**
+  - El código de vincular pasa a ser `<clave del dispositivo>:<secreto>@direcciones`.
+    El secreto son 16 bytes aleatorios (base32). Lo genera el dispositivo
+    nuevo y dura 10 min (`INVITE_TTL`), como las invitaciones de D-037.
+  - El `LinkGrant` lleva el secreto (`proto::LinkGrant { record, secret }`).
+    El dispositivo nuevo solo lo acepta si:
+    1. lo envía un dispositivo que está en el registro que trae;
+    2. el secreto coincide, comparando sus hashes BLAKE3 (tiempo constante).
+       Se consume al usarlo: un solo uso.
+  - Las invitaciones (`invite`/`join`) usan el mismo mecanismo
+    (`current_token`/`take_token`).
+  - `accept_grant` rechaza un registro de la misma raíz con `seq` menor que el
+    que ya tenemos.
+- **Motivo:** el código de vincular solo lo ve quien tiene delante la pantalla
+  del dispositivo nuevo. Ligar la aceptación a un secreto de ese canal
+  convierte el código en una autenticación real.
+- **Limitaciones:**
+  - El código sigue siendo secreto durante 10 min: quien lo fotografíe en
+    ese tiempo puede usarlo antes. Es de un solo uso, así que el dueño lo
+    notaría: el suyo fallaría.
+  - El formato del código cambia: un código de una versión anterior no vale.
+- **Pendiente:** confirmación visual en los dos dispositivos (un número corto
+  que se compara), como Signal.
+
+## D-040 · El remitente MLS tiene que estar en el registro de su raíz
+- **Contexto:** OpenMLS comprueba las firmas, pero la credencial de cada
+  hoja la pone quien la crea. Un miembro malicioso, o un dispositivo revocado
+  aún en el árbol, podía añadir hojas con la credencial de otra persona.
+  También podía hacerse pasar por el committer en un Welcome.
+- **Decisión:**
+  - **Núcleo (`mls.rs`):**
+    - Solo se aceptan mensajes con `Sender::Member`.
+    - La credencial del remitente se saca de su hoja (`member_at`) y tiene
+      que corresponder a su clave de firma (`member_of`). Además, tiene que
+      coincidir con la del mensaje procesado.
+    - Antes de aplicar un commit se valida `member_of` en todas las hojas que
+      trae: altas, actualizaciones y la de la ruta del commit.
+  - **Nodo:**
+    - Un mensaje de aplicación cuyo dispositivo sabemos que no pertenece a esa
+      raíz (por nuestra identidad o por los contactos) es una falsificación.
+      No cuenta como propio, no dispara salidas y no actualiza fotos.
+    - Un Welcome solo se acepta automáticamente si el committer está
+      verificado. Vale que su dispositivo esté en el registro conocido o, si
+      no lo está, en el registro firmado de su raíz resuelto de la DHT
+      (`device_verified`).
+    - `verify_members` avisa cuando no puede leer los miembros, en vez de
+      callar.
+- **Motivo:** en Lacre la identidad es la raíz (D-002). Una hoja MLS solo es
+  de alguien si el registro firmado de su raíz incluye ese dispositivo.
+- **Limitaciones:**
+  - Si el registro de una raíz no se puede resolver (DHT caída), un Welcome
+    de ese committer queda como solicitud en vez de aceptarse solo.
+  - Un Welcome antiguo puede reenviarse mientras siga valiendo el KeyPackage
+    de último recurso (hasta 7 días). Volver a entrar en un grupo del que se
+    salió necesita además que el committer lo firmara.
+
+## D-041 · Fijar la raíz de cada contacto y no elegir ante la duda
+- **Contexto:** el sufijo del handle tiene 40 bits (D-002). Con suficiente
+  cómputo se puede encontrar otra raíz con el mismo handle. Hasta ahora, ante
+  varios registros válidos para un handle se elegía uno (`best_record`).
+- **Decisión:**
+  - `resolve_pinned(handle, raíz)`:
+    - Si ya conocemos el handle (un contacto o nosotros), se fija su raíz y se
+      descartan los registros de otras.
+    - Si un QR trae una raíz distinta de la fijada, es un error, no un cambio
+      silencioso.
+  - `select_record`:
+    - Primero un filtro barato: nombre y raíz fijada.
+    - Después verifica como mucho 16 candidatos (`MAX_CANDIDATES`).
+    - Si quedan registros válidos de raíces distintas, es un error («handle
+      ambiguo»): no se elige ninguno.
+  - Crear un chat desde un QR usa la raíz del QR.
+- **Motivo:** confiar en el primer uso (TOFU) y en el QR, como las huellas de
+  seguridad de otras apps, en lugar de depender solo del coste de Argon2.
+- **Limitaciones:**
+  - El primer contacto por handle (sin QR) sigue confiando en lo que haya en
+    la DHT. Un atacante que haya publicado una colisión antes puede provocar
+    el error de ambigüedad, pero no suplantar en silencio.
+  - No hay todavía una pantalla de «número de seguridad» para comparar
+    raíces en persona.
+
+## D-042 · Límites de recursos, firmas estrictas y cifrado en disco v2
+- **Contexto:** revisión de seguridad interna, con un nodo malicioso como
+  atacante (D-031). Encontró formas de agotar CPU, memoria y disco, y algunos
+  huecos de validación. Mitiga en parte R-007 (disponibilidad) del registro de
+  riesgos.
+- **Decisión:**
+  - **Firmas y claves:**
+    - Registros y sobres se verifican con `verify_strict`, que rechaza firmas
+      maleables.
+    - Se rechazan claves débiles (de orden pequeño) como raíz, dispositivo o
+      remitente.
+    - El registro valida sus dispositivos: entre 1 y 16, sin duplicados,
+      ninguno igual a la raíz, y nombres de ≤64 caracteres sin caracteres de
+      control.
+    - El nombre se valida antes de calcular Argon2.
+  - **Argon2:** un solo cálculo a la vez (cerrojo global). La caché se vacía
+    al llegar a 4096 entradas.
+  - **DHT:**
+    - Un `PutRecord` idéntico al guardado no se vuelve a validar.
+    - Cada par tiene un presupuesto de 20 por 10 min.
+    - Como mucho 2 validaciones a la vez.
+  - **Peticiones:**
+    - KeyPackages: 8 por par y 100 en total por hora.
+    - Depósitos en buzón: el mismo presupuesto que las entregas.
+    - `SyncHint`: solo de dispositivos del grupo o de una raíz miembro, y uno
+      cada 20 s por grupo.
+    - Como mucho 64 peticiones entrantes a la vez; las demás se descartan.
+    - Los errores devueltos al otro llevan solo el mensaje externo, acotado
+      a 200 caracteres.
+  - **Conexiones:** `connection_limits` de libp2p:
+    - 64 entrantes pendientes.
+    - 256 establecidas (2048 en un relay).
+    - 4 por par.
+
+    Las tablas `dialed` y `hops` se limitan a 1024 entradas: al llenarse se
+    olvidan los pares sin conexión.
+  - **Buzones:**
+    - 16 MiB por destinatario (se descartan los sobres más antiguos) y
+      256 MiB en total («buzón lleno»).
+    - Se escriben a disco como mucho cada 10 s, y también antes de entregar.
+  - **Contenido:**
+    - Textos de hasta 16 Ki caracteres.
+    - De una solicitud sin aceptar se guardan como mucho 50 mensajes, sin
+      stickers.
+    - Como mucho 50 solicitudes pendientes.
+    - Cola de reintentos MLS con cupo por grupo (32) y para grupos
+      desconocidos (32).
+  - **Sobres:**
+    - Se marcan como vistos después de abrirlos bien. Así, un sobre falso
+      con el id de uno legítimo no lo bloquea.
+    - **Fecha firmada (formato v3):** el sobre lleva `sent`, cubierto por la
+      firma del remitente. Se rechaza si tiene más de 15 días (un buzón
+      guarda 14) o más de 1 día en el futuro.
+    - Los ids vistos se recuerdan hasta que su sobre caduca (máx. 20 000).
+      Bajo inundación se olvida el más antiguo y sube un «suelo» de fecha.
+      Con eso, ninguna repetición se acepta nunca, ni siquiera tras salir
+      de la lista. Antes se recordaban los últimos 5000 sin fecha, y una
+      repetición posterior a esos 5000 se aceptaba.
+    - Es incompatible con v2 (cambian los dominios de firma y KDF). Como no
+      hay versión publicada, no se mantiene compatibilidad; los sobres v2
+      que queden en buzones se descartan al abrirlos.
+  - **Punto de encuentro:** solo se marcan direcciones públicas que vengan de
+    trackers o de Mainline. Nada de red privada, loopback, enlace local,
+    CGNAT ni multicast, para que un tracker no nos use contra la red local.
+  - **Nombres de archivo:** además de lo de D-026, se evitan los nombres
+    reservados de Windows (`CON`, `NUL`, `COM1`…) y los puntos y espacios
+    finales.
+  - **Cifrado en disco v2 (sustituye el formato de D-033):**
+    - Cabecera `P2MVLT2`. El AAD lleva la ruta relativa al directorio de
+      datos, así que no se puede cambiar un archivo cifrado por otro.
+    - Con clave, un archivo en claro o v1 es un error. Solo la migración al
+      arrancar (`migrate`) los acepta y los reescribe en v2.
+  - **Clave de datos en el escritorio:**
+    - Linux: Secret Service.
+    - macOS: Llavero.
+    - Windows: DPAPI, en `clave.dpapi` con entropía propia.
+    - Si no se puede obtener, la app **no arranca**: nunca se guarda en
+      claro. Alternativa: `LACRE_DATA_KEY`. El nodo de línea de órdenes
+      (relays) sigue pudiendo ir sin clave.
+  - **Memoria:** las copias intermedias de las claves privadas se borran
+    (`Zeroizing`). Las claves de `ed25519-dalek` ya se borran al soltarse.
+  - **Entrar con un Welcome es atómico:** OpenMLS borra el KeyPackage al
+    preparar el Welcome, antes de comprobarlo entero. Un Welcome alterado
+    dejaba sin KeyPackage al válido. Ahora, si `join` falla por cualquier
+    motivo, el estado MLS vuelve a como estaba. Lo encontraron las pruebas
+    de robustez.
+  - **Pruebas de robustez** (`crates/lacre-core/tests/robustez.rs`): miles de
+    entradas aleatorias y mutaciones de entradas válidas. Cubren registros,
+    sobres, Welcomes, mensajes MLS y KeyPackages, y comprueban que nada entra
+    en pánico ni se acepta alterado. La semilla es fija, así que un fallo se
+    puede repetir.
+  - **Fuzzing guiado por cobertura** (`fuzz/`, objetivos de `cargo fuzz`):
+    `registro`, `sobre`, `mls` (Welcome, mensaje y KeyPackage), `peticion`
+    (todo el CBOR del protocolo directo) y `destino` (handles y QR).
+    `scripts/fuzz.sh` los compila con la instrumentación de libFuzzer en
+    Rust estable y los ejecuta; con nightly, `cargo +nightly fuzz run`
+    añade AddressSanitizer. Una primera pasada de 4 min por objetivo (unos
+    150 millones de ejecuciones en total) no encontró fallos.
+  - **CI:** el job `seguridad` ejecuta las pruebas, clippy (`correctness` y
+    `suspicious` como errores), `cargo audit`, que falla con dependencias
+    con avisos de RustSec, y 60 s de fuzzing por objetivo.
+- **Motivo:** cada límite corta un ataque concreto de la revisión, con
+  márgenes muy por encima del uso normal.
+- **Limitaciones:**
+  - **Disco:** se puede volver a una versión anterior de un archivo
+    cifrado (*rollback*): el AAD liga la ruta, no la versión.
+  - **Sobres:** la fecha la pone el reloj del remitente. Uno con el reloj
+    atrasado más de 15 días no puede enviar nada; uno adelantado más de un
+    día, tampoco. Bajo inundación (más de 20 000 sobres vigentes) se puede
+    perder un sobre legítimo muy retrasado.
+  - **Argon2:** puede ejecutarse en hilos del runtime y bajo el cerrojo de
+    estado. Un handle nuevo cuesta ~1 s.
+  - **`SyncHint`:** la limitación puede descartar uno legítimo; la sincronía
+    periódica lo cubre.
+  - **Límites por par:** un atacante con muchas identidades de libp2p
+    (Sybil) multiplica sus presupuestos. Los totales globales lo acotan.
+  - **Claves en memoria:** las de larga vida (dispositivo, clave de datos,
+    estado de OpenMLS) siguen en memoria mientras corre el proceso.
+  - **Tor** *(sustituido por D-044: la clave onion ya no está en disco)*:
+    arti no permite cifrar su almacén de claves, así que el estado
+    de Tor (la clave del servicio onion) sigue en claro, con permisos
+    `0700`. El impacto es acotado. Con esa clave se puede publicar el mismo
+    `.onion` y cortar o desviar las conexiones que lleguen por él. No se
+    puede suplantar al dispositivo: libp2p autentica con Noise la clave del
+    dispositivo, que sí va cifrada. Tampoco se pueden leer mensajes.
+  - **Vuelta atrás del disco:** solo se evitaría del todo con un contador
+    monotónico del hardware (TPM, Secure Enclave). Quien puede escribir en el
+    disco con el dispositivo apagado puede devolver todo el directorio a una
+    copia anterior coherente, aunque no pueda leerla.
+- **Pendiente:**
+  - Auditoría externa del protocolo y del código.
+  - Fuzzing largo y continuo (OSS-Fuzz o similar); el de CI es breve. El
+    objetivo `sobre` no pasa del descifrado (es lo esperado: sin la clave
+    no se puede fabricar un sobre válido), así que el CBOR interior se
+    prueba solo con las pruebas de robustez.
+  - Caducidad de los registros de la DHT. No basta con una fecha en el
+    registro: quien guarda uno antiguo puede seguir sirviéndolo. Lo que
+    protege es fijar la raíz (D-041) y la secuencia creciente del registro,
+    que hace preferir siempre el más nuevo.
+  - ~~Cifrar el estado de Tor cuando arti lo permita, o derivar la clave
+    onion de la clave de dispositivo.~~ Hecho en D-044.
+
+## D-043 · Número de seguridad
+- **Contexto:** el sufijo del handle tiene 40 bits (D-003). Suplantar a una
+  persona concreta es caro, pero no imposible para un atacante con muchos
+  recursos. Encontrar dos personas cualesquiera con el mismo sufijo es
+  barato (efecto cumpleaños). D-041 fija la raíz de cada contacto, pero el
+  primer contacto por handle confía en la DHT.
+- **Decisión:**
+  - Número de seguridad de dos identidades: BLAKE3 en modo derivación con
+    el contexto `p2message/safety-number/v1` sobre las dos `root_pk`
+    ordenadas. De la salida extensible se toman 60 bytes en 12 trozos de 5;
+    cada trozo, como entero big-endian módulo 100 000, da un grupo de 5
+    cifras. Son 60 cifras, unos 199 bits, iguales en los dos lados.
+  - Lacre lo muestra al tocar a una persona en «Miembros» (3 filas de 4
+    grupos) y con `safety <handle>` en el nodo de línea de órdenes.
+  - Si coincide al compararlo en persona o por otro canal, la raíz que
+    tenemos fijada es la suya: nadie suplanta el handle.
+  - El QR (D-021) sigue siendo la forma cómoda de fijar la raíz sin
+    comparar números.
+- **Motivo:** usa la clave completa, no el sufijo. Es el método de Signal,
+  conocido por los usuarios.
+- **Limitaciones:**
+  - No se guarda si se ha verificado ni se avisa de forma especial si el
+    número cambia. No puede cambiar sin cambiar la raíz, y un cambio de raíz
+    ya es un error con D-041.
+  - Depende de que la persona lo compare de verdad.
+  - Sin QR del número: se compara leyéndolo.
+- **Pendiente:** marcar contactos verificados y mostrarlo en el chat.
+
+## D-044 · Clave onion derivada y solo en memoria
+- **Contexto:** la clave del servicio onion la generaba Arti y la guardaba
+  en claro en `<datos>/tor/state/keystore` (D-042, limitaciones). Con ella
+  se puede publicar el mismo `.onion` y cortar o desviar las conexiones que
+  lleguen por él.
+- **Decisión:**
+  - Arti usa el almacén de claves **efímero** (en memoria; opción
+    `ephemeral-keystore` de arti-client).
+  - La clave onion se deriva de la del dispositivo:
+    `BLAKE3-KDF("p2message/onion-id/v1", device_sk)` como semilla Ed25519.
+    Se entrega a Arti al arrancar (`launch_onion_service_with_hsid`). La
+    dirección onion es la misma en cada arranque, sin guardar nada.
+  - Al arrancar se borran `tor/state/keystore` (la clave en claro de
+    versiones anteriores) y `tor/state/hss`, que apunta a claves de los
+    puntos de introducción que ya no sobreviven a un reinicio.
+  - En `tor/` solo quedan datos públicos: el directorio de la red, los
+    guardas y registros de repetición.
+- **Motivo:** la clave del dispositivo ya va cifrada (D-033, D-042). Derivar
+  de ella con un dominio propio no reutiliza la clave para dos usos (D-008).
+  Además, quien conoce la clave pública del dispositivo no puede calcular
+  la dirección onion.
+- **Limitaciones:**
+  - Las opciones `experimental-api` y `ephemeral-keystore` de Arti son
+    experimentales: una versión nueva puede cambiarlas. Cada actualización
+    de Arti debe comprobarlas.
+  - Quien robe la clave del dispositivo obtiene también la onion. Ya podía
+    suplantar al dispositivo, así que no empeora nada.
+  - Con la primera versión que trae esto, la dirección onion de cada nodo
+    cambia una vez. Los demás la aprenden por identify y la DHT.
+  - Los puntos de introducción se renuevan en cada arranque. En una prueba
+    aquí, el descriptor se publicó igual que con el almacén en disco.
+  - El sistema puede llevar la memoria al disco (swap, hibernación,
+    volcados): Arti lo advierte y Lacre no lo evita.
+- **Pendiente:** comprobar en Android que el servicio se publica igual tras
+  el cambio.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

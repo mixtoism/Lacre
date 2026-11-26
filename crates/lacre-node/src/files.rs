@@ -7,6 +7,12 @@
 //! trozo hay que presentar un testigo derivado de la clave y ser miembro
 //! actual del grupo. Cada trozo se comprueba con su hash antes de
 //! descifrarlo: quien lo sirve no puede colar datos.
+//!
+//! En disco el archivo se guarda tal como viaja: los trozos cifrados uno
+//! detrás de otro (`contenido`). La clave solo está en la oferta, que va en
+//! el almacén cifrado (D-033), así que una copia del disco no revela nada.
+//! Para abrirlo con otra aplicación se descifra a `abiertos/`, que se vacía
+//! al arrancar y al parar el nodo.
 
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -77,12 +83,22 @@ impl FileOffer {
         (self.size - start).min(CHUNK as u64) as usize
     }
 
+    /// Posición del trozo cifrado `index` en el archivo guardado.
+    fn sealed_offset(index: u32) -> u64 {
+        index as u64 * (CHUNK + TAG) as u64
+    }
+
+    /// Tamaño del archivo guardado (todos los trozos cifrados).
+    pub fn sealed_size(&self) -> u64 {
+        self.size + self.chunks() as u64 * TAG as u64
+    }
+
     /// Comprueba que la oferta es coherente (viene de otro dispositivo).
     pub fn check(&self) -> Result<()> {
         if self.size > MAX_FILE {
             bail!("el archivo ocupa {} MB (máximo {} MB)", self.size >> 20, MAX_FILE >> 20);
         }
-        if self.hashes.len() % 32 != 0 || self.chunks() as u64 != self.size.div_ceil(CHUNK as u64) {
+        if !self.hashes.len().is_multiple_of(32) || self.chunks() as u64 != self.size.div_ceil(CHUNK as u64) {
             bail!("oferta de archivo mal formada");
         }
         if safe_name(&self.name) != self.name {
@@ -130,8 +146,19 @@ pub fn safe_name(name: &str) -> String {
         .filter(|c| !c.is_control() && !matches!(c, ':' | '*' | '?' | '"' | '<' | '>' | '|'))
         .take(120)
         .collect();
-    let clean = clean.trim().trim_start_matches('.').to_owned();
-    if clean.is_empty() { "archivo".into() } else { clean }
+    // Windows ignora puntos y espacios finales y reserva CON, NUL, COM1…
+    // (también con extensión): se evitan para que el nombre del remitente no
+    // apunte a un dispositivo (D-042).
+    let clean = clean.trim().trim_start_matches('.').trim_end_matches(['.', ' ']).to_owned();
+    if clean.is_empty() {
+        return "archivo".into();
+    }
+    let stem = clean.split('.').next().unwrap_or("").trim_end().to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$")
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && matches!(stem.chars().nth(3), Some('0'..='9' | '¹' | '²' | '³')));
+    if reserved { format!("_{clean}") } else { clean }
 }
 
 /// Lee hasta llenar `buf` (o hasta el final del archivo).
@@ -146,8 +173,9 @@ fn read_full(f: &mut File, buf: &mut [u8]) -> Result<usize> {
     Ok(n)
 }
 
-/// Almacén de archivos: `files/<id>/oferta.cbor` y el archivo con su
-/// nombre (o `<nombre>.part` mientras se descarga).
+/// Almacén de archivos: `files/<id>/oferta.cbor` y los trozos cifrados en
+/// `contenido` (o `contenido.part` mientras se descarga). El nombre del
+/// archivo solo está en la oferta cifrada.
 pub struct Files {
     dir: PathBuf,
     /// Ofertas ya leídas de disco.
@@ -191,11 +219,43 @@ impl Files {
         Ok(id)
     }
 
-    /// Ruta del archivo completo, o de la descarga a medias.
+    /// Ruta del archivo completo (cifrado), y de la descarga a medias.
     pub fn path(&mut self, id: &str) -> Result<(PathBuf, PathBuf)> {
-        let name = self.get(id)?.offer.name;
+        self.get(id)?;
         let folder = self.folder(id)?;
-        Ok((folder.join(&name), folder.join(format!("{name}.part"))))
+        Ok((folder.join(CONTENT), folder.join(PART)))
+    }
+
+    /// Descifra un archivo completo en `out/<id>/<nombre>` para abrirlo con
+    /// otra aplicación y devuelve la ruta.
+    pub fn export(&mut self, id: &str, out: &Path) -> Result<PathBuf> {
+        let offer = self.get(id)?.offer;
+        let (done, _) = self.path(id)?;
+        let mut src = File::open(&done).context("el archivo no está descargado")?;
+        let folder = out.join(id);
+        fs::create_dir_all(&folder)?;
+        let dest = folder.join(&offer.name);
+        let tmp = folder.join(".descifrando");
+        let mut opts = fs::OpenOptions::new();
+        opts.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            opts.mode(0o600);
+        }
+        let mut f = opts.open(&tmp)?;
+        let mut buf = vec![0; CHUNK + TAG];
+        for index in 0..offer.chunks() {
+            let len = offer.chunk_len(index) + TAG;
+            if read_full(&mut src, &mut buf[..len])? != len {
+                bail!("archivo local incompleto");
+            }
+            f.write_all(&offer.open(index, &buf[..len])?)?;
+        }
+        f.sync_all()?;
+        drop(f);
+        fs::rename(&tmp, &dest)?;
+        Ok(dest)
     }
 
     /// El archivo está entero en este dispositivo.
@@ -215,13 +275,90 @@ impl Files {
         }
         let (done, _) = self.path(id)?;
         let mut f = File::open(&done).context("no tengo ese archivo")?;
-        let mut buf = vec![0; offer.chunk_len(index)];
-        f.seek(SeekFrom::Start(index as u64 * CHUNK as u64))?;
+        let mut buf = vec![0; offer.chunk_len(index) + TAG];
+        f.seek(SeekFrom::Start(FileOffer::sealed_offset(index)))?;
         if read_full(&mut f, &mut buf)? != buf.len() {
             bail!("archivo local incompleto");
         }
-        Ok(offer.seal(index, &buf))
+        // Lo guardado ya es el trozo cifrado; se comprueba por si el disco
+        // se corrompió.
+        if Some(blake3::hash(&buf).as_bytes().as_slice()) != offer.hash(index) {
+            bail!("archivo local corrupto");
+        }
+        Ok(buf)
     }
+
+    /// Pasa al formato cifrado los archivos guardados en claro por versiones
+    /// anteriores (`<nombre>` en lugar de `contenido`). Devuelve cuántos.
+    pub fn migrate(&mut self) -> Result<usize> {
+        let Ok(entries) = fs::read_dir(&self.dir) else { return Ok(0) };
+        let mut n = 0;
+        for e in entries.flatten() {
+            let id = e.file_name().to_string_lossy().into_owned();
+            let Ok(stored) = self.get(&id) else { continue };
+            let folder = self.folder(&id)?;
+            let name = &stored.offer.name;
+            let _ = fs::remove_file(folder.join(format!("{name}.part")));
+            let old = folder.join(name);
+            let Ok(meta) = fs::metadata(&old) else { continue };
+            // Un archivo llamado «contenido» ya puede estar cifrado: en claro
+            // mide exactamente lo que dice la oferta.
+            if !meta.is_file() || (name == CONTENT && (stored.offer.chunks() == 0 || meta.len() != stored.offer.size)) {
+                continue;
+            }
+            seal_file(&old, &folder.join(CONTENT), &stored.offer)?;
+            if name != CONTENT {
+                fs::remove_file(&old)?;
+            }
+            n += 1;
+        }
+        Ok(n)
+    }
+}
+
+/// Nombre del archivo cifrado completo dentro de su carpeta.
+const CONTENT: &str = "contenido";
+/// Descarga a medias.
+const PART: &str = "contenido.part";
+
+/// Cifra `src` (en claro) trozo a trozo en `dest` y comprueba que coincide
+/// con los hashes de la oferta. Devuelve los hashes calculados.
+fn seal_into(src: &mut File, dest: &Path, offer: &FileOffer, size: u64) -> Result<Vec<u8>> {
+    let tmp = dest.with_extension("tmp");
+    let mut out = File::create(&tmp)?;
+    let mut buf = vec![0; CHUNK];
+    let mut total = 0u64;
+    let mut hashes = Vec::new();
+    for index in 0.. {
+        let n = read_full(src, &mut buf)?;
+        if n == 0 {
+            break;
+        }
+        total += n as u64;
+        if total > size {
+            bail!("el archivo cambió mientras se leía");
+        }
+        let sealed = offer.seal(index, &buf[..n]);
+        hashes.extend_from_slice(blake3::hash(&sealed).as_bytes());
+        out.write_all(&sealed)?;
+    }
+    if total != size {
+        bail!("el archivo cambió mientras se leía");
+    }
+    out.sync_all()?;
+    drop(out);
+    fs::rename(&tmp, dest)?;
+    Ok(hashes)
+}
+
+/// Migración: cifra un archivo en claro ya conocido.
+fn seal_file(src: &Path, dest: &Path, offer: &FileOffer) -> Result<()> {
+    let hashes = seal_into(&mut File::open(src)?, dest, offer, offer.size)?;
+    if hashes != offer.hashes {
+        let _ = fs::remove_file(dest);
+        bail!("{} no coincide con su oferta", src.display());
+    }
+    Ok(())
 }
 
 /// Prepara el envío de un archivo: lo cifra para calcular los hashes y lo
@@ -238,32 +375,12 @@ pub fn prepare(files_dir: &Path, path: &Path) -> Result<FileOffer> {
     let mut offer = FileOffer { name, size, key, hashes: Vec::new() };
     let folder = files_dir.join(offer.id());
     fs::create_dir_all(&folder)?;
-    let copy_path = folder.join(format!("{}.part", offer.name));
-    let mut src = File::open(path)?;
-    let mut copy = File::create(&copy_path)?;
-    let mut buf = vec![0; CHUNK];
-    let mut total = 0u64;
-    for index in 0.. {
-        let n = read_full(&mut src, &mut buf)?;
-        if n == 0 {
-            break;
-        }
-        total += n as u64;
-        if total > size {
-            bail!("el archivo cambió mientras se leía");
-        }
-        copy.write_all(&buf[..n])?;
-        offer.hashes.extend_from_slice(blake3::hash(&offer.seal(index, &buf[..n])).as_bytes());
-    }
-    if total != size {
-        bail!("el archivo cambió mientras se leía");
-    }
-    copy.sync_all()?;
-    fs::rename(&copy_path, folder.join(&offer.name))?;
+    offer.hashes = seal_into(&mut File::open(path)?, &folder.join(CONTENT), &offer, size)?;
     Ok(offer)
 }
 
-/// Descarga a medias: escribe trozos ya comprobados en `<nombre>.part`.
+/// Descarga a medias: escribe los trozos cifrados ya comprobados en
+/// `contenido.part`.
 pub struct Partial {
     file: File,
     offer: FileOffer,
@@ -271,34 +388,41 @@ pub struct Partial {
 
 impl Partial {
     /// Abre (o crea) la descarga y devuelve los trozos que faltan. Los que
-    /// ya están se reconocen volviendo a cifrarlos y comparando el hash, sin
-    /// guardar aparte qué se descargó.
+    /// ya están se reconocen por su hash, sin guardar aparte qué se
+    /// descargó.
     pub fn open(part: &Path, offer: FileOffer) -> Result<(Self, Vec<u32>)> {
-        let mut file = fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(part)?;
+        let mut opts = fs::OpenOptions::new();
+        opts.read(true).write(true).create(true).truncate(false);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            opts.mode(0o600);
+        }
+        let mut file = opts.open(part)?;
         let have = file.metadata()?.len();
         let mut missing = Vec::new();
-        let mut buf = vec![0; CHUNK];
+        let mut buf = vec![0; CHUNK + TAG];
         for index in 0..offer.chunks() {
-            let len = offer.chunk_len(index);
-            let start = index as u64 * CHUNK as u64;
+            let len = offer.chunk_len(index) + TAG;
+            let start = FileOffer::sealed_offset(index);
             let ok = start + len as u64 <= have && {
                 file.seek(SeekFrom::Start(start))?;
                 read_full(&mut file, &mut buf[..len])? == len
-                    && Some(blake3::hash(&offer.seal(index, &buf[..len])).as_bytes().as_slice()) == offer.hash(index)
+                    && Some(blake3::hash(&buf[..len]).as_bytes().as_slice()) == offer.hash(index)
             };
             if !ok {
                 missing.push(index);
             }
         }
-        file.set_len(offer.size)?;
+        file.set_len(offer.sealed_size())?;
         Ok((Self { file, offer }, missing))
     }
 
-    /// Comprueba, descifra y escribe un trozo recibido.
+    /// Comprueba un trozo recibido (hash y descifrado) y lo guarda cifrado.
     pub fn write(&mut self, index: u32, sealed: &[u8]) -> Result<()> {
-        let plain = self.offer.open(index, sealed)?;
-        self.file.seek(SeekFrom::Start(index as u64 * CHUNK as u64))?;
-        self.file.write_all(&plain)?;
+        self.offer.open(index, sealed)?;
+        self.file.seek(SeekFrom::Start(FileOffer::sealed_offset(index)))?;
+        self.file.write_all(sealed)?;
         Ok(())
     }
 
@@ -328,6 +452,11 @@ mod tests {
         assert_eq!(safe_name(".bashrc"), "bashrc");
         assert_eq!(safe_name(""), "archivo");
         assert_eq!(safe_name("a\u{0}b?.txt"), "ab.txt");
+        assert_eq!(safe_name("con.txt"), "_con.txt");
+        assert_eq!(safe_name("COM1"), "_COM1");
+        assert_eq!(safe_name("lpt9.tar.gz"), "_lpt9.tar.gz");
+        assert_eq!(safe_name("informe. . "), "informe");
+        assert_eq!(safe_name("console.txt"), "console.txt");
     }
 
     #[test]
@@ -370,8 +499,25 @@ mod tests {
             p.write(i, &fa.serve(&id, i, &offer.token()).unwrap()).unwrap();
         }
         p.finish(&part, &done).unwrap();
-        assert_eq!(fs::read(&done).unwrap(), data);
+        // En disco solo hay trozos cifrados; al exportar sale el original.
+        let raw = fs::read(&done).unwrap();
+        assert_eq!(raw.len() as u64, offer.sealed_size());
+        assert!(!raw.windows(64).any(|w| data.windows(64).next() == Some(w)));
+        let out = fb.export(&id, &dir.join("abiertos")).unwrap();
+        assert_eq!(out.file_name().unwrap(), "datos.bin");
+        assert_eq!(fs::read(&out).unwrap(), data);
         assert!(fb.complete(&id));
+        // El emisor tampoco guarda la copia en claro.
+        assert_eq!(fs::read(a.join("files").join(&id).join(CONTENT)).unwrap(), raw);
+
+        // Migración de un archivo guardado en claro (versión anterior).
+        let c = dir.join("c");
+        let mut fc = Files::open(&c);
+        fc.register(StoredOffer { offer: offer.clone(), group_id: vec![1], sender: [0; 32] }).unwrap();
+        fs::write(c.join("files").join(&id).join("datos.bin"), &data).unwrap();
+        assert_eq!(fc.migrate().unwrap(), 1);
+        assert_eq!(fs::read(c.join("files").join(&id).join(CONTENT)).unwrap(), raw);
+        assert!(!c.join("files").join(&id).join("datos.bin").exists());
         fs::remove_dir_all(&dir).unwrap();
     }
 
