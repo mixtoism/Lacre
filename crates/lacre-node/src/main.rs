@@ -56,6 +56,10 @@ struct Args {
     /// Intervalo de republicación y sincronización, en segundos.
     #[arg(long, default_value_t = 30)]
     tick: u64,
+    /// Aceptar el estado del disco aunque parezca una copia anterior (tras
+    /// restaurar a sabiendas una copia de seguridad; D-046).
+    #[arg(long)]
+    accept_current_state: bool,
 }
 
 const HELP: &str = "\
@@ -116,6 +120,7 @@ async fn main() -> Result<()> {
             .then(|| args.tracker.iter().map(|t| rendezvous::normalize_tracker(t)).collect()),
         tick: Duration::from_secs(args.tick),
         data_key: node::data_key_from_env()?,
+        accept_current_state: args.accept_current_state,
         ..Options::new(args.data.clone())
     };
     let node::Node { app, peer_id, mut events } = node::start(opts)?;

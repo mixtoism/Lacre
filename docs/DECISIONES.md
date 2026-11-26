@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-045),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-046),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -1381,8 +1381,9 @@ puede afirmar que sea segura.
 - **Motivo:** cada límite corta un ataque concreto de la revisión, con
   márgenes muy por encima del uso normal.
 - **Limitaciones:**
-  - **Disco:** se puede volver a una versión anterior de un archivo
-    cifrado (*rollback*): el AAD liga la ruta, no la versión.
+  - **Disco** *(en parte resuelto por D-046)*: se puede volver a una
+    versión anterior de un archivo cifrado (*rollback*): el AAD liga la
+    ruta, no la versión.
   - **Sobres:** la fecha la pone el reloj del remitente. Uno con el reloj
     atrasado más de 15 días no puede enviar nada; uno adelantado más de un
     día, tampoco. Bajo inundación (más de 20 000 sobres vigentes) se puede
@@ -1516,6 +1517,47 @@ puede afirmar que sea segura.
     no son fallos. Se revisan en cada actualización.
 - **Pendiente:** pasar a rusqlite ≥ 0.41 cuando Arti lo haga; seguir los
   avisos en cada versión.
+
+## D-046 · Número de guardado contra la vuelta atrás de archivos
+- **Contexto:** el estado va cifrado y ligado a su ruta (D-033, D-042), pero
+  no a su versión. Quien pueda escribir en el disco con la app cerrada puede
+  devolver un archivo a una copia anterior, o borrarlo, sin la clave: por
+  ejemplo, deshacer un bloqueo o volver a un estado de grupo viejo.
+- **Decisión:**
+  - Los archivos de estado importantes (`device.key`, `root.key`,
+    `identity.cbor`, `mls.json`, `chats.cbor`, `seen.cbor`, `mailbox.cbor`,
+    `history.cbor`, `contacts.cbor`, `lastresort.kp`, `blocked.cbor`,
+    `stickers.cbor`) pasan al formato v3: `P2MVLT3\0 ‖ n (u64 BE) ‖ nonce ‖
+    cifrado`, con `n` (número de guardado) dentro del dato asociado:
+    `"p2message/vault/v3\0" ‖ n ‖ ruta`.
+  - `vault.manifest` (cifrado, v2) guarda el último número usado y el de
+    cada archivo. Cada guardado usa el siguiente número: primero se escribe
+    el archivo y luego el registro.
+  - Al leer, el número del archivo tiene que ser el del registro. Solo se
+    admite además el siguiente al último (un corte entre las dos
+    escrituras), y entonces se completa el registro. Un archivo que el
+    registro conoce y falta, o que vuelve a v2, también se rechaza.
+  - Al arrancar se leen todos los protegidos: el aviso sale al principio y
+    el nodo no arranca.
+  - Los archivos v2 de antes se reescriben en v3 al arrancar.
+  - `--accept-current-state` (CLI) rehace el registro con lo que hay, para
+    quien restaura a sabiendas su propia copia de seguridad.
+- **Motivo:** cierra la vuelta atrás selectiva (un solo archivo, como la
+  lista de bloqueados, con el resto al día), que es la útil para un
+  atacante. Cuesta una escritura pequeña más por guardado.
+- **Limitaciones:**
+  - Devolver **todo** el directorio, registro incluido, a una copia
+    anterior coherente no se detecta. Haría falta un contador monotónico del
+    hardware (TPM, Secure Enclave). El llavero del sistema no sirve: también
+    es un archivo del mismo disco.
+  - Un único guardado desde la copia no se distingue de un corte entre el
+    archivo y el registro.
+  - Fotos, stickers, archivos y `peers.txt` no están protegidos: volver
+    atrás en ellos no da nada a un atacante y se borran a menudo.
+  - Hasta el primer arranque con esta versión, los archivos v2 se pueden
+    cambiar por otros v2 anteriores.
+- **Pendiente:** en la app, un botón para aceptar el estado actual tras el
+  aviso (ahora solo en la CLI).
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

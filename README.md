@@ -420,11 +420,14 @@ Known risks and trade-offs:
 - **Local storage.** State, media and files are encrypted at rest with a key
   from the OS keystore (Android Keystore, Secret Service, macOS Keychain,
   Windows DPAPI); the app refuses to start without it. The onion key never
-  touches the disk (D-044). Rolling back a file to an older encrypted
-  version is not detected.
+  touches the disk (D-044). Restoring an old copy of a single state file
+  (or deleting one) is detected and the node refuses to start; restoring the
+  whole data directory to an earlier consistent copy is not (D-046).
+  `--accept-current-state` accepts the disk as it is, after restoring your
+  own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-045), but nothing should be considered secure until audited.
+  (D-039–D-046), but nothing should be considered secure until audited.
 
 ---
 

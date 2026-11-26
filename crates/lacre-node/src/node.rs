@@ -36,6 +36,9 @@ pub struct Options {
     pub tick: Duration,
     /// Clave de datos para cifrar el estado en disco (D-033).
     pub data_key: Option<[u8; 32]>,
+    /// Rehacer el registro de guardados con lo que hay en el disco, tras un
+    /// aviso de vuelta atrás que se sabe legítimo (D-046).
+    pub accept_current_state: bool,
 }
 
 impl Options {
@@ -54,6 +57,7 @@ impl Options {
             trackers: None,
             tick: Duration::from_secs(30),
             data_key: None,
+            accept_current_state: false,
         }
     }
 }
@@ -86,6 +90,11 @@ pub fn start(opts: Options) -> Result<Node> {
             if n > 0 {
                 tracing::info!("{n} state files encrypted");
             }
+            lacre_core::vault::protect(&opts.data, app::PROTECTED_FILES, opts.accept_current_state).map_err(|e| {
+                anyhow::anyhow!(
+                    "{e}. Si has restaurado tú una copia de seguridad, arranca una vez aceptando el estado actual"
+                )
+            })?;
         }
         None if app::has_sealed_state(&opts.data) => {
             anyhow::bail!("el estado de {} está cifrado y falta la clave de datos", opts.data.display())

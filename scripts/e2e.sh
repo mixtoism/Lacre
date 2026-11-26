@@ -81,6 +81,7 @@ wait_for alice1 "\(nuevo\|solicitud de\) chat \[1\] amigos"; wait_for alice2 "\(
 say alice2 "send 1 hola grupo"
 wait_for carol "portatil): hola grupo"; wait_for bob "portatil): hola grupo"; wait_for alice1 "portatil): hola grupo"
 ok "grupo de 3 personas / 4 dispositivos"
+cp alice1/chats.cbor chats-viejo.cbor  # para probar la vuelta atrás (D-046)
 
 start bob2; sleep 2
 # Al revés que el portátil de Alicia: el primario muestra la invitación y el
@@ -308,7 +309,7 @@ ok "chat borrado: desaparece y vuelve vacío con el siguiente mensaje"
 # Cifrado en disco (D-033): nada legible sin la clave, el relay (en claro)
 # se migra al arrancar con clave, y sin ella ya no arranca.
 for f in device.key history.cbor chats.cbor mls.json; do
-  head -c 8 "alice1/$f" | grep -q P2MVLT2 || { echo "FALLO: alice1/$f no está cifrado"; exit 1; }
+  head -c 8 "alice1/$f" | grep -q P2MVLT3 || { echo "FALLO: alice1/$f no está cifrado con número de guardado"; exit 1; }
 done
 if grep -rqa "hola dan" alice1 dan; then echo "FALLO: texto de un mensaje en claro en disco"; exit 1; fi
 [[ $(stat -c %s relay/device.key) == 32 ]] || { echo "FALLO: el relay ya estaba cifrado"; exit 1; }
@@ -317,7 +318,7 @@ RELAYKEY=$(key_of relay)
 LACRE_DATA_KEY=$RELAYKEY "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay2.out 2>&1 & RP=$!; PIDS+=($RP)
 for _ in $(seq 40); do grep -q "dispositivo" relay2.out && break; sleep 0.25; done
 kill $RP; wait $RP 2>/dev/null || true
-head -c 8 relay/device.key | grep -q P2MVLT2 || { echo "FALLO: el relay no se migró"; cat relay2.out; exit 1; }
+head -c 8 relay/device.key | grep -q P2MVLT3 || { echo "FALLO: el relay no se migró"; cat relay2.out; exit 1; }
 if "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay3.out 2>&1; then
   echo "FALLO: arrancó sin la clave de datos"; exit 1
 fi
@@ -325,5 +326,22 @@ grep -q "falta la clave de datos" relay3.out || { echo "FALLO: error inesperado"
 LACRE_DATA_KEY=$(key_of otra) "$BIN" --data relay --headless --no-tor --no-mdns --no-rendezvous --port 0 > relay4.out 2>&1 && { echo "FALLO: arrancó con otra clave"; exit 1; }
 grep -q "no se pudo descifrar" relay4.out || { echo "FALLO: error inesperado con otra clave"; cat relay4.out; exit 1; }
 ok "estado cifrado en disco; un nodo en claro se migra; sin la clave (o con otra) no arranca"
+
+# Vuelta atrás (D-046): una copia vieja de un archivo de estado, o su
+# ausencia, impide arrancar; a sabiendas se puede aceptar el estado actual.
+stop alice1
+A1KEY=$(key_of alice1)
+cp alice1/chats.cbor chats-nuevo.cbor
+cp chats-viejo.cbor alice1/chats.cbor
+LACRE_DATA_KEY=$A1KEY "$BIN" --data alice1 --headless --no-tor --no-mdns --no-rendezvous --port 0 > rb1.out 2>&1 && { echo "FALLO: arrancó con chats.cbor viejo"; exit 1; }
+grep -q "copia anterior" rb1.out || { echo "FALLO: error inesperado con chats.cbor viejo"; cat rb1.out; exit 1; }
+cp chats-nuevo.cbor alice1/chats.cbor; rm alice1/blocked.cbor 2>/dev/null || rm alice1/contacts.cbor
+LACRE_DATA_KEY=$A1KEY "$BIN" --data alice1 --headless --no-tor --no-mdns --no-rendezvous --port 0 > rb2.out 2>&1 && { echo "FALLO: arrancó con un archivo borrado"; exit 1; }
+grep -q "falta un archivo" rb2.out || { echo "FALLO: error inesperado con un archivo borrado"; cat rb2.out; exit 1; }
+LACRE_DATA_KEY=$A1KEY "$BIN" --data alice1 --headless --no-tor --no-mdns --no-rendezvous --port 0 --accept-current-state > rb3.out 2>&1 & RP=$!; PIDS+=($RP)
+for _ in $(seq 40); do grep -q "dispositivo" rb3.out && break; sleep 0.25; done
+kill $RP; wait $RP 2>/dev/null || true
+grep -q "dispositivo" rb3.out || { echo "FALLO: no arrancó aceptando el estado actual"; cat rb3.out; exit 1; }
+ok "copia vieja o borrado de un archivo de estado detectados; se puede aceptar a sabiendas (D-046)"
 
 echo "todas las pruebas pasaron"

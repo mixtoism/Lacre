@@ -343,6 +343,14 @@ const STATE_FILES: &[&str] = &[
     "stickers.cbor", "peers.txt",
 ];
 
+/// Archivos protegidos contra la vuelta atrás (D-046): todos los de estado
+/// menos `peers.txt` (volver a una lista de peers vieja no da nada).
+pub const PROTECTED_FILES: &[&str] = &[
+    "device.key", "root.key", "identity.cbor", "mls.json", "chats.cbor", "seen.cbor",
+    "mailbox.cbor", "history.cbor", "contacts.cbor", "lastresort.kp", "blocked.cbor",
+    "stickers.cbor",
+];
+
 /// Cifra los archivos de estado que aún estén en claro. Devuelve cuántos.
 pub fn migrate_to_vault(dir: &Path) -> Result<usize> {
     let mut paths: Vec<PathBuf> = STATE_FILES.iter().map(|f| dir.join(f)).collect();
