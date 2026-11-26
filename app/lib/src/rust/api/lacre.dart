@@ -157,6 +157,11 @@ Future<void> handOver({required int index, required String handle}) =>
 /// Tamaño máximo de un sticker, en bytes.
 int maxStickerBytes() => RustLib.instance.api.crateApiLacreMaxStickerBytes();
 
+/// Convierte un GIF o WebP animado que no cabe en un sticker en un WebP
+/// animado de como mucho [`max_sticker_bytes`] (D-055).
+Future<Uint8List> fitAnimatedSticker({required List<int> bytes}) =>
+    RustLib.instance.api.crateApiLacreFitAnimatedSticker(bytes: bytes);
+
 /// Colección propia de stickers, del más reciente al más antiguo.
 List<Sticker> stickers() => RustLib.instance.api.crateApiLacreStickers();
 
@@ -181,6 +186,18 @@ BigInt maxFileBytes() => RustLib.instance.api.crateApiLacreMaxFileBytes();
 /// datos de la app; los demás lo descargan de los dispositivos del grupo.
 Future<SendResult> sendFile({required int index, required String path}) =>
     RustLib.instance.api.crateApiLacreSendFile(index: index, path: path);
+
+/// Manda la colección de stickers al chat como paquete (D-055).
+Future<SendResult> shareStickers({required int index, required String name}) =>
+    RustLib.instance.api.crateApiLacreShareStickers(index: index, name: name);
+
+/// Añade a la colección los stickers de un paquete descargado; devuelve
+/// cuántos eran nuevos.
+int importStickers({required String id}) =>
+    RustLib.instance.api.crateApiLacreImportStickers(id: id);
+
+/// Extensión de los paquetes de stickers.
+String stickerPackExt() => RustLib.instance.api.crateApiLacreStickerPackExt();
 
 /// Descarga un archivo recibido (queda cifrado en disco). El progreso
 /// llega como [`UiEvent::FileProgress`].

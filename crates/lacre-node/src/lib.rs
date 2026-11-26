@@ -1,6 +1,7 @@
 //! Nodo Lacre: red libp2p, buzones, Tor y lógica de chats. Lo usan la
 //! CLI (`main.rs`) y la app (`lacre-api`).
 
+pub mod anim;
 pub mod app;
 pub mod courier;
 pub mod depot;

@@ -631,6 +631,20 @@ viaja dentro del mensaje cifrado. Antes de decodificarla, el receptor DEBE
 comprobar en la cabecera que no pasa de 1024 px de lado, para evitar bombas
 de descompresión.
 
+Un **paquete de stickers** (D-055) es un archivo normal (§11) cuyo nombre
+termina en `.lacre-stickers`. Su contenido es la cabecera ASCII `P2MSTK1\n`
+seguida de:
+
+```cddl
+StickerPack = {
+  name:     tstr,
+  stickers: [* bstr],   ; como mucho 60; cada uno, un sticker válido
+}
+```
+
+Al importarlo, el receptor DEBE comprobar cada sticker como si llegara en un
+mensaje y descartar los que no pasen.
+
 ### 9.2. Fotos de perfil
 
 `avatar` anuncia la versión de la foto de quien envía. El receptor la pide

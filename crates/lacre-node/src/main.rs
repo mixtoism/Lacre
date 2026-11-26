@@ -103,6 +103,10 @@ comandos:
                                bloquea, desbloquea o lista personas bloqueadas
   avatar <archivo>|none        cambia o quita tu foto de perfil (≤128 KB, ≤512 px)
   export-sticker <id> <archivo>   guarda descifrado un sticker recibido
+  stickers                     lista la colección de stickers
+  keep-sticker <id>            añade a la colección un sticker recibido
+  share-stickers <n> <nombre>  manda la colección al chat n como paquete
+  import-stickers <id>         añade a la colección un paquete descargado
   export-avatar <nombre#suf> <archivo>  guarda descifrada la foto de un contacto
   safety <nombre#suf>              número de seguridad con un contacto (compáralo con el suyo)
   dial <multiaddr>             conecta con un nodo concreto
@@ -355,14 +359,23 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             let to = app.hand_over(n.parse()?, handle).await?;
             println!("{to} gestiona ahora el chat [{n}]");
         }
-        "send" | "sticker" | "file" => {
-            let (n, arg) =
-                rest.split_once(' ').context("uso: send <n> <texto> | sticker <n> <archivo> | file <n> <archivo>")?;
+        "send" | "sticker" | "file" | "share-stickers" => {
+            let (n, arg) = rest.split_once(' ').context(
+                "uso: send <n> <texto> | sticker <n> <archivo> | file <n> <archivo> | share-stickers <n> <nombre>",
+            )?;
             let r = match cmd {
                 "send" => app.send(n.parse()?, arg).await?,
                 "file" => app.send_file(n.parse()?, arg.trim().as_ref()).await?,
+                "share-stickers" => app.share_stickers(n.parse()?, arg.trim()).await?,
                 _ => {
-                    let bytes = std::fs::read(arg.trim()).with_context(|| format!("no se pudo leer {arg}"))?;
+                    let mut bytes = std::fs::read(arg.trim()).with_context(|| format!("no se pudo leer {arg}"))?;
+                    // Un GIF o WebP animado que no cabe se convierte (D-055).
+                    if lacre_node::sticker::check(&bytes).is_err()
+                        && matches!(lacre_node::sticker::image_ext(&bytes), Some("gif" | "webp"))
+                    {
+                        bytes = lacre_node::anim::fit_animated(&bytes, lacre_node::sticker::MAX_STICKER)?;
+                        println!("  (convertido a WebP animado: {} KB)", bytes.len() / 1024);
+                    }
                     app.send_sticker_bytes(n.parse()?, bytes).await?
                 }
             };
@@ -416,6 +429,19 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             };
             app.set_avatar(image).await?;
             println!("foto de perfil actualizada");
+        }
+        "stickers" => {
+            for id in app.stickers() {
+                println!("  {id}");
+            }
+        }
+        "keep-sticker" => {
+            app.keep_sticker(rest)?;
+            println!("sticker añadido a la colección");
+        }
+        "import-stickers" => {
+            let n = app.import_stickers(rest)?;
+            println!("{n} sticker(s) nuevo(s) en la colección");
         }
         "export-sticker" => {
             let (id, out) = rest.split_once(' ').context("uso: export-sticker <id> <archivo>")?;

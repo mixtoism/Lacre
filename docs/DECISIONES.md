@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-054),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-055),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -585,9 +585,9 @@ puede afirmar que sea segura.
   - El tamaño del mensaje delata que es un sticker. Ver R-008, análisis de
     tamaño y tiempo, en la rama `worktree-doc-riesgos`.
 - **Pendiente:**
-  - Paquetes de stickers compartibles.
+  - ~~Paquetes de stickers compartibles.~~ **Hecho (D-055).**
   - Un paquete por defecto incluido en la app.
-  - Convertir GIF a WebP animado para que quepan más.
+  - ~~Convertir GIF a WebP animado para que quepan más.~~ **Hecho (D-055).**
 - **Pruebas:**
   - Unitarias en `sticker.rs`: formatos, dimensiones de cada formato, bomba
     rechazada y rutas.
@@ -1851,6 +1851,50 @@ puede afirmar que sea segura.
     al depósito; ya tenía la clave de ese archivo (D-026).
 - **Pendiente:** dejar que el remitente decida depositar siempre (por
   ejemplo, si va a estar mucho tiempo desconectado).
+
+## D-055 · Paquetes de stickers y GIF a WebP animado
+- **Contexto:** D-025 dejaba pendientes compartir la colección de stickers
+  y convertir los GIF animados, que casi nunca caben en los 200 KB de un
+  sticker. Hasta ahora la app los rechazaba con «es animada y ocupa…».
+- **Decisión:**
+  - **Paquetes:** la colección propia (o parte) se manda como un archivo
+    normal `<nombre>.lacre-stickers`: la cabecera `P2MSTK1\n` y un mapa CBOR
+    `{name, stickers: [bytes]}`, con 60 stickers como mucho. Viaja con
+    D-026 (cifrado, por trozos, con depósito D-054); no hay mensaje nuevo
+    en el protocolo. Quien lo descarga lo importa: cada sticker pasa por
+    `sticker::check` (los que no, se descartan) y se añade a su colección
+    si no lo tenía.
+  - **GIF a WebP:** un GIF o WebP animado que no cabe se convierte en Rust
+    (`anim.rs`), sin libwebp: se decodifica con `image`, se reduce a 320 px
+    de lado como mucho y cada fotograma se codifica sin pérdida (VP8L) con
+    `image-webp`. El contenedor animado (`VP8X`, `ANIM`, `ANMF`) se arma a
+    mano y de cada fotograma solo se guarda el rectángulo que cambia. Si no
+    cabe, se prueba con menos tamaño y quitando fotogramas (sumando su
+    duración al anterior) hasta 1/4 del lado y 1 de cada 4 fotogramas.
+    Lo usan la CLI (`sticker <n> anim.gif`) y la app al elegir una imagen.
+- **Motivo:** un archivo es lo más sencillo de compartir y reenviar, y
+  reutiliza todo lo de los archivos. Convertir en Rust evita depender de
+  una biblioteca nativa más en cada plataforma (Android, escritorio, iOS).
+- **Limitaciones:**
+  - Sin pérdida y a 320 px: un GIF con mucho movimiento o ruido queda
+    pequeño o a saltos. Un codificador con pérdida (VP8) comprimiría mucho
+    más, pero no lo hay en Rust puro.
+  - Decodificar el GIF guarda todos los fotogramas en memoria: se limita a
+    16 MiB de entrada, 1024 px de lado y 150 fotogramas (unos 60 MB a
+    320 px como mucho).
+  - El nombre del paquete viaja en claro dentro del archivo cifrado; quien
+    lo recibe ve cuántos stickers tiene y cuáles.
+  - No hay paquete por defecto: necesita dibujos originales con licencia
+    libre.
+- **Pendiente:** un paquete por defecto con dibujos propios; elegir qué
+  stickers van en el paquete (ahora va la colección entera, hasta 60).
+- **Pruebas:**
+  - Unitarias: `sticker::tests::packs`; en `anim.rs`, conversión de un GIF
+    (fotogramas, duración total y último fotograma iguales al original),
+    rechazos y un GIF de ruido que se reduce hasta caber. El resultado se
+    validó con `webpinfo` (libwebp) y Pillow.
+  - `scripts/e2e.sh`: Bob comparte su colección, Carol la importa (2
+    nuevos); Carol manda un GIF de más de 200 KB, que llega como WebP.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

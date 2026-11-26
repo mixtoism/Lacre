@@ -962,6 +962,48 @@ abstract class AppLocalizations {
   /// **'Añadir stickers'**
   String get addStickers;
 
+  /// No description provided for @shareStickers.
+  ///
+  /// In es, this message translates to:
+  /// **'Compartir tus stickers en este chat'**
+  String get shareStickers;
+
+  /// No description provided for @shareStickersTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Mandar tus stickers a este chat?'**
+  String get shareStickersTitle;
+
+  /// No description provided for @shareStickersBody.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{Se manda tu sticker como un paquete que se puede añadir a la colección.} other{Se mandan tus {count} stickers más recientes como un paquete que se puede añadir a la colección.}}'**
+  String shareStickersBody(int count);
+
+  /// No description provided for @share.
+  ///
+  /// In es, this message translates to:
+  /// **'Mandar'**
+  String get share;
+
+  /// No description provided for @stickerPackName.
+  ///
+  /// In es, this message translates to:
+  /// **'Stickers'**
+  String get stickerPackName;
+
+  /// No description provided for @importStickers.
+  ///
+  /// In es, this message translates to:
+  /// **'Añadir a mis stickers'**
+  String get importStickers;
+
+  /// No description provided for @stickersImported.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =0{Ya tenías todos estos stickers} =1{1 sticker añadido} other{{count} stickers añadidos}}'**
+  String stickersImported(int count);
+
   /// No description provided for @sendSticker.
   ///
   /// In es, this message translates to:

@@ -162,6 +162,12 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _sendSticker(lacre.Sticker s) =>
       _deliver(() => lacre.sendSticker(index: widget.index, id: s.id));
 
+  /// La colección viaja como un archivo `.lacre-stickers` (D-055).
+  Future<void> _shareStickers() {
+    final name = context.l.stickerPackName;
+    return _deliver(() => lacre.shareStickers(index: widget.index, name: name));
+  }
+
   Future<void> _sendFile() async {
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l;
@@ -326,7 +332,11 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             if (active && _panel)
-              ExpressionPanel(input: _input, onSticker: _sendSticker),
+              ExpressionPanel(
+                input: _input,
+                onSticker: _sendSticker,
+                onShare: _shareStickers,
+              ),
           ],
         ),
       ),
@@ -828,10 +838,22 @@ class _FileBubble extends StatelessWidget {
 
   /// El archivo va cifrado en disco: el núcleo descifra una copia temporal
   /// (se borra al cerrar la app) y se abre esa.
-  Future<void> _open(BuildContext context, String id) => guard(
-    context,
-    () async => openExternal(await lacre.openFile(id: id)),
-  );
+  Future<void> _open(BuildContext context, String id) =>
+      guard(context, () async => openExternal(await lacre.openFile(id: id)));
+
+  Future<void> _importPack(BuildContext context, String id) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l;
+    final added = await guard(
+      context,
+      () async => lacre.importStickers(id: id),
+    );
+    if (added != null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.stickersImported(added))),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -840,7 +862,13 @@ class _FileBubble extends StatelessWidget {
     final ready = file.downloaded || store.downloaded.contains(file.id);
     final progress = store.downloads[file.id];
     final Widget action;
-    if (ready) {
+    if (ready && file.name.endsWith('.${lacre.stickerPackExt()}')) {
+      action = IconButton(
+        tooltip: context.l.importStickers,
+        icon: const Icon(Icons.library_add),
+        onPressed: () => _importPack(context, file.id),
+      );
+    } else if (ready) {
       action = IconButton(
         tooltip: context.l.open,
         icon: const Icon(Icons.open_in_new),

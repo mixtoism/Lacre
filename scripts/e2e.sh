@@ -180,6 +180,37 @@ wait_for carol "bob#.*: \[sticker [0-9a-f]*.png\]" $((TICK * 4))
 BID=$(grep -o "bob#.*: \[sticker [0-9a-f]*.png\]" carol.out | head -1 | grep -o "[0-9a-f]\{64\}.png")
 say carol "export-sticker $BID b_car.png"; wait_for carol "sticker exportado a b_car.png"; cmp big.png b_car.png
 ok "stickers entregados (190 KB por buzón; los de más de 200 KB se rechazan)"
+# Paquetes (D-055): la colección viaja como un archivo .lacre-stickers.
+say bob "keep-sticker $SID"; wait_for bob "sticker añadido a la colección"
+say bob "keep-sticker $BID"
+say bob "share-stickers 1 amigos"
+wait_for carol "bob#.*: \[archivo amigos.lacre-stickers" $((TICK * 4))
+PID_=$(grep -o "\[archivo amigos.lacre-stickers · [0-9]* bytes · [0-9a-f]*\]" carol.out | head -1 | grep -o "[0-9a-f]\{64\}")
+say carol "get $PID_"; wait_for carol "archivo descargado" 60
+say carol "import-stickers $PID_"; wait_for carol "2 sticker(s) nuevo(s) en la colección"
+say carol "stickers"; wait_for carol "  $SID"
+ok "colección de stickers compartida como paquete e importada (D-055)"
+# GIF animado de más de 200 KB: se convierte a WebP animado (D-055). Solo
+# si hay Pillow para generarlo.
+if python3 -I -c "import PIL" 2>/dev/null; then
+  python3 -I - <<'PY'
+import random
+from PIL import Image
+random.seed(1)
+bg = Image.frombytes("RGB", (300, 300), bytes(random.randrange(256) for _ in range(300 * 300 * 3)))
+frames = []
+for i in range(20):
+    f = bg.copy()
+    f.paste((255, 0, 0), (i * 10, 100, i * 10 + 60, 160))
+    frames.append(f)
+frames[0].save("anim.gif", save_all=True, append_images=frames[1:], duration=80, loop=0)
+PY
+  [ "$(stat -c %s anim.gif)" -gt 204800 ] || { echo "✘ anim.gif debería ocupar más de 200 KB"; exit 1; }
+  say carol "sticker 0 anim.gif"
+  wait_for carol "convertido a WebP animado"
+  wait_for bob "carol#.*: \[sticker [0-9a-f]*.webp\]"
+  ok "GIF animado convertido a WebP animado y entregado (D-055)"
+fi
 
 # --- Archivos (D-026): oferta cifrada en el mensaje, trozos cifrados que
 # sirve cualquier miembro del grupo que ya los tenga.

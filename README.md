@@ -77,6 +77,9 @@ references below point to entries in that file.
   by any group member that has them. If a chat device is offline, files up
   to 32 MiB are also left encrypted on two DHT nodes for 7 days, so they can
   be downloaded after the sender goes offline (D-026, D-054).
+- **Stickers.** Any PNG, GIF, WebP or JPEG up to 200 KB; animated GIFs that
+  don't fit are converted to animated WebP in Rust. A sticker collection can
+  be shared as a `.lacre-stickers` file and imported (D-025, D-055).
 - **Persistent peer cache.** Peers seen before are reconnected on restart,
   with no bootstrap server.
 - **Local message history.** Up to 5,000 messages per chat are kept on disk.
@@ -112,6 +115,8 @@ docs/             design decision log
 | `lacre-node/rendezvous.rs`   | Relay discovery through Mainline DHT and UDP trackers            |
 | `lacre-node/mailbox.rs`      | Store-and-forward mailbox for other peers' envelopes             |
 | `lacre-node/depot.rs`        | Encrypted file chunks held for offline senders (D-054)           |
+| `lacre-node/sticker.rs`      | Sticker checks, own collection and `.lacre-stickers` packs (D-025, D-055) |
+| `lacre-node/anim.rs`         | Animated GIF/WebP to animated WebP, pure Rust (D-055)            |
 | `lacre-node/peers.rs`        | On-disk peer cache                                               |
 | `lacre-node/app.rs`          | Chats, sync, delivery, linking: the application logic            |
 | `lacre-node/history.rs`      | Local message history                                            |
@@ -448,7 +453,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-054), but nothing should be considered secure until audited.
+  (D-039–D-055), but nothing should be considered secure until audited.
 
 ---
 
@@ -552,6 +557,10 @@ code, Tor/relay status and device management. Bindings are regenerated with
 | `chats`                       | List chats with their index and device count                        |
 | `send <n> <text>`             | Send a message to chat `n`; reports devices reached via mailboxes   |
 | `history <n>`                 | Show stored messages of chat `n`                                    |
+| `sticker <n> <file>`          | Send a sticker (an animated GIF that is too big is converted)       |
+| `stickers`, `keep-sticker <id>` | List your collection / add a received sticker to it               |
+| `share-stickers <n> <name>`   | Send your collection to chat `n` as `<name>.lacre-stickers`         |
+| `import-stickers <file id>`   | Add the stickers of a downloaded pack to your collection           |
 | `dial <multiaddr>`            | Connect to a specific node                                          |
 | `addrs`                       | Show the addresses others can use to reach you                      |
 | `help`, `quit`                | Help / exit                                                          |

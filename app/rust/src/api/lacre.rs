@@ -552,6 +552,12 @@ pub fn max_sticker_bytes() -> u32 {
     lacre_node::sticker::MAX_STICKER as u32
 }
 
+/// Convierte un GIF o WebP animado que no cabe en un sticker en un WebP
+/// animado de como mucho [`max_sticker_bytes`] (D-055).
+pub fn fit_animated_sticker(bytes: Vec<u8>) -> Result<Vec<u8>> {
+    lacre_node::anim::fit_animated(&bytes, lacre_node::sticker::MAX_STICKER)
+}
+
 /// Colección propia de stickers, del más reciente al más antiguo.
 #[frb(sync)]
 pub fn stickers() -> Result<Vec<Sticker>> {
@@ -599,6 +605,29 @@ pub async fn send_file(index: u32, path: String) -> Result<SendResult> {
         Ok(SendResult { stored: r.stored as u32, failed: r.failed as u32 })
     })
     .await
+}
+
+/// Manda la colección de stickers al chat como paquete (D-055).
+pub async fn share_stickers(index: u32, name: String) -> Result<SendResult> {
+    let app = app()?;
+    on_rt(async move {
+        let r = app.share_stickers(index as usize, &name).await?;
+        Ok(SendResult { stored: r.stored as u32, failed: r.failed as u32 })
+    })
+    .await
+}
+
+/// Añade a la colección los stickers de un paquete descargado; devuelve
+/// cuántos eran nuevos.
+#[frb(sync)]
+pub fn import_stickers(id: String) -> Result<u32> {
+    Ok(app()?.import_stickers(&id)? as u32)
+}
+
+/// Extensión de los paquetes de stickers.
+#[frb(sync)]
+pub fn sticker_pack_ext() -> String {
+    lacre_node::sticker::PACK_EXT.to_owned()
 }
 
 /// Descarga un archivo recibido (queda cifrado en disco). El progreso

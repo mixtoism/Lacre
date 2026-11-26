@@ -4,12 +4,18 @@
 //! Los bytes de cada sticker (enviado, recibido o de la colección) se guardan
 //! una sola vez en `media/`, con el hash del contenido como nombre. La
 //! colección propia es solo la lista de esos nombres (`stickers.cbor`).
+//!
+//! Un paquete (D-055) es un archivo `.lacre-stickers` que se manda como
+//! cualquier otro archivo (D-026); quien lo recibe añade sus stickers a la
+//! colección.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use lacre_core::{cbor_from, cbor_to};
+use serde::{Deserialize, Serialize};
+use serde_bytes::ByteBuf;
 
 use crate::app::{read_private, write_private};
 
@@ -21,6 +27,40 @@ pub const MAX_STICKER: usize = 200 * 1024;
 /// dimensiones enormes y agotar la memoria al decodificarla (bomba de
 /// descompresión): se comprueba en la cabecera antes de mostrarla.
 pub const MAX_SIDE: u32 = 1024;
+
+/// Extensión de un paquete de stickers.
+pub const PACK_EXT: &str = "lacre-stickers";
+/// Stickers como mucho por paquete (unos 12 MB en el peor caso).
+pub const MAX_PACK: usize = 60;
+const PACK_MAGIC: &[u8] = b"P2MSTK1\n";
+
+#[derive(Serialize, Deserialize)]
+struct Pack {
+    name: String,
+    stickers: Vec<ByteBuf>,
+}
+
+/// Arma un paquete con los primeros [`MAX_PACK`] stickers.
+pub fn pack(name: &str, stickers: Vec<Vec<u8>>) -> Result<Vec<u8>> {
+    if stickers.is_empty() {
+        bail!("no hay stickers que compartir");
+    }
+    let stickers = stickers.into_iter().take(MAX_PACK).map(ByteBuf::from).collect();
+    Ok([PACK_MAGIC, &cbor_to(&Pack { name: name.to_owned(), stickers })?].concat())
+}
+
+/// Lee un paquete: su nombre y los stickers que pasan [`check`] (los demás
+/// se descartan).
+pub fn unpack(bytes: &[u8]) -> Result<(String, Vec<Vec<u8>>)> {
+    let body = bytes.strip_prefix(PACK_MAGIC).context("no es un paquete de stickers")?;
+    let pack: Pack = cbor_from(body).context("paquete de stickers dañado")?;
+    if pack.stickers.len() > MAX_PACK {
+        bail!("paquete con más de {MAX_PACK} stickers");
+    }
+    let ok: Vec<Vec<u8>> =
+        pack.stickers.into_iter().map(ByteBuf::into_vec).filter(|b| check(b).is_ok()).collect();
+    Ok((pack.name, ok))
+}
 
 /// Formato de imagen según los primeros bytes; solo se aceptan estos.
 pub fn image_ext(bytes: &[u8]) -> Option<&'static str> {
@@ -195,6 +235,19 @@ mod tests {
     }
 
     #[test]
+    fn packs() {
+        let p = pack("hola", vec![PNG.to_vec(), b"<svg/>".to_vec()]).unwrap();
+        let (name, list) = unpack(&p).unwrap();
+        assert_eq!(name, "hola");
+        assert_eq!(list, [PNG.to_vec()]);
+        assert!(pack("vacío", vec![]).is_err());
+        assert!(unpack(b"P2MSTK1\nbasura").is_err());
+        assert!(unpack(PNG).is_err());
+        let many = pack("muchos", vec![PNG.to_vec(); MAX_PACK + 5]).unwrap();
+        assert_eq!(unpack(&many).unwrap().1.len(), MAX_PACK);
+    }
+
+    #[test]
     fn store_and_collection() {
         let dir = std::env::temp_dir().join(format!("lacre-stickers-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
@@ -205,7 +258,7 @@ mod tests {
         assert!(s.path("../../etc/passwd.png").is_err());
         assert!(s.path(&format!("{}.svg", "a".repeat(64))).is_err());
         s.keep(&id).unwrap();
-        assert_eq!(Stickers::open(&dir).unwrap().list(), [id.clone()]);
+        assert_eq!(Stickers::open(&dir).unwrap().list(), std::slice::from_ref(&id));
         s.remove(&id).unwrap();
         assert!(Stickers::open(&dir).unwrap().list().is_empty());
         assert!(s.read(&id).is_ok());

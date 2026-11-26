@@ -524,6 +524,45 @@ class AppLocalizationsEs extends AppLocalizations {
   String get addStickers => 'Añadir stickers';
 
   @override
+  String get shareStickers => 'Compartir tus stickers en este chat';
+
+  @override
+  String get shareStickersTitle => '¿Mandar tus stickers a este chat?';
+
+  @override
+  String shareStickersBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Se mandan tus $count stickers más recientes como un paquete que se puede añadir a la colección.',
+      one: 'Se manda tu sticker como un paquete que se puede añadir a la colección.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get share => 'Mandar';
+
+  @override
+  String get stickerPackName => 'Stickers';
+
+  @override
+  String get importStickers => 'Añadir a mis stickers';
+
+  @override
+  String stickersImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stickers añadidos',
+      one: '1 sticker añadido',
+      zero: 'Ya tenías todos estos stickers',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sendSticker => 'Enviar sticker';
 
   @override

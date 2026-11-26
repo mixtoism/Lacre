@@ -72,8 +72,10 @@ DECISIONES.md.
 
 ## Funciones
 
-14. **Stickers** (D-025): paquetes compartibles, un paquete por defecto en
-    la app y convertir GIF a WebP animado.
+14. **Stickers** (D-025): ~~paquetes compartibles~~, un paquete por defecto
+    en la app y ~~convertir GIF a WebP animado~~. → **Paquetes y GIF hechos
+    (D-055).** Queda el paquete por defecto (necesita dibujos propios con
+    licencia libre).
 15. **iOS** (D-009): app y notificaciones con APNs (notificaciones vacías,
     inevitable en iOS).
 16. **Escritorio en segundo plano**: en Linux el nodo se cierra con la

@@ -898,6 +898,51 @@ impl App {
         self.stickers.lock().unwrap().remove(id)
     }
 
+    /// Manda la colección (los [`sticker::MAX_PACK`] más recientes) como un
+    /// paquete `<nombre>.lacre-stickers` (D-055).
+    pub async fn share_stickers(self: &Arc<Self>, index: usize, name: &str) -> Result<SendReport> {
+        let bytes = {
+            let st = self.stickers.lock().unwrap();
+            let list: Vec<Vec<u8>> =
+                st.list().iter().take(sticker::MAX_PACK).map(|id| st.read(id)).collect::<Result<_>>()?;
+            sticker::pack(name, list)?
+        };
+        let folder = self.dir.join(OPENED).join("paquete");
+        fs::create_dir_all(&folder)?;
+        let path = folder.join(format!("{}.{}", files::safe_name(name), sticker::PACK_EXT));
+        // Copia en claro y temporal, como las de `abiertos/`: `send_file`
+        // la cifra al copiarla al almacén.
+        fs::write(&path, &bytes)?;
+        let report = self.send_file(index, &path).await;
+        let _ = fs::remove_file(&path);
+        report
+    }
+
+    /// Añade a la colección los stickers de un paquete ya descargado.
+    /// Devuelve cuántos eran nuevos.
+    pub fn import_stickers(&self, file_id: &str) -> Result<usize> {
+        let stored = self.files.lock().unwrap().get(file_id)?;
+        if !stored.offer.name.ends_with(&format!(".{}", sticker::PACK_EXT)) {
+            bail!("no es un paquete de stickers");
+        }
+        if stored.offer.size > (sticker::MAX_PACK * (sticker::MAX_STICKER + 64)) as u64 + 4096 {
+            bail!("paquete de stickers demasiado grande");
+        }
+        let path = self.files.lock().unwrap().export(file_id, &self.dir.join(OPENED))?;
+        let bytes = fs::read(&path);
+        let _ = fs::remove_file(&path);
+        let (_, list) = sticker::unpack(&bytes?)?;
+        let mut st = self.stickers.lock().unwrap();
+        let mut added = 0;
+        // Al revés, para que queden en el mismo orden que en el paquete.
+        for b in list.iter().rev() {
+            let id = st.put(b)?;
+            added += !st.list().contains(&id) as usize;
+            st.keep(&id)?;
+        }
+        Ok(added)
+    }
+
     // ---------------------------------------------------------- archivos
 
     fn register_file(&self, offer: &FileOffer, group_id: &[u8], sender: [u8; 32]) -> Result<FileRef> {

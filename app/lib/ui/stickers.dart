@@ -16,11 +16,15 @@ class ExpressionPanel extends StatelessWidget {
     super.key,
     required this.input,
     required this.onSticker,
+    required this.onShare,
   });
 
   /// Campo de texto donde se insertan los emojis.
   final TextEditingController input;
   final ValueChanged<lacre.Sticker> onSticker;
+
+  /// Manda la colección al chat como paquete (D-055).
+  final VoidCallback onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +83,7 @@ class ExpressionPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  StickerGrid(onSticker: onSticker),
+                  StickerGrid(onSticker: onSticker, onShare: onShare),
                 ],
               ),
             ),
@@ -90,11 +94,17 @@ class ExpressionPanel extends StatelessWidget {
   }
 }
 
-/// Colección propia de stickers. El primer botón importa imágenes.
+/// Colección propia de stickers. El primer botón importa imágenes y el
+/// segundo manda la colección como paquete.
 class StickerGrid extends StatefulWidget {
-  const StickerGrid({super.key, required this.onSticker});
+  const StickerGrid({
+    super.key,
+    required this.onSticker,
+    required this.onShare,
+  });
 
   final ValueChanged<lacre.Sticker> onSticker;
+  final VoidCallback onShare;
 
   @override
   State<StickerGrid> createState() => _StickerGridState();
@@ -135,6 +145,28 @@ class _StickerGridState extends State<StickerGrid> {
     }
   }
 
+  Future<void> _share() async {
+    final count = _stickers.length.clamp(0, 60);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l.shareStickersTitle),
+        content: Text(context.l.shareStickersBody(count)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(context.l.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(context.l.share),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) widget.onShare();
+  }
+
   Future<void> _remove(lacre.Sticker s) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -168,8 +200,27 @@ class _StickerGridState extends State<StickerGrid> {
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
       ),
-      itemCount: _stickers.length + 1,
+      itemCount: _stickers.length + (_stickers.isEmpty ? 1 : 2),
       itemBuilder: (context, i) {
+        final actions = _stickers.isEmpty ? 1 : 2;
+        if (i == 1 && actions == 2) {
+          return Tooltip(
+            message: context.l.shareStickers,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: _share,
+              child: Ink(
+                decoration: BoxDecoration(
+                  border: Border.all(color: scheme.outlineVariant),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Icon(Icons.ios_share, color: scheme.primary),
+                ),
+              ),
+            ),
+          );
+        }
         if (i == 0) {
           return Tooltip(
             message: context.l.addStickers,
@@ -190,7 +241,7 @@ class _StickerGridState extends State<StickerGrid> {
             ),
           );
         }
-        final s = _stickers[i - 1];
+        final s = _stickers[i - actions];
         return Tooltip(
           message: context.l.sendSticker,
           child: InkWell(
@@ -238,8 +289,9 @@ class StickerImage extends StatelessWidget {
   }
 }
 
-/// Ajusta una imagen al límite de los stickers: si ocupa o mide demasiado y
-/// no es animada, la reduce a 512 px (o menos) y la guarda como PNG.
+/// Ajusta una imagen al límite de los stickers: si ocupa o mide demasiado,
+/// una fija se reduce a 512 px (o menos) y se guarda como PNG, y una
+/// animada se convierte a WebP animado.
 Future<Uint8List> fitSticker(Uint8List bytes) async {
   final max = lacre.maxStickerBytes();
   final ui.ImageDescriptor desc;
@@ -256,9 +308,16 @@ Future<Uint8List> fitSticker(Uint8List bytes) async {
   final animated = codec.frameCount > 1;
   codec.dispose();
   if (animated) {
-    throw ArgumentError(
-      systemL10n.stickerAnimatedTooBig(bytes.length ~/ 1024, side, max ~/ 1024),
-    );
+    desc.dispose();
+    if (bytes.length <= max && side <= 1024) return bytes;
+    // GIF o WebP animado que no cabe: se convierte a WebP animado (D-055).
+    try {
+      return await lacre.fitAnimatedSticker(bytes: bytes);
+    } catch (_) {
+      throw ArgumentError(
+        systemL10n.stickerAnimatedTooBig(bytes.length ~/ 1024, side, max ~/ 1024),
+      );
+    }
   }
   for (final target in [512, 384, 256, 192]) {
     final scale = target / side;
