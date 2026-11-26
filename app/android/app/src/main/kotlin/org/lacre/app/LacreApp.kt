@@ -44,6 +44,9 @@ class LacreApp : Application() {
     @Volatile private var wifi = true
     /** Actividades visibles: con alguna, la app está en primer plano. */
     private var visibles = 0
+
+    /** Actividad en primer plano, para FLAG_SECURE (D-048). */
+    private var actividad: java.lang.ref.WeakReference<Activity>? = null
     /** Hay una comprobación periódica en curso ([CheckService]). */
     var comprobando = false
     private val main = Handler(Looper.getMainLooper())
@@ -111,6 +114,14 @@ class LacreApp : Application() {
                         result.success(true)
                     }
                     "abrir" -> result.success(abrir(File(call.argument<String>("path")!!)))
+                    "pantallaSegura" -> {
+                        // Sin capturas ni vista previa en recientes mientras
+                        // se ve la frase de recuperación (D-048).
+                        val w = actividad?.get()?.window
+                        val flag = android.view.WindowManager.LayoutParams.FLAG_SECURE
+                        if (call.arguments as Boolean) w?.addFlags(flag) else w?.clearFlags(flag)
+                        result.success(w != null)
+                    }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) {
@@ -149,7 +160,9 @@ class LacreApp : Application() {
                 if (visibles == 0 && intervalo() > 0) main.postDelayed(apagar, GRACIA)
             }
             override fun onActivityCreated(activity: Activity, state: Bundle?) {}
-            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {
+                actividad = java.lang.ref.WeakReference(activity)
+            }
             override fun onActivityPaused(activity: Activity) {}
             override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}

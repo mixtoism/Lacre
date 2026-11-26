@@ -1627,8 +1627,9 @@ puede afirmar que sea segura.
   - Los grupos cuyo committer era un dispositivo perdido siguen congelados
     hasta que se pueda traspasar el committer (hoja de ruta, punto 4). El
     historial anterior no llega al dispositivo recuperado (punto 6).
-  - La app no impide capturas de pantalla de la frase (FLAG_SECURE en
-    Android, pendiente).
+  - En Android la frase se muestra con FLAG_SECURE (sin capturas ni vista
+    previa en recientes). En el escritorio no hay forma general de
+    impedirlo.
   - Solo lista inglesa.
 
 ## Preguntas abiertas

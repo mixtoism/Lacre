@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../l10n/l10n.dart';
@@ -14,6 +16,16 @@ Future<void> showRecoveryPhrase(BuildContext context) async {
   final words = await guard(context, () async => lacre.recoveryPhrase());
   if (words == null || !context.mounted) return;
   final list = words.split(' ');
+  // En Android, sin capturas de pantalla mientras se ve.
+  Future<void> secure(bool on) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await sistema.invokeMethod<bool>('pantallaSegura', on);
+    } catch (_) {}
+  }
+
+  await secure(true);
+  if (!context.mounted) return secure(false);
   await showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
@@ -50,6 +62,7 @@ Future<void> showRecoveryPhrase(BuildContext context) async {
       ],
     ),
   );
+  await secure(false);
 }
 
 /// Campo para escribir la frase y, si hace falta, quitar los demás
