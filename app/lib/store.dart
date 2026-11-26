@@ -118,7 +118,7 @@ class Store extends ChangeNotifier {
         dataKey: key,
       );
     } catch (e) {
-      debugPrint('lacre arranque: $e');
+      debugPrint('lacre startup: $e');
       startError = '$e';
       notifyListeners();
       return;
@@ -150,8 +150,8 @@ class Store extends ChangeNotifier {
       unawaited(
         sistema
             .invokeMethod('servicio')
-            .then((r) => debugPrint('lacre servicio: $r'))
-            .catchError((Object e) => debugPrint('lacre servicio: $e')),
+            .then((r) => debugPrint('lacre service: $r'))
+            .catchError((Object e) => debugPrint('lacre service: $e')),
       );
     }
     if (Platform.isLinux) {
@@ -170,7 +170,7 @@ class Store extends ChangeNotifier {
         _desktop = n;
       } catch (e) {
         // Sin servidor de avisos: solo los de dentro de la app.
-        debugPrint('lacre avisos: $e');
+        debugPrint('lacre notifications: $e');
       }
     }
     _refreshChats();
@@ -199,12 +199,12 @@ class Store extends ChangeNotifier {
     // comprobación, que conviene que sea rápida: sin reposo.
     final low = _background && checkEvery == 0;
     debugPrint(
-      'lacre energía: segundo plano=$_background reposo=$low wifi=$_wifi',
+      'lacre power: background=$_background low_power=$low wifi=$_wifi',
     );
     try {
       lacre.setPower(background: low, wifi: _wifi);
     } catch (e) {
-      debugPrint('lacre energía: $e');
+      debugPrint('lacre power: $e');
     }
     // El lock de multicast impide que el wifi filtre paquetes: solo
     // mientras mDNS esté activo.
@@ -283,7 +283,7 @@ class Store extends ChangeNotifier {
               category: LinuxNotificationCategory.imReceived,
             ),
           )
-          .catchError((Object e) => debugPrint('lacre aviso: $e'));
+          .catchError((Object e) => debugPrint('lacre notification: $e'));
     }
   }
 
@@ -293,7 +293,7 @@ class Store extends ChangeNotifier {
     try {
       await _noticeFile?.writeAsString(c.name);
     } catch (e) {
-      debugPrint('lacre avisos: $e');
+      debugPrint('lacre notifications: $e');
     }
   }
 
@@ -305,7 +305,7 @@ class Store extends ChangeNotifier {
     try {
       await sistema.invokeMethod('fijarIntervalo', minutes);
     } catch (e) {
-      debugPrint('lacre intervalo: $e');
+      debugPrint('lacre interval: $e');
     }
   }
 

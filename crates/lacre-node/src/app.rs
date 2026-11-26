@@ -702,8 +702,8 @@ impl App {
         if vault::enabled() {
             match files.migrate() {
                 Ok(0) => {}
-                Ok(n) => info!("{n} archivos recibidos cifrados en disco"),
-                Err(e) => warn!("no se pudieron cifrar los archivos recibidos: {e:#}"),
+                Ok(n) => info!("{n} received files encrypted on disk"),
+                Err(e) => warn!("could not encrypt the received files: {e:#}"),
             }
         }
         // Copias descifradas para abrir con otras aplicaciones: no deben
@@ -760,7 +760,7 @@ impl App {
     /// este o desde otro de nuestros dispositivos) la acepta.
     fn record(&self, index: usize, group_id: &[u8], message: StoredMessage, local: bool) {
         if let Err(e) = self.history.lock().unwrap().add(group_id, message.clone()) {
-            warn!("no se pudo guardar el historial: {e:#}");
+            warn!("could not save the history: {e:#}");
         }
         let index = {
             let mut st = self.state.lock().unwrap();
@@ -779,7 +779,7 @@ impl App {
                 st.chats[i].accepted |= accept;
             }
             if changed && let Err(e) = self.save_chats(&st) {
-                warn!("no se pudieron guardar los chats: {e:#}");
+                warn!("could not save the chats: {e:#}");
             }
             index
         };
@@ -928,12 +928,12 @@ impl App {
                                     ok = true;
                                     break;
                                 }
-                                Err(e) => warn!(%peer, "trozo rechazado: {e:#}"),
+                                Err(e) => warn!(%peer, "chunk rejected: {e:#}"),
                             },
                             // Responde pero no lo tiene (aún no lo ha descargado).
-                            Ok(other) => debug!(%peer, "sin el trozo: {other:?}"),
+                            Ok(other) => debug!(%peer, "chunk not available: {other:?}"),
                             Err(e) => {
-                                debug!(%peer, "fuente no disponible: {e:#}");
+                                debug!(%peer, "source unavailable: {e:#}");
                                 dead.lock().unwrap().insert(peer);
                             }
                         }
@@ -1074,15 +1074,15 @@ impl App {
             return;
         };
         if let Err(e) = self.net.put_record(key, value).await {
-            debug!("publicación del registro sin réplicas remotas: {e}");
+            debug!("record published without remote replicas: {e}");
         }
         match self.last_resort_key_package() {
             Ok(kp) => {
                 if let Err(e) = self.net.put_record(key_package_key(&self.device_pk()), kp).await {
-                    debug!("publicación del KeyPackage sin réplicas remotas: {e}");
+                    debug!("KeyPackage published without remote replicas: {e}");
                 }
             }
-            Err(e) => warn!("no se pudo preparar el KeyPackage de último recurso: {e:#}"),
+            Err(e) => warn!("could not prepare the last-resort KeyPackage: {e:#}"),
         }
     }
 
@@ -1222,7 +1222,7 @@ impl App {
             let left = deadline.saturating_duration_since(now);
             match tokio::time::timeout(left, self.net.request(peer, Request::Ping)).await {
                 Ok(Ok(Response::Ack)) => return Ok(()),
-                Ok(other) => debug!(%peer, "aún no se llega al otro dispositivo: {other:?}"),
+                Ok(other) => debug!(%peer, "other device not reachable yet: {other:?}"),
                 Err(_) => {}
             }
             if tokio::time::Instant::now() + Duration::from_secs(3) >= deadline {
@@ -1277,7 +1277,7 @@ impl App {
         for chat in chats.into_iter().filter(|c| c.active) {
             if chat.meta.committer == me {
                 if let Err(e) = self.sync_group(&chat.group_id).await {
-                    warn!("sincronización fallida: {e:#}");
+                    warn!("sync failed: {e:#}");
                 }
             } else if let Ok(peer) = peer_id_of(&chat.meta.committer) {
                 let hint = Request::SyncHint { group_id: chat.group_id.clone() };
@@ -1417,7 +1417,7 @@ impl App {
             }
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
-        warn!("no se pudo conectar con las direcciones del QR");
+        warn!("could not connect to the QR code addresses");
     }
 
     /// Crea un chat con una o varias personas. Este dispositivo es el
@@ -1629,7 +1629,7 @@ impl App {
             self.rt.spawn(async move {
                 let msg = AppMessage { text: String::new(), sent_at: now(), meta: None, sticker: None, file: None, avatar: 0, leave: true };
                 if let Err(e) = app.deliver(&chat, msg).await {
-                    warn!("no se pudo pedir la salida del grupo: {e:#}");
+                    warn!("could not request leaving the group: {e:#}");
                 }
             });
         }
@@ -1643,7 +1643,7 @@ impl App {
             let app = self.clone();
             self.rt.spawn(async move {
                 if let Err(e) = app.remove_person(&group_id, &root_pk).await {
-                    warn!("no se pudo atender una salida del grupo: {e:#}");
+                    warn!("could not process a group leave: {e:#}");
                 }
             });
         }
@@ -1825,7 +1825,7 @@ impl App {
         for p in &chat.meta.participants {
             let handle: Handle = p.parse()?;
             let Ok(rec) = self.resolve(&handle).await else {
-                warn!("no se pudo resolver {p}; se mantiene tal cual");
+                warn!("could not resolve {p}; keeping it as is");
                 unresolved.insert(handle.suffix);
                 continue;
             };
@@ -1864,7 +1864,7 @@ impl App {
         let kps: Vec<_> = kps
             .into_iter()
             .zip(&to_add)
-            .filter_map(|(r, m)| r.map_err(|e| debug!("sin KeyPackage de {:?}: {e:#}", &m.device_pk[..4])).ok())
+            .filter_map(|(r, m)| r.map_err(|e| debug!("no KeyPackage from {:?}: {e:#}", &m.device_pk[..4])).ok())
             .collect();
         if !kps.is_empty() {
             let existing = self.with_mls(|m| Ok(m.members(group_id)?))?;
@@ -1883,7 +1883,7 @@ impl App {
         match self.fetch_fresh_key_package(expected).await {
             Ok(kp) => Ok(kp),
             Err(e) => {
-                debug!("sin KeyPackage directo ({e:#}); probando la DHT");
+                debug!("no direct KeyPackage ({e:#}); trying the DHT");
                 let found = self.net.get_records(key_package_key(&expected.device_pk)).await?;
                 found
                     .iter()
@@ -1968,7 +1968,7 @@ impl App {
         if chat.meta.committer == self.device_pk()
             && let Err(e) = self.sync_group(&chat.group_id).await
         {
-            warn!("sincronización previa fallida: {e:#}");
+            warn!("pre-send sync failed: {e:#}");
         }
         let avatar = self.my_avatar_version();
         self.deliver(&chat, AppMessage { text, sent_at, meta: None, sticker, file, avatar, leave: false }).await
@@ -2023,7 +2023,7 @@ impl App {
         for chat in chats {
             let msg = AppMessage { text: String::new(), sent_at: now(), meta: None, sticker: None, file: None, avatar: version, leave: false };
             if let Err(e) = self.deliver(&chat, msg).await {
-                debug!("aviso de foto nueva: {e:#}");
+                debug!("new profile photo notice: {e:#}");
             }
         }
         Ok(())
@@ -2047,7 +2047,7 @@ impl App {
             let app = self.clone();
             tokio::spawn(async move {
                 if let Err(e) = app.fetch_avatar(&suffix, version, device).await {
-                    debug!(%suffix, "foto de perfil: {e:#}");
+                    debug!(%suffix, "profile photo: {e:#}");
                 }
             });
         }
@@ -2088,11 +2088,11 @@ impl App {
                     }
                 };
                 let direct = direct.await;
-                debug!(ms = start.elapsed().as_millis(), ok = direct.is_ok(), "envío directo");
+                debug!(ms = start.elapsed().as_millis(), ok = direct.is_ok(), "direct send");
                 match direct {
                     Ok(()) => Ok(true),
                     Err(e) => {
-                        debug!("envío directo fallido ({e:#}); a buzones");
+                        debug!("direct send failed ({e:#}); falling back to mailboxes");
                         self.deposit(&m.device_pk, &req).await.map(|_| false)
                     }
                 }
@@ -2104,7 +2104,7 @@ impl App {
                 Ok(true) => d.direct += 1,
                 Ok(false) => d.stored += 1,
                 Err(e) => {
-                    debug!("no se pudo dejar en buzón: {e:#}");
+                    debug!("could not deposit in mailbox: {e:#}");
                     d.failed += 1;
                 }
             }
@@ -2137,7 +2137,7 @@ impl App {
             .send_anonymously(peers.clone(), Request::Deposit(env.clone()))
             .await
             .unwrap_or_else(|e| {
-                debug!("mensajero: {e:#}");
+                debug!("courier: {e:#}");
                 Default::default()
             });
         let mut copies = anon.values().filter(|r| matches!(r, Response::Ack)).count();
@@ -2147,9 +2147,9 @@ impl App {
                 async move { matches!(self.net.request(p, Request::Deposit(env)).await, Ok(Response::Ack)) }
             });
             copies = join_all(stores).await.into_iter().filter(|ok| *ok).count();
-            debug!(copies, "sobre depositado con nuestra identidad");
+            debug!(copies, "envelope deposited under our identity");
         } else {
-            debug!(copies, "sobre depositado de forma anónima");
+            debug!(copies, "envelope deposited anonymously");
         }
         Ok(copies)
     }
@@ -2171,7 +2171,7 @@ impl App {
                 let ids: Vec<[u8; 32]> = list.iter().map(Envelope::id).collect();
                 for env in list {
                     if let Err(e) = self.open_envelope(env).await {
-                        debug!(%peer, "sobre descartado: {e:#}");
+                        debug!(%peer, "envelope discarded: {e:#}");
                     }
                 }
                 let _ = self.net.request(peer, Request::AckEnvelopes { ids }).await;
@@ -2208,7 +2208,7 @@ impl App {
             let due = {
                 let mut mb = this.mailbox.lock().unwrap();
                 if let Err(e) = mb.flush() {
-                    warn!("buzón: {e:#}");
+                    warn!("mailbox: {e:#}");
                 }
                 mb.due()
             };
@@ -2235,17 +2235,17 @@ impl App {
             let ids = match self.net.request(peer, Request::Deliver { list }).await {
                 Ok(Response::Taken { ids }) if !ids.is_empty() => ids,
                 Ok(other) => {
-                    debug!(%peer, "entrega rechazada: {other:?}");
+                    debug!(%peer, "delivery rejected: {other:?}");
                     return false;
                 }
                 Err(e) => {
-                    debug!(%peer, "entrega fallida: {e:#}");
+                    debug!(%peer, "delivery failed: {e:#}");
                     return false;
                 }
             };
-            debug!(%peer, n = ids.len(), "sobres entregados");
+            debug!(%peer, n = ids.len(), "envelopes delivered");
             if let Err(e) = self.mailbox.lock().unwrap().ack(to, &ids) {
-                warn!("buzón: {e:#}");
+                warn!("mailbox: {e:#}");
                 return false;
             }
         }
@@ -2306,7 +2306,7 @@ impl App {
         let resp = match self.on_request(peer, req).await {
             Ok(resp) => resp,
             Err(e) => {
-                debug!(%peer, "petición rechazada: {e:#}");
+                debug!(%peer, "request rejected: {e:#}");
                 // Solo el mensaje externo (sin la cadena de causas, que puede
                 // llevar rutas o detalles internos) y acotado (D-042).
                 Response::Error(e.to_string().chars().take(200).collect())
@@ -2389,7 +2389,7 @@ impl App {
                 // por un contacto de confianza.
                 let verified = self.device_verified(&committer, &invited_by).await;
                 if !verified {
-                    warn!("Welcome de un committer que no está en el registro de su identidad");
+                    warn!("Welcome from a committer not in their identity record");
                 }
                 let index = {
                     let mut st = self.state.lock().unwrap();
@@ -2556,7 +2556,7 @@ impl App {
                     let id = env.id();
                     // Uno que no se puede abrir tampoco hay que guardarlo.
                     if let Err(e) = self.open_envelope(env).await {
-                        debug!(%peer, "sobre entregado descartado: {e:#}");
+                        debug!(%peer, "delivered envelope discarded: {e:#}");
                     }
                     ids.push(id);
                 }
@@ -2604,7 +2604,7 @@ impl App {
                 let this = self.clone();
                 tokio::spawn(async move {
                     if let Err(e) = this.sync_group(&group_id).await {
-                        debug!("sync por aviso fallida: {e:#}");
+                        debug!("hint-triggered sync failed: {e:#}");
                     }
                 });
                 Ok(Response::Ack)
@@ -2744,7 +2744,7 @@ impl App {
         let members = match self.with_mls(|m| Ok(m.members(group_id)?)) {
             Ok(m) => m,
             Err(e) => {
-                warn!("miembros del grupo ilegibles: {e:#}");
+                warn!("unreadable group members: {e:#}");
                 return;
             }
         };
@@ -2824,7 +2824,7 @@ impl App {
                     Err(e) => {
                         p.wait = (p.wait * 2).clamp(KEEPALIVE_RETRY_MIN, KEEPALIVE_RETRY_MAX);
                         p.next = Some(Instant::now() + p.wait);
-                        debug!(peer = ?peer_id_of(&device).ok(), ms, "ping sin respuesta ({e:#}); otra vez en {:?}", p.wait);
+                        debug!(peer = ?peer_id_of(&device).ok(), ms, "ping unanswered ({e:#}); retrying in {:?}", p.wait);
                     }
                 }
             });
@@ -2842,7 +2842,7 @@ impl App {
         };
         for g in groups {
             if let Err(e) = self.sync_group(&g).await {
-                debug!("sync periódica: {e:#}");
+                debug!("periodic sync: {e:#}");
             }
         }
         self.retry_pending();

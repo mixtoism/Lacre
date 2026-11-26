@@ -110,8 +110,8 @@ impl TorTransport {
             tokio::spawn(async move {
                 let start = std::time::Instant::now();
                 match client.bootstrap().await {
-                    Ok(()) => info!(ms = start.elapsed().as_millis(), "conectado a la red Tor"),
-                    Err(e) => warn!("no se pudo conectar a Tor: {e}"),
+                    Ok(()) => info!(ms = start.elapsed().as_millis(), "connected to the Tor network"),
+                    Err(e) => warn!("could not connect to Tor: {e}"),
                 }
             });
         }
@@ -121,9 +121,9 @@ impl TorTransport {
         tokio::spawn(async move {
             let start = std::time::Instant::now();
             while let Some(s) = status.next().await {
-                debug!(estado = ?s.state(), "servicio onion");
+                debug!(state = ?s.state(), "onion service");
                 if s.state().is_fully_reachable() {
-                    info!(ms = start.elapsed().as_millis(), "servicio onion alcanzable");
+                    info!(ms = start.elapsed().as_millis(), "onion service reachable");
                     let _ = ready_tx.send(ServiceEvent::Reachable).await;
                     break;
                 }
@@ -176,10 +176,10 @@ impl TorDialer {
 fn dial_onion(client: &Arc<TorClient<PreferredRuntime>>, host: String, port: u16) -> BoxFuture<'static, Result<DataStream, TorError>> {
     let client = client.clone();
     async move {
-        debug!(%host, "llamando por Tor");
+        debug!(%host, "dialing over Tor");
         let start = std::time::Instant::now();
         let stream = client.connect((host.as_str(), port)).await.map_err(|e| TorError(e.to_string()));
-        debug!(%host, ms = start.elapsed().as_millis(), ok = stream.is_ok(), "llamada por Tor");
+        debug!(%host, ms = start.elapsed().as_millis(), ok = stream.is_ok(), "dial over Tor");
         stream
     }
     .boxed()
@@ -222,7 +222,7 @@ async fn accept(req: StreamRequest) -> Option<DataStream> {
     match req.accept(Connected::new_empty()).await {
         Ok(s) => Some(s),
         Err(e) => {
-            debug!("conexión onion rechazada: {e}");
+            debug!("onion connection rejected: {e}");
             None
         }
     }
@@ -293,7 +293,7 @@ impl Transport for TorTransport {
                 Poll::Ready(Some(ServiceEvent::Reachable)) => {
                     if !self.reachable {
                         self.reachable = true;
-                        info!(addr = %self.addr, "servicio onion publicado");
+                        info!(addr = %self.addr, "onion service published");
                         return Poll::Ready(TransportEvent::NewAddress { listener_id, listen_addr: self.addr.clone() });
                     }
                 }
@@ -307,7 +307,7 @@ impl Transport for TorTransport {
                     });
                 }
                 Poll::Ready(None) => {
-                    warn!("el servicio onion se ha detenido");
+                    warn!("the onion service has stopped");
                     self.listener = None;
                     return Poll::Ready(TransportEvent::ListenerClosed { listener_id, reason: Ok(()) });
                 }

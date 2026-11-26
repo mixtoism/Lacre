@@ -75,7 +75,7 @@ impl Mailbox {
             // Un formato antiguo no impide arrancar: son copias, el
             // remitente guarda otras.
             Some(b) => cbor_from(&b).unwrap_or_else(|e| {
-                warn!("buzón ilegible ({e}); se empieza vacío");
+                warn!("unreadable mailbox ({e}); starting empty");
                 Boxes::default()
             }),
             None => Boxes::default(),

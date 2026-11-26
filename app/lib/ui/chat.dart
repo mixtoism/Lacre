@@ -214,7 +214,7 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     } catch (e) {
-      debugPrint('envío fallido: $e');
+      debugPrint('send failed: $e');
       messenger.showSnackBar(
         SnackBar(content: Text('$e'), backgroundColor: error),
       );

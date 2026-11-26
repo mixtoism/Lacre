@@ -84,7 +84,7 @@ pub fn start(opts: Options) -> Result<Node> {
             lacre_core::vault::set_root(&opts.data)?;
             let n = app::migrate_to_vault(&opts.data)?;
             if n > 0 {
-                tracing::info!("{n} archivos de estado cifrados");
+                tracing::info!("{n} state files encrypted");
             }
         }
         None if app::has_sealed_state(&opts.data) => {
