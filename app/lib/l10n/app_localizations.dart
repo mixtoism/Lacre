@@ -1016,6 +1016,18 @@ abstract class AppLocalizations {
   /// **'no es una imagen'**
   String get notAnImage;
 
+  /// No description provided for @trayOpen.
+  ///
+  /// In es, this message translates to:
+  /// **'Abrir Lacre'**
+  String get trayOpen;
+
+  /// No description provided for @trayQuit.
+  ///
+  /// In es, this message translates to:
+  /// **'Salir'**
+  String get trayQuit;
+
   /// No description provided for @stickerAnimatedTooBig.
   ///
   /// In es, this message translates to:

@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-056),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-057),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -1923,6 +1923,34 @@ puede afirmar que sea segura.
 - **Pruebas:** `sticker::tests::default_pack_only_once` (todos pasan
   `check`; no vuelven tras quitarlos); `scripts/e2e.sh` sigue pasando con
   la colección sembrada.
+
+## D-057 · Icono en la bandeja del escritorio
+- **Contexto:** en Linux, cerrar la ventana cerraba la app y con ella el
+  nodo: sin mensajes, sin buzón y sin servir trozos hasta volver a abrirla.
+- **Decisión:**
+  - La app publica un icono por D-Bus (StatusNotifierItem, con `ksni`, en
+    Rust puro) con «Abrir Lacre» y «Salir»; un clic abre la ventana.
+  - Si hay bandeja, cerrar la ventana solo la esconde y el nodo sigue en
+    marcha. Si no la hay, se cierra como antes.
+  - La app es de instancia única (GApplication): abrirla otra vez enseña la
+    ventana escondida. `LACRE_DATA` la vuelve independiente, para probar
+    varias en la misma máquina.
+  - Al pulsar una notificación también se enseña la ventana.
+- **Motivo:** el icono hace visible que el nodo sigue funcionando y deja
+  salir. `ksni` no necesita libayatana ni libappindicator (que no siempre
+  están instaladas ni empaquetadas), y un servicio de usuario de systemd
+  duplicaría el nodo con la app abierta.
+- **Limitaciones:**
+  - GNOME no tiene bandeja sin la extensión AppIndicator: allí la ventana
+    se sigue cerrando del todo.
+  - No arranca sola al iniciar sesión.
+  - Solo Linux; en Windows y macOS no hay aún app.
+- **Pendiente:** arranque al iniciar sesión (opcional) y número de no
+  leídos en el icono.
+- **Pruebas:** a mano en Hyprland con waybar: el icono queda registrado en
+  `org.kde.StatusNotifierWatcher`; al cerrar la ventana el proceso sigue
+  y el nodo publica su servicio onion; al lanzar la app otra vez la
+  ventana vuelve, sin un segundo proceso.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

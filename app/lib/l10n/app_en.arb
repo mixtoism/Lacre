@@ -157,6 +157,8 @@
   "@stickersImported": {"placeholders": {"count": {"type": "int"}}},
   "sendSticker": "Send sticker",
   "notAnImage": "not an image",
+  "trayOpen": "Open Lacre",
+  "trayQuit": "Quit",
   "stickerAnimatedTooBig": "it's animated and is {kb} KB or {side}px (maximum {maxKb} KB and 1024 px)",
   "stickerCantShrink": "couldn't shrink it to {maxKb} KB",
   "deviceLinked": "Device linked to {handle}. The other one must show the code {confirm}; if not, unlink it.",

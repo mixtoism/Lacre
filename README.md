@@ -11,7 +11,7 @@ Peer-to-peer messaging with end-to-end encryption, multi-device support and
 no intermediary servers.
 
 > **Status: hardened, unaudited.** An internal security review has been
-> applied (D-039–D-042), but the protocol is versioned (`v1`) and not frozen,
+> applied (D-039–D-057), but the protocol is versioned (`v1`) and not frozen,
 > and the code has not had an independent audit. Do not rely on it for
 > anything sensitive yet. The CLI output is currently in Spanish.
 
@@ -454,7 +454,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-056), but nothing should be considered secure until audited.
+  (D-039–D-057), but nothing should be considered secure until audited.
 
 ---
 
@@ -668,8 +668,8 @@ Current limitations:
 
 - Clients: CLI, a Linux desktop app and an Android app (with a foreground
   service and notifications, D-032). No iOS, Windows or macOS builds yet,
-  and no push notifications (D-009). On Linux the node stops when the
-  window is closed.
+  and no push notifications (D-009). On Linux, closing the window leaves
+  the node running behind a tray icon when the desktop has one (D-057).
 - The root key exists only on the primary device and in its 24-word recovery
   phrase (D-048). Whoever has the phrase owns the identity, and a leaked
   root key cannot be rotated: the handle is derived from it.
@@ -689,7 +689,6 @@ Current limitations:
 Planned:
 
 - Flutter builds for iOS, Windows and macOS (Linux and Android work).
-- Desktop background mode (tray icon or user service).
 - Encrypted history backup.
 - Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.

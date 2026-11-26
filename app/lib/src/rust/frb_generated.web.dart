@@ -7,6 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/lacre.dart';
+import 'api/tray.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -25,6 +26,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  RustStreamSink<TrayAction> dco_decode_StreamSink_tray_action_Sse(dynamic raw);
 
   @protected
   RustStreamSink<UiEvent> dco_decode_StreamSink_ui_event_Sse(dynamic raw);
@@ -48,6 +52,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Sticker dco_decode_box_autoadd_sticker(dynamic raw);
 
   @protected
+  TrayLabels dco_decode_box_autoadd_tray_labels(dynamic raw);
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw);
 
   @protected
@@ -64,6 +71,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Hit dco_decode_hit(dynamic raw);
+
+  @protected
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -132,6 +142,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Sticker dco_decode_sticker(dynamic raw);
 
   @protected
+  TrayAction dco_decode_tray_action(dynamic raw);
+
+  @protected
+  TrayLabels dco_decode_tray_labels(dynamic raw);
+
+  @protected
   int dco_decode_u_32(dynamic raw);
 
   @protected
@@ -148,6 +164,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  RustStreamSink<TrayAction> sse_decode_StreamSink_tray_action_Sse(
+    SseDeserializer deserializer,
+  );
 
   @protected
   RustStreamSink<UiEvent> sse_decode_StreamSink_ui_event_Sse(
@@ -175,6 +196,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Sticker sse_decode_box_autoadd_sticker(SseDeserializer deserializer);
 
   @protected
+  TrayLabels sse_decode_box_autoadd_tray_labels(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
 
   @protected
@@ -191,6 +215,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Hit sse_decode_hit(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -261,6 +288,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Sticker sse_decode_sticker(SseDeserializer deserializer);
 
   @protected
+  TrayAction sse_decode_tray_action(SseDeserializer deserializer);
+
+  @protected
+  TrayLabels sse_decode_tray_labels(SseDeserializer deserializer);
+
+  @protected
   int sse_decode_u_32(SseDeserializer deserializer);
 
   @protected
@@ -276,11 +309,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_tray_action_Sse(
+    RustStreamSink<TrayAction> self,
     SseSerializer serializer,
   );
 
@@ -312,6 +348,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_box_autoadd_sticker(Sticker self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_tray_labels(
+    TrayLabels self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -331,6 +373,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_hit(Hit self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
@@ -414,6 +459,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_sticker(Sticker self, SseSerializer serializer);
 
   @protected
+  void sse_encode_tray_action(TrayAction self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_tray_labels(TrayLabels self, SseSerializer serializer);
+
+  @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
 
   @protected
@@ -427,9 +478,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
 }
 
 // Section: wire_class

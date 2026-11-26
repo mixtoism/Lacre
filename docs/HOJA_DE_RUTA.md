@@ -76,8 +76,9 @@ DECISIONES.md.
     en la app y convertir GIF a WebP animado.~~ → **Hecho (D-055, D-056).**
 15. **iOS** (D-009): app y notificaciones con APNs (notificaciones vacías,
     inevitable en iOS).
-16. **Escritorio en segundo plano**: en Linux el nodo se cierra con la
-    ventana (icono en la bandeja o servicio de usuario).
+16. ~~**Escritorio en segundo plano**: en Linux el nodo se cierra con la
+    ventana (icono en la bandeja o servicio de usuario).~~ → **Hecho
+    (D-057).**
 
 ## Por decidir
 

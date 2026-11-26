@@ -569,6 +569,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notAnImage => 'not an image';
 
   @override
+  String get trayOpen => 'Open Lacre';
+
+  @override
+  String get trayQuit => 'Quit';
+
+  @override
   String stickerAnimatedTooBig(int kb, int side, int maxKb) {
     return 'it\'s animated and is $kb KB or ${side}px (maximum $maxKb KB and 1024 px)';
   }

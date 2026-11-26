@@ -10,6 +10,11 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  // Ventana única: si se vuelve a abrir la app, se muestra esta (D-057).
+  GtkWindow* window;
+  // Hay icono en la bandeja: cerrar la ventana la esconde.
+  gboolean hide_on_close;
+  FlMethodChannel* channel;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -19,11 +24,53 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+static void show_window(MyApplication* self) {
+  gtk_widget_show(GTK_WIDGET(self->window));
+  gtk_window_present(self->window);
+}
+
+// Con icono en la bandeja, cerrar esconde la ventana y el nodo sigue vivo.
+static gboolean delete_event_cb(GtkWidget* widget, GdkEvent* event,
+                                MyApplication* self) {
+  if (!self->hide_on_close) return FALSE;
+  gtk_widget_hide(widget);
+  return TRUE;
+}
+
+// Canal lacre/ventana: esconderAlCerrar, mostrar y salir.
+static void window_call_cb(FlMethodChannel* channel, FlMethodCall* call,
+                           gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  const gchar* method = fl_method_call_get_name(call);
+  g_autoptr(FlMethodResponse) response = nullptr;
+  if (g_strcmp0(method, "esconderAlCerrar") == 0) {
+    self->hide_on_close = TRUE;
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (g_strcmp0(method, "mostrar") == 0) {
+    show_window(self);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else if (g_strcmp0(method, "salir") == 0) {
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    fl_method_call_respond(call, response, nullptr);
+    g_application_quit(G_APPLICATION(self));
+    return;
+  } else {
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  }
+  fl_method_call_respond(call, response, nullptr);
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+  if (self->window != nullptr) {
+    show_window(self);
+    return;
+  }
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+  self->window = window;
+  g_signal_connect(window, "delete-event", G_CALLBACK(delete_event_cb), self);
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
@@ -84,6 +131,13 @@ static void my_application_activate(GApplication* application) {
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
 
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  self->channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "lacre/ventana", FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(self->channel, window_call_cb,
+                                            self, nullptr);
+
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
 
@@ -130,6 +184,7 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->channel);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 
@@ -151,7 +206,12 @@ MyApplication* my_application_new() {
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);
 
+  // Una sola instancia: abrirla otra vez muestra la ventana escondida en
+  // la bandeja. Con LACRE_DATA se puede abrir otra, con otros datos.
+  GApplicationFlags flags = g_getenv("LACRE_DATA") != nullptr
+                                ? G_APPLICATION_NON_UNIQUE
+                                : G_APPLICATION_DEFAULT_FLAGS;
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",
-                                     G_APPLICATION_NON_UNIQUE, nullptr));
+                                     flags, nullptr));
 }

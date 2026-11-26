@@ -17,7 +17,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::frb_generated::StreamSink;
 
-static RT: LazyLock<tokio::runtime::Runtime> =
+pub(crate) static RT: LazyLock<tokio::runtime::Runtime> =
     LazyLock::new(|| tokio::runtime::Runtime::new().expect("runtime de Tokio"));
 static NODE: OnceLock<(Arc<App>, PathBuf)> = OnceLock::new();
 /// Suscriptor actual de los avisos. Puede cambiar: en Android el nodo sigue

@@ -11,7 +11,7 @@ Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
 servidores intermedios.
 
 > **Estado: endurecida, sin auditar.** Se ha aplicado una revisión de
-> seguridad interna (D-039 a D-056), pero el protocolo (`v1`) aún puede
+> seguridad interna (D-039 a D-057), pero el protocolo (`v1`) aún puede
 > cambiar y el código no ha pasado ninguna auditoría independiente. No lo
 > uses todavía para nada delicado.
 
@@ -139,8 +139,10 @@ Tras cambiar `app/rust/src/api`, se regeneran los enlaces con
 
 - Sin auditoría externa: no se puede afirmar que sea segura.
 - Tor no es un modo anónimo: también se anuncian las direcciones IP.
-- Sin iOS, Windows ni macOS todavía, y sin notificaciones push. En Linux el
-  nodo se cierra con la ventana.
+- Sin iOS, Windows ni macOS todavía, y sin notificaciones push. En Linux,
+  al cerrar la ventana el nodo sigue en marcha con un icono en la bandeja
+  si el escritorio la tiene (D-057); en GNOME hace falta la extensión
+  AppIndicator.
 - Solo un dispositivo por grupo hace cambios de miembros; si está
   desconectado, esperan.
 - La clave raíz no se puede rotar: el handle se deriva de ella.

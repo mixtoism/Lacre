@@ -9,11 +9,15 @@ import 'package:path_provider/path_provider.dart';
 
 import 'l10n/l10n.dart';
 import 'src/rust/api/lacre.dart' as lacre;
+import 'src/rust/api/tray.dart' as tray;
 import 'ui/common.dart' show avatarOf, forgetAvatars;
 
 /// Canal con el código nativo de Android (LacreApp.kt): clave de datos,
 /// servicio en segundo plano, avisos y abrir archivos.
 const sistema = MethodChannel('lacre/sistema');
+
+/// Ventana del escritorio (linux/runner/my_application.cc, D-057).
+const ventana = MethodChannel('lacre/ventana');
 
 /// Qué dicen los avisos del sistema de un mensaje nuevo. Se ve en la
 /// pantalla, en la de bloqueo y en el historial de avisos (D-035).
@@ -187,6 +191,7 @@ class Store extends ChangeNotifier {
           onDidReceiveNotificationResponse: (r) {
             final chat = int.tryParse(r.payload ?? '');
             if (chat != null) openChat.add(chat);
+            unawaited(ventana.invokeMethod('mostrar'));
           },
         );
         _desktop = n;
@@ -194,10 +199,35 @@ class Store extends ChangeNotifier {
         // Sin servidor de avisos: solo los de dentro de la app.
         debugPrint('lacre notifications: $e');
       }
+      _startTray();
     }
     _refreshChats();
     _startStatusTimer();
     notifyListeners();
+  }
+
+  /// Icono en la bandeja (D-057): si el escritorio lo admite, cerrar la
+  /// ventana la esconde y el nodo sigue recibiendo mensajes.
+  void _startTray() {
+    final l = systemL10n;
+    tray
+        .trayStart(
+          labels: tray.TrayLabels(
+            title: 'Lacre',
+            open: l.trayOpen,
+            quit: l.trayQuit,
+          ),
+        )
+        .listen(
+          (a) => unawaited(
+            ventana.invokeMethod(switch (a) {
+              tray.TrayAction.shown => 'esconderAlCerrar',
+              tray.TrayAction.open => 'mostrar',
+              tray.TrayAction.quit => 'salir',
+            }),
+          ),
+          onError: (Object e) => debugPrint('lacre tray: $e'),
+        );
   }
 
   void _startStatusTimer() {
