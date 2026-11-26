@@ -31,6 +31,7 @@ use tracing::{debug, info, warn};
 
 use crate::files::{self, FileOffer, Files, Partial, StoredOffer};
 use crate::history::{FileRef, History, MAX_PER_CHAT, StoredMessage};
+use crate::depot::{self, Depot};
 use crate::mailbox::Mailbox;
 use crate::net::{Client, Inbound, device_pk_of, peer_id_of};
 use crate::peers::is_dialable_from_anywhere;
@@ -244,6 +245,10 @@ pub struct App {
     net: Client,
     state: Mutex<State>,
     mailbox: Mutex<Mailbox>,
+    /// Trozos de archivos ajenos guardados un tiempo (D-054).
+    depot: Mutex<Depot>,
+    /// Cupo de trozos depositados por peer.
+    depot_limit: Mutex<RateLimit<PeerId>>,
     history: Mutex<History>,
     stickers: Mutex<Stickers>,
     files: Mutex<Files>,
@@ -611,6 +616,14 @@ const HISTORY_TRIES: u64 = 7 * 24 * 3600;
 
 /// Trozos de un archivo que se piden a la vez.
 const FILE_WORKERS: usize = 4;
+/// Nodos en los que se depositan los trozos de un archivo (D-054).
+const DEPOT_REPLICAS: usize = 2;
+/// Nodos a los que se pregunta por un archivo depositado.
+const DEPOT_SOURCES: usize = 4;
+/// Trozos que un peer puede depositar en este nodo cada `DEPOT_WINDOW`
+/// segundos (64 MiB).
+const DEPOT_BUDGET: usize = 256;
+const DEPOT_WINDOW: u64 = 600;
 
 /// Cuánto se espera a conectar con las direcciones de un QR.
 const QR_DIAL_TIMEOUT: Duration = Duration::from_secs(60);
@@ -739,6 +752,7 @@ impl App {
             None => Seen::default(),
         };
         let mailbox = Mailbox::open(dir.join("mailbox.cbor"))?;
+        let depot = Depot::open(&dir);
         let history = History::open(dir.join("history.cbor"))?;
         let stickers = Stickers::open(&dir)?;
         // Registros de contactos ya resueltos (firmados: se vuelven a verificar).
@@ -780,6 +794,8 @@ impl App {
                 leaves: Vec::new(),
             }),
             mailbox: Mutex::new(mailbox),
+            depot: Mutex::new(depot),
+            depot_limit: Mutex::new(RateLimit::new(DEPOT_BUDGET, DEPOT_WINDOW, 4096)),
             history: Mutex::new(history),
             stickers: Mutex::new(stickers),
             files: Mutex::new(files),
@@ -943,9 +959,6 @@ impl App {
         if stored.sender != me {
             sources.insert(0, peer_id_of(&stored.sender)?);
         }
-        if sources.is_empty() {
-            bail!("no hay nadie más en el chat a quien pedir el archivo");
-        }
         let offer = stored.offer;
         let total = offer.chunks();
         let (partial, missing) = {
@@ -961,15 +974,41 @@ impl App {
         let dead: Mutex<HashSet<PeerId>> = Mutex::new(HashSet::new());
         let progress = Mutex::new(&mut got);
         let token = offer.token();
+        // Nodos con el archivo depositado (D-054): solo se buscan si ningún
+        // miembro en línea tiene un trozo.
+        let depots: tokio::sync::OnceCell<Vec<PeerId>> = tokio::sync::OnceCell::new();
         let worker = |w: usize| {
-            let (sources, partial, queue, dead, progress) = (&sources, &partial, &queue, &dead, &progress);
+            let (sources, partial, queue, dead, progress, depots) =
+                (&sources, &partial, &queue, &dead, &progress, &depots);
             async move {
                 loop {
                     let Some(index) = queue.lock().unwrap().pop_front() else { return Ok(()) };
                     let mut ok = false;
-                    // Cada trabajador empieza por una fuente distinta.
-                    for k in 0..sources.len() {
-                        let peer = sources[(w + k) % sources.len()];
+                    // Cada trabajador empieza por una fuente distinta; si
+                    // ninguna lo tiene, se pregunta a los depósitos.
+                    let mut order: Vec<PeerId> = (0..sources.len()).map(|k| sources[(w + k) % sources.len()]).collect();
+                    let mut asked_depots = false;
+                    let mut k = 0;
+                    loop {
+                        if k == order.len() {
+                            if ok || asked_depots {
+                                break;
+                            }
+                            asked_depots = true;
+                            let found = depots
+                                .get_or_init(|| async {
+                                    let peers = self.net.closest_peers(depot::key(id)).await.unwrap_or_default();
+                                    let peers: Vec<PeerId> =
+                                        peers.into_iter().filter(|p| !sources.contains(p)).take(DEPOT_SOURCES).collect();
+                                    debug!(n = peers.len(), "asking depots for file");
+                                    peers
+                                })
+                                .await;
+                            order.extend(found);
+                            continue;
+                        }
+                        let peer = order[k];
+                        k += 1;
                         if dead.lock().unwrap().contains(&peer) {
                             continue;
                         }
@@ -992,7 +1031,7 @@ impl App {
                     }
                     if !ok {
                         queue.lock().unwrap().clear();
-                        bail!("ningún dispositivo en línea tiene el archivo; prueba más tarde");
+                        bail!("ni los dispositivos en línea ni los depósitos tienen el archivo; prueba más tarde");
                     }
                     let mut n = progress.lock().unwrap();
                     **n += 1;
@@ -2275,7 +2314,58 @@ impl App {
         let dir = self.dir.join("files");
         let path = path.to_owned();
         let offer = tokio::task::spawn_blocking(move || files::prepare(&dir, &path)).await??;
-        self.send_app(index, String::new(), None, Some(offer)).await
+        let id = offer.id();
+        let report = self.send_app(index, String::new(), None, Some(offer)).await?;
+        let app = self.clone();
+        tokio::spawn(async move { app.deposit_file(&id).await });
+        Ok(report)
+    }
+
+    /// Si algún dispositivo del chat está desconectado, deja los trozos del
+    /// archivo en los nodos más cercanos a él en la DHT, para que pueda
+    /// descargarlo aunque nosotros ya no estemos (D-054).
+    async fn deposit_file(&self, id: &str) {
+        let Ok(stored) = self.files.lock().unwrap().get(id) else { return };
+        if stored.offer.sealed_size() > depot::MAX_FILE {
+            debug!(%id, "file too large for depots");
+            return;
+        }
+        let me = self.device_pk();
+        let members = self.with_mls(|m| Ok(m.members(&stored.group_id)?)).unwrap_or_default();
+        let connected: HashSet<PeerId> = self.net.connected_peers().await.unwrap_or_default().into_iter().collect();
+        let offline = members
+            .iter()
+            .filter(|m| m.device_pk != me)
+            .any(|m| peer_id_of(&m.device_pk).is_ok_and(|p| !connected.contains(&p)));
+        if !offline {
+            debug!(%id, "all chat devices online; no depot needed");
+            return;
+        }
+        let peers: Vec<PeerId> =
+            self.net.closest_peers(depot::key(id)).await.unwrap_or_default().into_iter().take(DEPOT_REPLICAS).collect();
+        let token = stored.offer.token();
+        let check = depot::check_of(&token);
+        let mut copies = 0;
+        for peer in peers {
+            let mut ok = true;
+            for index in 0..stored.offer.chunks() {
+                let data = match self.files.lock().unwrap().serve(id, index, &token) {
+                    Ok(d) => d,
+                    Err(e) => {
+                        warn!(%id, "cannot read own file for depot: {e:#}");
+                        return;
+                    }
+                };
+                let req = Request::StoreChunk { file: id.to_owned(), index, check, data };
+                if !matches!(self.net.request(peer, req).await, Ok(Response::Ack)) {
+                    debug!(%peer, index, "depot refused chunk");
+                    ok = false;
+                    break;
+                }
+            }
+            copies += ok as usize;
+        }
+        info!(%id, copies, "file deposited");
     }
 
     /// Envía un sticker de la colección (o cualquiera ya guardado).
@@ -2949,15 +3039,28 @@ impl App {
                 self.mailbox.lock().unwrap().ack(&me, &ids)?;
                 Ok(Response::Ack)
             }
-            Request::Chunk { file, index, token } => {
-                let stored = self.files.lock().unwrap().get(&file)?;
-                // Solo a dispositivos que siguen en el grupo del archivo.
-                let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
-                let members = self.with_mls(|m| Ok(m.members(&stored.group_id)?))?;
-                if !members.iter().any(|m| m.device_pk == device) {
-                    bail!("archivo desconocido");
+            Request::StoreChunk { file, index, check, data } => {
+                if !self.depot_limit.lock().unwrap().take(peer) {
+                    bail!("demasiados trozos");
                 }
-                Ok(Response::Chunk(self.files.lock().unwrap().serve(&file, index, &token)?))
+                self.depot.lock().unwrap().put(&file, index, check, &data)?;
+                Ok(Response::Ack)
+            }
+            Request::Chunk { file, index, token } => {
+                // Primero lo nuestro, solo para dispositivos que siguen en el
+                // grupo del archivo; si no lo tenemos entero, el depósito
+                // (D-054), que solo pide el testigo.
+                let stored = self.files.lock().unwrap().get(&file);
+                if let Ok(stored) = stored {
+                    let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
+                    let members = self.with_mls(|m| Ok(m.members(&stored.group_id)?))?;
+                    if members.iter().any(|m| m.device_pk == device)
+                        && let Ok(chunk) = self.files.lock().unwrap().serve(&file, index, &token)
+                    {
+                        return Ok(Response::Chunk(chunk));
+                    }
+                }
+                Ok(Response::Chunk(self.depot.lock().unwrap().get(&file, index, &token)?))
             }
             Request::SyncHint { group_id } => {
                 // Solo de un dispositivo del grupo o de una persona del grupo

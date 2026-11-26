@@ -3,7 +3,7 @@
 # (1 + 1 vinculado después), Carol, Dan y Eve. Chat 1:1, grupo, vinculación
 # tardía, revocación, entrega diferida (buzones), modo de reposo, alta en un chat estando
 # desconectado, quitar y volver a añadir a una persona de un grupo, stickers,
-# archivos, un nodo sin conexiones entrantes, solicitudes de chat, fotos
+# archivos (también por depósitos), un nodo sin conexiones entrantes, solicitudes de chat, fotos
 # de perfil, búsqueda, bloqueo y borrado de chats (tras NAT) vía relay.
 #
 # Uso: scripts/e2e.sh [directorio-de-trabajo]
@@ -202,6 +202,25 @@ say bob "file 1 enorme.bin"
 wait_for bob "máximo 100 MB"
 refute carol "enorme.bin"
 ok "archivos de más de 100 MB rechazados"
+# Depósito de trozos (D-054): con un dispositivo del chat desconectado, el
+# remitente deja los trozos cifrados en nodos cercanos en la DHT; luego se
+# descarga aunque nadie conectado tenga el archivo entero.
+stop carol; RUST_LOG=lacre_node=info start carol
+stop bob2; sleep 2
+head -c 600000 /dev/urandom > dep.bin
+say carol "file 0 dep.bin"
+wait_for bob "carol#.*: \[archivo dep.bin"
+for _ in $(seq 240); do grep -q "file deposited" carol.err && break; sleep 0.25; done
+sed 's/\x1b\[[0-9;]*m//g' carol.err | grep -q "file deposited.*copies=[12]" || { echo "FALLO: no se depositó el archivo"; grep -i "deposit" carol.err; exit 1; }
+stop carol
+start bob2
+wait_for bob2 "carol#.*: \[archivo dep.bin" $((TICK * 4))
+DID=$(grep -o "\[archivo dep.bin · 600000 bytes · [0-9a-f]*\]" bob2.out | head -1 | grep -o "[0-9a-f]\{64\}")
+: > bob2.out; say bob2 "get $DID"
+wait_for bob2 "archivo descargado" 60
+cmp dep.bin "bob2/abiertos/$DID/dep.bin"
+start carol
+ok "archivo descargado de los depósitos con el remitente desconectado (D-054)"
 
 # --- Alta en un chat estando desconectado (KeyPackage de último recurso).
 start dan; sleep 2

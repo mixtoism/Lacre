@@ -3,6 +3,7 @@
 
 pub mod app;
 pub mod courier;
+pub mod depot;
 pub mod files;
 pub mod history;
 pub mod mailbox;

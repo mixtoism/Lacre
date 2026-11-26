@@ -84,6 +84,16 @@ pub enum Request {
     /// Pide un trozo cifrado de un archivo. `token` se deriva de la clave
     /// del archivo: solo lo conoce quien recibió la oferta por MLS.
     Chunk { file: String, index: u32, token: [u8; 32] },
+    /// Deposita un trozo cifrado en un nodo cercano al archivo en la DHT,
+    /// para quien lo pida con el remitente desconectado (D-054). `check` es
+    /// el hash del testigo: el depósito no puede pedirlo a otros.
+    StoreChunk {
+        file: String,
+        index: u32,
+        check: [u8; 32],
+        #[serde(with = "serde_bytes")]
+        data: Vec<u8>,
+    },
 
     /// Mantiene viva la conexión con un miembro de un chat (D-028).
     Ping,

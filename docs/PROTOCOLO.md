@@ -429,6 +429,7 @@ El apéndice A tiene el esquema completo.
 | `AckEnvelopes{ids}` | El destinatario, para confirmar lo recibido     | `Ack`             |
 | `Deliver{list}`   | Un buzón, para entregar sobres a su destinatario  | `Taken{ids}`      |
 | `Chunk{file, index, token}` | Un miembro, para pedir un trozo de archivo (§11) | `Chunk(bytes)` |
+| `StoreChunk{file, index, check, data}` | El remitente de un archivo, para depositar un trozo (§11.1) | `Ack` |
 | `Ping`            | Cualquiera, para mantener viva la conexión        | `Ack`             |
 | `Avatar`          | Un miembro de un chat común, para pedir la foto de perfil | `Avatar{version, image}` |
 | `Accepted{groups}` | Otro dispositivo de la misma persona (§12.2)     | `Ack`             |
@@ -465,8 +466,12 @@ verificado del sobre.
   del receptor que además es miembro MLS actual del grupo (§12.4).
 - `Avatar`: solo se responde a dispositivos que comparten con el receptor un
   chat activo y aceptado, y cuya persona no está bloqueada.
-- `Chunk`: solo se responde a dispositivos que son miembros actuales del
-  grupo del archivo y presentan el testigo correcto.
+- `Chunk`: con un archivo propio, solo se responde a dispositivos que son
+  miembros actuales del grupo del archivo y presentan el testigo correcto.
+  Desde el depósito (§11.1) basta el testigo: su hash DEBE coincidir con el
+  `check` guardado.
+- `StoreChunk`: `file` DEBE ser un id válido (64 caracteres hexadecimales en
+  minúscula); los trozos de un mismo archivo DEBEN traer el mismo `check`.
 
 ## 8. Grupos (MLS)
 
@@ -774,6 +779,21 @@ FileOffer = {
 - Quien lo recibe DEBE comprobar la longitud y el hash del trozo **antes** de
   descifrarlo.
 
+### 11.1. Depósito de trozos
+
+Para que un archivo se pueda descargar con el remitente desconectado
+(D-054):
+
+- Si al enviarlo algún dispositivo del chat no está conectado y el archivo
+  cifrado ocupa como mucho 32 MiB, el remitente envía cada trozo con
+  `StoreChunk{file: id, index, check, data}` a los 2 nodos más cercanos en
+  la DHT a `/p2m/v1/depot/<id>`, con `check = BLAKE3(token)`.
+- Un nodo que deposita guarda los trozos como mucho 7 días desde el primero
+  y DEBE limitar los bytes por archivo, en total y por peer.
+- Si ningún miembro en línea tiene un trozo, quien descarga busca los nodos
+  más cercanos a esa clave y les pide `Chunk` con el mismo testigo. La
+  comprobación del hash del trozo es la misma.
+
 ## 12. Sincronización entre dispositivos de una persona
 
 ### 12.1. Vinculación
@@ -1060,6 +1080,7 @@ Request = "KeyPackage"
         / { "AckEnvelopes": { ids: [ * Bytes32 ] } }
         / { "Deliver":      { list: [ * Envelope ] } }
         / { "Chunk":        { file: tstr, index: uint, token: Bytes32 } }
+        / { "StoreChunk":   { file: tstr, index: uint, check: Bytes32, data: bstr } }
         / "Ping"
         / "Avatar"
         / { "Accepted":     { groups: [ * ByteList ] } }

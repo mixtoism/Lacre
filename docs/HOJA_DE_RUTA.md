@@ -65,8 +65,10 @@ DECISIONES.md.
     **Hecho (D-053).**
 12. ~~**mDNS en el móvil** (D-023): no lanzarlo en interfaces de datos
     móviles.~~ **Hecho (D-034):** solo con wifi y en primer plano.
-13. **Archivos con el remitente desconectado** (D-026): solo se descarga de
-    dispositivos en línea. Buzones que guarden trozos cifrados un tiempo.
+13. ~~**Archivos con el remitente desconectado** (D-026): solo se descarga de
+    dispositivos en línea. Buzones que guarden trozos cifrados un tiempo.~~
+    **Hecho (D-054):** hasta 32 MiB, los trozos cifrados se depositan en 2
+    nodos de la DHT durante 7 días.
 
 ## Funciones
 

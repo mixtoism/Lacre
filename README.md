@@ -73,6 +73,10 @@ references below point to entries in that file.
 - **Offline delivery.** Messages for offline devices are sealed, signed and
   left in **mailboxes** on other peers (the sender's own node plus up to three
   DHT neighbours). Mailbox hosts cannot read them.
+- **Files.** Files up to 100 MB travel as encrypted 256 KiB chunks, served
+  by any group member that has them. If a chat device is offline, files up
+  to 32 MiB are also left encrypted on two DHT nodes for 7 days, so they can
+  be downloaded after the sender goes offline (D-026, D-054).
 - **Persistent peer cache.** Peers seen before are reconnected on restart,
   with no bootstrap server.
 - **Local message history.** Up to 5,000 messages per chat are kept on disk.
@@ -107,6 +111,7 @@ docs/             design decision log
 | `lacre-node/tor.rs`          | libp2p `Transport` over Tor onion services (Arti)                |
 | `lacre-node/rendezvous.rs`   | Relay discovery through Mainline DHT and UDP trackers            |
 | `lacre-node/mailbox.rs`      | Store-and-forward mailbox for other peers' envelopes             |
+| `lacre-node/depot.rs`        | Encrypted file chunks held for offline senders (D-054)           |
 | `lacre-node/peers.rs`        | On-disk peer cache                                               |
 | `lacre-node/app.rs`          | Chats, sync, delivery, linking: the application logic            |
 | `lacre-node/history.rs`      | Local message history                                            |
@@ -171,6 +176,7 @@ IdentityRecord {
 | `/p2m/v1/id/<suffix>`            | Signed identity record                                       |
 | `/p2m/v1/kp/<device_pk base32>`  | Last-resort MLS KeyPackage of a device (≤ 4 KiB, D-017)      |
 | `/p2m/v1/mbox/<device_pk>`       | No value stored; the point in key space whose closest nodes host the device's mailboxes (D-016) |
+| `/p2m/v1/depot/<file id>`        | No value stored; the nodes closest to it hold the file's encrypted chunks (D-054) |
 | `/p2m/v1/name/…`                 | Reserved for short handles                                   |
 
 - **Nodes validate before storing** (`StoreInserts::FilterBoth`): the
@@ -418,7 +424,8 @@ What is protected:
 Known risks and trade-offs:
 
 - **Metadata.** Mailbox hosts see which device writes to which, when and how
-  much. Relays see which PeerIds connect and how much traffic flows.
+  much. File depots see a file's id and size and the PeerIds that upload
+  and download it (D-054). Relays see which PeerIds connect and how much traffic flows.
 - **Sybil/eclipse attacks** on the DHT can hide records (not forge them).
 - **Key reuse.** The device key is used for Noise, MLS signatures and
   (converted to X25519) envelope sealing. Every use is domain-separated, but
@@ -441,7 +448,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-053), but nothing should be considered secure until audited.
+  (D-039–D-054), but nothing should be considered secure until audited.
 
 ---
 
@@ -618,6 +625,7 @@ All files are written atomically with `0600` permissions.
 | `history.cbor`    | Message history (up to 5,000 per chat)                 |
 | `seen.cbor`       | Recently seen message IDs (deduplication)              |
 | `mailbox.cbor`    | Envelopes held for other devices                       |
+| `deposito/`       | Encrypted file chunks held for others (D-054)          |
 | `peers.txt`       | Peer address cache                                     |
 | `trackers.txt`    | Optional custom tracker list                           |
 | `tor/`            | Arti state and cache, including the onion service key  |

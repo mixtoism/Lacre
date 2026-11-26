@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-053),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-054),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -653,10 +653,11 @@ puede afirmar que sea segura.
     - La descarga es manual: no se baja nada sin que la persona lo pida.
   - **CLI:** `file <n> <archivo>` y `get <id>`.
 - **Límites:**
-  - Solo se descarga de dispositivos en línea. Los buzones no guardan
+  - ~~Solo se descarga de dispositivos en línea. Los buzones no guardan
     archivos: con 100 MB por archivo se llenarían enseguida. Si nadie que lo
     tenga está conectado, hay que probar más tarde. Se puede añadir más
-    adelante, por ejemplo con buzones que guarden trozos cifrados un tiempo.
+    adelante, por ejemplo con buzones que guarden trozos cifrados un tiempo.~~
+    Hasta 32 MiB, resuelto en D-054 (depósito de trozos).
   - Una persona quitada del grupo conserva lo que ya descargó y la clave de
     lo que se mandó mientras estaba. Ya no puede pedir trozos, porque deja de
     ser miembro.
@@ -1803,6 +1804,53 @@ puede afirmar que sea segura.
   - Cada comprobación cuesta unos circuitos Tor (algo de batería en el
     móvil, solo en primer plano).
 - **Pendiente:** nada.
+
+## D-054 · Depósito de trozos de archivo para remitentes desconectados
+
+- **Contexto:** con D-026 un archivo solo se podía descargar si algún
+  dispositivo que lo tenía entero estaba en línea. Si el remitente mandaba
+  algo y cerraba la app, quien estaba desconectado no podía bajarlo hasta
+  que volviera. Era el punto 13 de la hoja de ruta. Decidido sin preguntar
+  (se pidió completar el proyecto).
+- **Decisión:**
+  - **Cuándo se deposita:** al enviar un archivo de hasta 32 MiB cifrados
+    (`depot::MAX_FILE`), si algún dispositivo del chat no está conectado a
+    nosotros en ese momento. Si todos lo están, lo bajarán directamente y no
+    se gasta subida.
+  - **Dónde:** en los 2 nodos más cercanos en la DHT a
+    `/p2m/v1/depot/<id del archivo>`, con `StoreChunk{file, index, check,
+    data}`, un trozo por petición. Los trozos son los mismos bytes cifrados
+    que se sirven entre miembros.
+  - **Qué guarda el depósito:** los trozos y `check = BLAKE3(testigo)`. Para
+    pedir un trozo hay que presentar el testigo (que solo está en la oferta
+    MLS); con su hash el depósito lo comprueba pero no puede pedirlo a otros
+    ni leer el archivo, porque la clave no sale del grupo.
+  - **Descarga:** primero los miembros, como antes. Solo si ningún miembro
+    en línea tiene un trozo se buscan los 4 nodos más cercanos a esa clave y
+    se les pide `Chunk` con el mismo testigo. Un miembro que tiene la oferta
+    pero no el archivo entero también responde desde su depósito, por si la
+    DHT lo eligió como tal. Cada trozo se sigue comprobando con su hash
+    antes de descifrarlo.
+  - **Límites del depósito:** 32 MiB por archivo, 512 MiB en total (si se
+    llena, se rechaza; no se echa a nadie), 7 días desde el primer trozo y
+    256 trozos (64 MiB) por peer cada 10 min. Se guarda en `deposito/`.
+- **Motivo:** es lo que pedía D-026 («buzones que guarden trozos cifrados un
+  tiempo»), reutilizando la DHT y el formato de trozos. El límite de 32 MiB
+  cubre fotos, notas de voz y documentos sin que un vídeo grande llene los
+  nodos de los demás.
+- **Limitaciones:**
+  - El depósito ve el id del archivo, su tamaño aproximado, el PeerId de
+    quien lo sube y el de quien lo baja (los sobres de D-034 se depositan
+    con un mensajero; los trozos no, porque serían cientos de peticiones).
+    Con Tor activado solo ve direcciones onion.
+  - Quien sube paga el doble de subida. No se repite si el envío se corta:
+    algunos depósitos pueden quedar incompletos y la descarga sigue
+    probando miembros y depósitos trozo a trozo.
+  - Los archivos de más de 32 MiB siguen necesitando un miembro en línea.
+  - Alguien quitado del grupo que conserve el testigo puede pedir los trozos
+    al depósito; ya tenía la clave de ese archivo (D-026).
+- **Pendiente:** dejar que el remitente decida depositar siempre (por
+  ejemplo, si va a estar mucho tiempo desconectado).
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).
