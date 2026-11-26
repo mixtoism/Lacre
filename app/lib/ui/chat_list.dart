@@ -428,7 +428,12 @@ class _StatusChip extends StatelessWidget {
     return Tooltip(
       message: [
         context.l.peersConnected(peers),
-        if (store.status?.onion != null) context.l.onionPublished,
+        if (store.status case final s? when s.tor)
+          s.onion == null
+              ? context.l.onionPublishing
+              : s.onionReachable == false
+              ? context.l.onionUnreachable
+              : context.l.onionPublished,
         if (store.relay != null) context.l.reachableByRelay,
       ].join('\n'),
       child: Chip(

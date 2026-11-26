@@ -175,6 +175,11 @@ pub struct Status {
     pub peers: u32,
     /// Dirección onion propia, cuando ya está publicada.
     pub onion: Option<String>,
+    /// Tor activado (sin él, `onion` nunca llega).
+    pub tor: bool,
+    /// Última comprobación desde fuera del servicio onion (D-053): `None`
+    /// mientras no se ha hecho.
+    pub onion_reachable: Option<bool>,
 }
 
 pub struct SendResult {
@@ -353,7 +358,8 @@ pub async fn status() -> Result<Status> {
             .into_iter()
             .find(|a| a.to_string().starts_with("/onion3/"))
             .map(|a| a.to_string());
-        Ok(Status { peers, onion })
+        let net = app.net();
+        Ok(Status { peers, onion, tor: net.has_tor(), onion_reachable: net.onion_check() })
     })
     .await
 }

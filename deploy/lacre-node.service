@@ -9,7 +9,7 @@
 # Tras NAT o CGNAT quita `--relay-server`: el nodo sigue siendo útil como
 # buzón y como punto de entrada por su servicio onion. La dirección, lista
 # para usar como `--bootstrap`, sale en el journal:
-#   journalctl -u lacre-node | grep 'escuchando en /onion3'
+#   journalctl -u lacre-node | grep 'listening on /onion3'
 [Unit]
 Description=Lacre node
 After=network-online.target

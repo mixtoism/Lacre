@@ -60,8 +60,9 @@ DECISIONES.md.
     hole punching. → **Hecho (D-052):** escucha, caché y QR con IPv6.
     Queda el encuentro en Mainline por IPv6.
 11. **Tor en el móvil** (D-020, D-021, D-023): ~~coste de batería~~
-    **(modo de reposo, D-034)**. Queda: mostrar «conectando a Tor…» mientras
-    se publica el servicio onion; comprobar desde fuera que sigue publicado.
+    **(modo de reposo, D-034)**. ~~Queda: mostrar «conectando a Tor…» mientras
+    se publica el servicio onion; comprobar desde fuera que sigue publicado.~~
+    **Hecho (D-053).**
 12. ~~**mDNS en el móvil** (D-023): no lanzarlo en interfaces de datos
     móviles.~~ **Hecho (D-034):** solo con wifi y en primer plano.
 13. **Archivos con el remitente desconectado** (D-026): solo se descarga de

@@ -7,6 +7,7 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use clap::Parser;
 use libp2p::Multiaddr;
+use libp2p::multiaddr::Protocol;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use lacre_node::app::{App, Event, Target};
@@ -106,6 +107,7 @@ comandos:
   safety <nombre#suf>              número de seguridad con un contacto (compáralo con el suyo)
   dial <multiaddr>             conecta con un nodo concreto
   addrs                        muestra las direcciones por las que te pueden llamar
+                               y el estado del servicio onion
   power low|full [wifi|mobile] modo de energía: reposo o normal (D-034)
   help | quit";
 
@@ -429,8 +431,21 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
         }
         "dial" => app.net().dial(rest.parse()?).await,
         "addrs" => {
-            for a in app.net().listen_addrs().await? {
+            let addrs = app.net().listen_addrs().await?;
+            for a in &addrs {
                 println!("  {a}");
+            }
+            if app.net().has_tor() {
+                let published = addrs.iter().any(|a| matches!(a.iter().next(), Some(Protocol::Onion3(_))));
+                println!(
+                    "servicio onion: {}",
+                    match (published, app.net().onion_check()) {
+                        (false, _) => "publicando…",
+                        (true, None) => "publicado (sin comprobar aún desde fuera)",
+                        (true, Some(true)) => "publicado y alcanzable desde fuera",
+                        (true, Some(false)) => "publicado, pero no se alcanza desde fuera",
+                    }
+                );
             }
         }
         "power" => {

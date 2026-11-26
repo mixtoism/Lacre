@@ -1574,6 +1574,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
   FileAttachment dco_decode_box_autoadd_file_attachment(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_file_attachment(raw);
@@ -1763,6 +1769,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_bool(raw);
+  }
+
+  @protected
   FileAttachment? dco_decode_opt_box_autoadd_file_attachment(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_file_attachment(raw);
@@ -1822,11 +1834,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Status dco_decode_status(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return Status(
       peers: dco_decode_u_32(arr[0]),
       onion: dco_decode_opt_String(arr[1]),
+      tor: dco_decode_bool(arr[2]),
+      onionReachable: dco_decode_opt_box_autoadd_bool(arr[3]),
     );
   }
 
@@ -1944,6 +1958,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_bool(deserializer));
   }
 
   @protected
@@ -2187,6 +2207,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_bool(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   FileAttachment? sse_decode_opt_box_autoadd_file_attachment(
     SseDeserializer deserializer,
   ) {
@@ -2271,7 +2302,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_peers = sse_decode_u_32(deserializer);
     var var_onion = sse_decode_opt_String(deserializer);
-    return Status(peers: var_peers, onion: var_onion);
+    var var_tor = sse_decode_bool(deserializer);
+    var var_onionReachable = sse_decode_opt_box_autoadd_bool(deserializer);
+    return Status(
+      peers: var_peers,
+      onion: var_onion,
+      tor: var_tor,
+      onionReachable: var_onionReachable,
+    );
   }
 
   @protected
@@ -2411,6 +2449,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self, serializer);
   }
 
   @protected
@@ -2614,6 +2658,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_bool(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_file_attachment(
     FileAttachment? self,
     SseSerializer serializer,
@@ -2696,6 +2750,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.peers, serializer);
     sse_encode_opt_String(self.onion, serializer);
+    sse_encode_bool(self.tor, serializer);
+    sse_encode_opt_box_autoadd_bool(self.onionReachable, serializer);
   }
 
   @protected

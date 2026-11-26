@@ -234,12 +234,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 title: Text(context.l.peersConnected(status?.peers ?? 0)),
               ),
               ListTile(
-                leading: const Icon(Icons.security),
-                title: Text(
-                  status?.onion == null
-                      ? context.l.onionPublishing
-                      : context.l.onionPublished,
+                leading: Icon(
+                  status?.onionReachable == false
+                      ? Icons.warning_amber
+                      : Icons.security,
                 ),
+                title: Text(switch (status) {
+                  null => context.l.onionPublishing,
+                  _ when !status.tor => context.l.torDisabled,
+                  _ when status.onion == null => context.l.onionPublishing,
+                  _ when status.onionReachable == false =>
+                    context.l.onionUnreachable,
+                  _ when status.onionReachable == true =>
+                    context.l.onionChecked,
+                  _ => context.l.onionPublished,
+                }),
                 subtitle: status?.onion == null
                     ? null
                     : Text(

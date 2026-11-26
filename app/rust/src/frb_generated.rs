@@ -2014,6 +2014,17 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<bool>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<crate::api::lacre::FileAttachment> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2104,9 +2115,13 @@ impl SseDecode for crate::api::lacre::Status {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_peers = <u32>::sse_decode(deserializer);
         let mut var_onion = <Option<String>>::sse_decode(deserializer);
+        let mut var_tor = <bool>::sse_decode(deserializer);
+        let mut var_onionReachable = <Option<bool>>::sse_decode(deserializer);
         return crate::api::lacre::Status {
             peers: var_peers,
             onion: var_onion,
+            tor: var_tor,
+            onion_reachable: var_onionReachable,
         };
     }
 }
@@ -2510,6 +2525,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::lacre::Status {
         [
             self.peers.into_into_dart().into_dart(),
             self.onion.into_into_dart().into_dart(),
+            self.tor.into_into_dart().into_dart(),
+            self.onion_reachable.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -2818,6 +2835,16 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<bool> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <bool>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<crate::api::lacre::FileAttachment> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2891,6 +2918,8 @@ impl SseEncode for crate::api::lacre::Status {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u32>::sse_encode(self.peers, serializer);
         <Option<String>>::sse_encode(self.onion, serializer);
+        <bool>::sse_encode(self.tor, serializer);
+        <Option<bool>>::sse_encode(self.onion_reachable, serializer);
     }
 }
 

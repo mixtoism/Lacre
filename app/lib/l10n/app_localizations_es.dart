@@ -142,10 +142,21 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get torDisabled => 'Tor desactivado';
+
+  @override
+  String get onionChecked =>
+      'Servicio onion publicado y alcanzable desde fuera';
+
+  @override
+  String get onionUnreachable =>
+      'Servicio onion publicado, pero no se alcanza desde fuera';
+
+  @override
   String get onionPublished => 'Servicio onion publicado';
 
   @override
-  String get onionPublishing => 'Servicio onion: publicando…';
+  String get onionPublishing => 'Conectando a Tor…';
 
   @override
   String get reachableByRelay => 'Alcanzable por relay';

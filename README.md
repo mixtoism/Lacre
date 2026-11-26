@@ -349,7 +349,11 @@ is 60 s to allow for Tor circuits.
   across restarts (D-044).
 - Publishing usually takes 20–40 s (up to several minutes on the very first
   run, while Tor downloads its directory). Each onion connection takes a few
-  seconds to open.
+  seconds to open. The app shows «Connecting to Tor…» until then.
+- The node keeps following the service state (it goes back to «connecting»
+  if it is lost) and, 2 min after publishing and then every 30 min, checks it
+  **from outside** by opening its own Tor circuit to its onion address
+  (`addrs` in the CLI, the profile screen in the app; D-053).
 - Tor is used for reachability, **not anonymity**: TCP, QUIC and mDNS
   addresses are still advertised unless disabled.
 
@@ -437,7 +441,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-052), but nothing should be considered secure until audited.
+  (D-039–D-053), but nothing should be considered secure until audited.
 
 ---
 
@@ -583,7 +587,7 @@ sudo useradd --system --home-dir /var/lib/lacre-node lacre
 sudo install -m755 target/release/lacre-node /usr/local/bin/
 sudo cp deploy/lacre-node.service /etc/systemd/system/
 sudo systemctl enable --now lacre-node
-journalctl -u lacre-node | grep 'escuchando en /onion3'   # your onion bootstrap address
+journalctl -u lacre-node | grep 'listening on /onion3'   # your onion bootstrap address
 ```
 
 Open port 4001 (TCP and UDP) if you have a public IP. Behind NAT or CGNAT,

@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-052),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-053),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -1775,6 +1775,34 @@ puede afirmar que sea segura.
   - Las direcciones IPv6 temporales cambian a menudo: un QR antiguo puede
     llevar una que ya no vale (la onion y los relays siguen sirviendo).
 - **Pendiente:** encuentro por IPv6.
+
+## D-053 · Estado del servicio onion, comprobado desde fuera
+
+- **Contexto:** la app decía «publicando…» hasta la primera publicación y
+  después nunca volvía atrás, aunque el servicio se cayera; con Tor
+  desactivado decía «publicando…» para siempre. Nadie comprobaba que de
+  verdad se nos alcanzara (D-020, D-034). Decidido sin preguntar (se pidió
+  completar el proyecto).
+- **Decisión:**
+  - Se sigue el estado del servicio de Arti después de publicarse: si pasa a
+    inalcanzable (sin descriptor en los HSDir, roto o parado), la dirección
+    onion caduca (`AddressExpired`) y vuelve cuando se recupera.
+  - Comprobación desde fuera: 2 min después de publicarse y luego cada
+    30 min, con un cliente Tor aislado (circuitos propios), se abre una
+    conexión a nuestra propia dirección onion, como haría otro nodo. Un
+    fallo se repite una vez antes de darse por bueno. En reposo (D-034) no
+    se comprueba.
+  - App: «Conectando a Tor…» hasta publicarse, «Tor desactivado» sin Tor y
+    aviso si la comprobación falla. CLI: `addrs` muestra el estado.
+- **Motivo:** «publicado» según Arti no garantiza que otro nodo llegue; la
+  única prueba fiable es recorrer el mismo camino que él.
+- **Limitaciones:**
+  - La comprobación sale del mismo equipo: confirma descriptor, puntos de
+    introducción y encuentro, pero no lo que vea un nodo con otros
+    guardas.
+  - Cada comprobación cuesta unos circuitos Tor (algo de batería en el
+    móvil, solo en primer plano).
+- **Pendiente:** nada.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

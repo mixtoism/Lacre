@@ -320,6 +320,24 @@ abstract class AppLocalizations {
   /// **'{count} peers conectados'**
   String peersConnected(int count);
 
+  /// No description provided for @torDisabled.
+  ///
+  /// In es, this message translates to:
+  /// **'Tor desactivado'**
+  String get torDisabled;
+
+  /// No description provided for @onionChecked.
+  ///
+  /// In es, this message translates to:
+  /// **'Servicio onion publicado y alcanzable desde fuera'**
+  String get onionChecked;
+
+  /// No description provided for @onionUnreachable.
+  ///
+  /// In es, this message translates to:
+  /// **'Servicio onion publicado, pero no se alcanza desde fuera'**
+  String get onionUnreachable;
+
   /// No description provided for @onionPublished.
   ///
   /// In es, this message translates to:
@@ -329,7 +347,7 @@ abstract class AppLocalizations {
   /// No description provided for @onionPublishing.
   ///
   /// In es, this message translates to:
-  /// **'Servicio onion: publicando…'**
+  /// **'Conectando a Tor…'**
   String get onionPublishing;
 
   /// No description provided for @reachableByRelay.

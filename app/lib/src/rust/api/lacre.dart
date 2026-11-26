@@ -535,10 +535,23 @@ class Status {
   /// Dirección onion propia, cuando ya está publicada.
   final String? onion;
 
-  const Status({required this.peers, this.onion});
+  /// Tor activado (sin él, `onion` nunca llega).
+  final bool tor;
+
+  /// Última comprobación desde fuera del servicio onion (D-053): `None`
+  /// mientras no se ha hecho.
+  final bool? onionReachable;
+
+  const Status({
+    required this.peers,
+    this.onion,
+    required this.tor,
+    this.onionReachable,
+  });
 
   @override
-  int get hashCode => peers.hashCode ^ onion.hashCode;
+  int get hashCode =>
+      peers.hashCode ^ onion.hashCode ^ tor.hashCode ^ onionReachable.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -546,7 +559,9 @@ class Status {
       other is Status &&
           runtimeType == other.runtimeType &&
           peers == other.peers &&
-          onion == other.onion;
+          onion == other.onion &&
+          tor == other.tor &&
+          onionReachable == other.onionReachable;
 }
 
 /// Sticker guardado en el dispositivo. La imagen (PNG, GIF, WebP o JPEG)

@@ -32,6 +32,7 @@ use tor_cell::relaycell::msg::Connected;
 use tor_config::ExplicitOrAuto;
 use tor_hscrypto::pk::HsIdKeypair;
 use tor_keymgr::config::ArtiKeystoreKind;
+use tor_hsservice::status::State;
 use tor_hsservice::{HsNickname, RunningOnionService, StreamRequest, handle_rend_requests};
 use tor_proto::stream::IncomingStreamRequest;
 use tor_rtcompat::PreferredRuntime;
@@ -54,6 +55,8 @@ impl std::error::Error for TorError {}
 enum ServiceEvent {
     /// El descriptor está publicado: ya se nos puede llamar.
     Reachable,
+    /// Ha dejado de estarlo (sin puntos de introducción o sin descriptor).
+    Unreachable,
     Stream(Box<DataStream>),
 }
 
@@ -120,12 +123,27 @@ impl TorTransport {
         let ready_tx = tx.clone();
         tokio::spawn(async move {
             let start = std::time::Instant::now();
+            // Se sigue mirando después de publicarlo: si se cae (sin red, o
+            // los HSDir rechazan el descriptor), la app vuelve a mostrar
+            // «publicando…» (D-053).
+            let mut up = false;
             while let Some(s) = status.next().await {
                 debug!(state = ?s.state(), "onion service");
-                if s.state().is_fully_reachable() {
+                let now = match s.state() {
+                    st if st.is_fully_reachable() => true,
+                    State::DegradedUnreachable | State::Broken | State::Shutdown => false,
+                    _ => continue,
+                };
+                if now == up {
+                    continue;
+                }
+                up = now;
+                if up {
                     info!(ms = start.elapsed().as_millis(), "onion service reachable");
                     let _ = ready_tx.send(ServiceEvent::Reachable).await;
-                    break;
+                } else {
+                    warn!(state = ?s.state(), "onion service no longer reachable");
+                    let _ = ready_tx.send(ServiceEvent::Unreachable).await;
                 }
             }
         });
@@ -153,11 +171,37 @@ impl TorTransport {
         self.client.clone()
     }
 
+    /// Comprueba desde fuera que el servicio sigue publicado: abre un
+    /// circuito propio hasta nuestra dirección, como haría otro nodo
+    /// (descriptor en los HSDir, punto de introducción y encuentro).
+    pub fn checker(&self) -> SelfCheck {
+        SelfCheck { client: self.client.isolated_client(), target: onion_target(&self.addr) }
+    }
+
     /// Transporte solo de salida con circuitos propios, que no comparte con
     /// los de este nodo: para depositar en buzones sin que se nos asocie
     /// (D-034).
     pub fn isolated_dialer(&self) -> TorDialer {
         TorDialer { client: self.client.isolated_client() }
+    }
+}
+
+/// Ver [`TorTransport::checker`].
+pub struct SelfCheck {
+    client: Arc<TorClient<PreferredRuntime>>,
+    target: Option<(String, u16)>,
+}
+
+impl SelfCheck {
+    pub async fn run(&self) -> bool {
+        let Some((host, port)) = &self.target else { return false };
+        let start = std::time::Instant::now();
+        let ok = matches!(
+            tokio::time::timeout(std::time::Duration::from_secs(120), self.client.connect((host.as_str(), *port))).await,
+            Ok(Ok(_))
+        );
+        debug!(ok, ms = start.elapsed().as_millis(), "onion self-check");
+        ok
     }
 }
 
@@ -295,6 +339,12 @@ impl Transport for TorTransport {
                         self.reachable = true;
                         info!(addr = %self.addr, "onion service published");
                         return Poll::Ready(TransportEvent::NewAddress { listener_id, listen_addr: self.addr.clone() });
+                    }
+                }
+                Poll::Ready(Some(ServiceEvent::Unreachable)) => {
+                    if self.reachable {
+                        self.reachable = false;
+                        return Poll::Ready(TransportEvent::AddressExpired { listener_id, listen_addr: self.addr.clone() });
                     }
                 }
                 Poll::Ready(Some(ServiceEvent::Stream(s))) => {

@@ -30,8 +30,13 @@ use tracing::{debug, info, warn};
 
 use crate::peers::PeerCache;
 use crate::proto::{Request, Response};
-use crate::tor::{TorDialer, TorTransport};
+use crate::tor::{SelfCheck, TorDialer, TorTransport};
 
+/// Espera tras publicarse el servicio onion antes de comprobarlo, y entre
+/// los dos intentos de una comprobación (D-053).
+const ONION_CHECK_DELAY: Duration = Duration::from_secs(120);
+/// Cada cuánto se vuelve a comprobar desde fuera.
+const ONION_CHECK_EVERY: Duration = Duration::from_secs(30 * 60);
 /// Máximo de peers recordados en `dialed` y `hops` (D-042).
 const MAX_TRACKED: usize = 1024;
 const KAD_PROTOCOL: StreamProtocol = StreamProtocol::new("/p2m/kad/1.0.0");
@@ -149,6 +154,9 @@ pub struct Client {
     power: Arc<watch::Sender<Power>>,
     /// Para el mensajero (D-034).
     tor: Option<Arc<TorDialer>>,
+    /// Resultado de la última comprobación desde fuera del servicio onion
+    /// (D-053); `None` mientras no se sabe.
+    onion_check: watch::Receiver<Option<bool>>,
 }
 
 impl Client {
@@ -217,6 +225,16 @@ impl Client {
         self.power.send_if_modified(|cur| std::mem::replace(cur, p) != p);
     }
 
+    /// ¿Se nos alcanza por la onion desde fuera? `None`: sin Tor, aún sin
+    /// publicar o sin comprobar.
+    pub fn has_tor(&self) -> bool {
+        self.tor.is_some()
+    }
+
+    pub fn onion_check(&self) -> Option<bool> {
+        *self.onion_check.borrow()
+    }
+
     pub fn power(&self) -> watch::Receiver<Power> {
         self.power.subscribe()
     }
@@ -271,7 +289,9 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
     let onion = tor.as_ref().map(TorTransport::address);
     let courier_tor = tor.as_ref().map(|t| Arc::new(t.isolated_dialer()));
     let tor_client = tor.as_ref().map(TorTransport::client);
+    let checker = tor.as_ref().map(TorTransport::checker);
     let (power, power_rx) = watch::channel(Power::default());
+    let onion_up = Arc::new(watch::channel(false).0);
     let (dns_cfg, dns_opts) = dns_config();
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
@@ -399,10 +419,63 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
         mdns: cfg.mdns,
         tor: tor_client,
         onion_ready: false,
-        power: power_rx,
+        onion_up: onion_up.clone(),
+        power: power_rx.clone(),
     };
     tokio::spawn(net.run(rx));
-    Ok((Client { tx, power: Arc::new(power), tor: courier_tor }, ev_rx, peer_id))
+    let (check_tx, onion_check) = watch::channel(None);
+    if let Some(checker) = checker {
+        tokio::spawn(check_onion(checker, onion_up.subscribe(), power_rx, check_tx));
+    }
+    Ok((Client { tx, power: Arc::new(power), tor: courier_tor, onion_check }, ev_rx, peer_id))
+}
+
+/// Comprueba desde fuera el servicio onion (D-053): un rato después de
+/// publicarse y luego cada 30 min, salvo en reposo. Un fallo se confirma
+/// con un segundo intento antes de darlo por inalcanzable.
+async fn check_onion(
+    checker: SelfCheck,
+    mut up: watch::Receiver<bool>,
+    mut power: watch::Receiver<Power>,
+    result: watch::Sender<Option<bool>>,
+) {
+    loop {
+        if !*up.borrow_and_update() {
+            result.send_replace(None);
+            if up.changed().await.is_err() {
+                return;
+            }
+            continue;
+        }
+        // Tras publicarse, el descriptor tarda un poco en estar en todos
+        // los HSDir.
+        tokio::select! {
+            _ = tokio::time::sleep(ONION_CHECK_DELAY) => {}
+            _ = up.changed() => continue,
+        }
+        if power.borrow_and_update().low {
+            let _ = power.changed().await;
+            continue;
+        }
+        let mut ok = checker.run().await;
+        if !ok && *up.borrow() {
+            tokio::time::sleep(ONION_CHECK_DELAY).await;
+            ok = checker.run().await;
+        }
+        if !*up.borrow() {
+            continue;
+        }
+        if ok {
+            info!("onion service reachable from outside");
+        } else {
+            warn!("onion service not reachable from outside");
+        }
+        result.send_replace(Some(ok));
+        tokio::select! {
+            _ = tokio::time::sleep(ONION_CHECK_EVERY) => {}
+            _ = up.changed() => {}
+        }
+    }
 }
 
 /// Búsqueda en la DHT en curso: valores recibidos y a quién devolverlos.
@@ -436,6 +509,8 @@ struct Network {
     tor: Option<Arc<arti_client::TorClient<tor_rtcompat::PreferredRuntime>>>,
     /// El servicio onion está publicado.
     onion_ready: bool,
+    /// Lo mismo, para la comprobación desde fuera.
+    onion_up: Arc<watch::Sender<bool>>,
     power: watch::Receiver<Power>,
 }
 
@@ -640,6 +715,7 @@ impl Network {
                 }
                 if matches!(address.iter().next(), Some(Protocol::Onion3(_))) {
                     self.onion_ready = true;
+                    self.onion_up.send_replace(true);
                 }
                 if is_relayed(&address) {
                     emit(&self.events, NetEvent::RelayReady(address)).await;
@@ -650,6 +726,13 @@ impl Network {
                     // tendría a nadie que se la confirmara. Tras NAT (IP
                     // privada) la confirman AutoNAT o UPnP (D-051).
                     self.swarm.add_external_address(address);
+                }
+            }
+            SwarmEvent::ExpiredListenAddr { address, .. } => {
+                if matches!(address.iter().next(), Some(Protocol::Onion3(_))) {
+                    info!("onion service unpublished; waiting for it to come back");
+                    self.onion_ready = false;
+                    self.onion_up.send_replace(false);
                 }
             }
             SwarmEvent::ConnectionEstablished { peer_id, endpoint, num_established, .. } => {
