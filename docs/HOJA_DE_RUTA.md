@@ -39,7 +39,7 @@ DECISIONES.md.
    (las copias para abrir con otra app van a `abiertos/` y se borran). La
    clave onion ya no se guarda en disco (D-044). Vuelta atrás de un archivo
    suelto detectada (D-046). Queda la del directorio entero (necesita un
-   contador del hardware) y el botón de la app para aceptar el estado.
+   contador del hardware). Botón de la app para aceptar el estado hecho.
 8b. **Auditoría externa** (D-042): del protocolo y del código, antes de
    recomendar Lacre para uso real. Hechos: `cargo audit` en CI, pruebas de
    robustez y fuzzing guiado por cobertura de los decodificadores (también

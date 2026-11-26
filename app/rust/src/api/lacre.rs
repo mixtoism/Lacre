@@ -228,11 +228,16 @@ impl From<Event> for UiEvent {
 /// `data_key` es la clave para cifrar el estado en disco (D-033); en Android
 /// la da el Keystore. Sin ella se usa `LACRE_DATA_KEY` o, en el escritorio, el
 /// llavero del sistema.
-pub fn start(data_dir: String, lan_only: bool, data_key: Option<Vec<u8>>) -> Result<Profile> {
+///
+/// Con `accept_current_state`, acepta los archivos de estado tal como están
+/// aunque parezcan una copia anterior (D-046): solo tras restaurar a
+/// propósito una copia de seguridad.
+pub fn start(data_dir: String, lan_only: bool, data_key: Option<Vec<u8>>, accept_current_state: bool) -> Result<Profile> {
     if NODE.get().is_none() {
         let data = PathBuf::from(&data_dir);
         std::fs::create_dir_all(&data)?;
         let mut opts = Options::new(data.clone());
+        opts.accept_current_state = accept_current_state;
         if lan_only {
             opts.tor = false;
             opts.rendezvous = false;
@@ -243,12 +248,23 @@ pub fn start(data_dir: String, lan_only: bool, data_key: Option<Vec<u8>>) -> Res
         };
         let n = {
             let _guard = RT.enter();
-            node::start(opts)?
+            node::start(opts).inspect_err(|e| {
+                ROLLBACK.store(e.is::<node::StateRollback>(), std::sync::atomic::Ordering::Relaxed)
+            })?
         };
         forward_events(n.events);
         let _ = NODE.set((n.app, data));
     }
     profile()
+}
+
+static ROLLBACK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// ¿Falló el último `start` porque el estado parece una copia anterior
+/// (D-046)? Entonces la app ofrece aceptarlo.
+#[frb(sync)]
+pub fn start_failed_by_rollback() -> bool {
+    ROLLBACK.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Clave de datos del escritorio (D-033, D-042): Secret Service en Linux,

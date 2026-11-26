@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -734184517;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 894429785;
 
 // Section: executor
 
@@ -1494,16 +1494,50 @@ fn wire__crate__api__lacre__start_impl(
             let api_data_dir = <String>::sse_decode(&mut deserializer);
             let api_lan_only = <bool>::sse_decode(&mut deserializer);
             let api_data_key = <Option<Vec<u8>>>::sse_decode(&mut deserializer);
+            let api_accept_current_state = <bool>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
                     (move || {
-                        let output_ok =
-                            crate::api::lacre::start(api_data_dir, api_lan_only, api_data_key)?;
+                        let output_ok = crate::api::lacre::start(
+                            api_data_dir,
+                            api_lan_only,
+                            api_data_key,
+                            api_accept_current_state,
+                        )?;
                         std::result::Result::Ok(output_ok)
                     })(),
                 )
             }
+        },
+    )
+}
+fn wire__crate__api__lacre__start_failed_by_rollback_impl(
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "start_failed_by_rollback",
+            port: None,
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            deserializer.end();
+            transform_result_sse::<_, ()>((move || {
+                let output_ok = Ok::<_, ()>(crate::api::lacre::start_failed_by_rollback())?;
+                std::result::Result::Ok(output_ok)
+            })())
         },
     )
 }
@@ -2191,8 +2225,8 @@ fn pde_ffi_dispatcher_primary_impl(
         40 => wire__crate__api__lacre__send_sticker_impl(port, ptr, rust_vec_len, data_len),
         41 => wire__crate__api__lacre__set_avatar_impl(port, ptr, rust_vec_len, data_len),
         43 => wire__crate__api__lacre__start_impl(port, ptr, rust_vec_len, data_len),
-        44 => wire__crate__api__lacre__status_impl(port, ptr, rust_vec_len, data_len),
-        48 => wire__crate__api__lacre__unlink_device_impl(port, ptr, rust_vec_len, data_len),
+        45 => wire__crate__api__lacre__status_impl(port, ptr, rust_vec_len, data_len),
+        49 => wire__crate__api__lacre__unlink_device_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -2228,9 +2262,10 @@ fn pde_ffi_dispatcher_sync_impl(
         36 => wire__crate__api__lacre__safety_number_impl(ptr, rust_vec_len, data_len),
         37 => wire__crate__api__lacre__search_impl(ptr, rust_vec_len, data_len),
         42 => wire__crate__api__lacre__set_power_impl(ptr, rust_vec_len, data_len),
-        45 => wire__crate__api__lacre__sticker_bytes_impl(ptr, rust_vec_len, data_len),
-        46 => wire__crate__api__lacre__stickers_impl(ptr, rust_vec_len, data_len),
-        47 => wire__crate__api__lacre__unblock_impl(ptr, rust_vec_len, data_len),
+        44 => wire__crate__api__lacre__start_failed_by_rollback_impl(ptr, rust_vec_len, data_len),
+        46 => wire__crate__api__lacre__sticker_bytes_impl(ptr, rust_vec_len, data_len),
+        47 => wire__crate__api__lacre__stickers_impl(ptr, rust_vec_len, data_len),
+        48 => wire__crate__api__lacre__unblock_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

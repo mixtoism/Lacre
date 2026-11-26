@@ -69,7 +69,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -734184517;
+  int get rustContentHash => 894429785;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -197,7 +197,10 @@ abstract class RustLibApi extends BaseApi {
     required String dataDir,
     required bool lanOnly,
     Uint8List? dataKey,
+    required bool acceptCurrentState,
   });
+
+  bool crateApiLacreStartFailedByRollback();
 
   Future<Status> crateApiLacreStatus();
 
@@ -1329,6 +1332,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String dataDir,
     required bool lanOnly,
     Uint8List? dataKey,
+    required bool acceptCurrentState,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1337,6 +1341,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(dataDir, serializer);
           sse_encode_bool(lanOnly, serializer);
           sse_encode_opt_list_prim_u_8_strict(dataKey, serializer);
+          sse_encode_bool(acceptCurrentState, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -1349,7 +1354,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLacreStartConstMeta,
-        argValues: [dataDir, lanOnly, dataKey],
+        argValues: [dataDir, lanOnly, dataKey, acceptCurrentState],
         apiImpl: this,
       ),
     );
@@ -1357,8 +1362,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateApiLacreStartConstMeta => const TaskConstMeta(
     debugName: "start",
-    argNames: ["dataDir", "lanOnly", "dataKey"],
+    argNames: ["dataDir", "lanOnly", "dataKey", "acceptCurrentState"],
   );
+
+  @override
+  bool crateApiLacreStartFailedByRollback() {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiLacreStartFailedByRollbackConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLacreStartFailedByRollbackConstMeta =>
+      const TaskConstMeta(debugName: "start_failed_by_rollback", argNames: []);
 
   @override
   Future<Status> crateApiLacreStatus() {
@@ -1369,7 +1396,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 44,
+            funcId: 45,
             port: port_,
           );
         },
@@ -1394,7 +1421,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(id, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -1416,7 +1443,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_sticker,
@@ -1439,7 +1466,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(handle, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -1465,7 +1492,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 48,
+            funcId: 49,
             port: port_,
           );
         },

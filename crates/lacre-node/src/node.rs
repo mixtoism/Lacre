@@ -79,6 +79,24 @@ pub fn data_key_from_env() -> Result<Option<[u8; 32]>> {
     Ok(Some(key))
 }
 
+/// Algún archivo de estado no es el último que se guardó (D-046). Si es una
+/// copia de seguridad restaurada a propósito, se arranca con
+/// `accept_current_state`.
+#[derive(Debug)]
+pub struct StateRollback(pub String);
+
+impl std::fmt::Display for StateRollback {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}. Si has restaurado tú una copia de seguridad, arranca una vez aceptando el estado actual",
+            self.0
+        )
+    }
+}
+
+impl std::error::Error for StateRollback {}
+
 /// Arranca el nodo. Tiene que llamarse dentro de un runtime de Tokio, que
 /// debe seguir vivo mientras se use el nodo.
 pub fn start(opts: Options) -> Result<Node> {
@@ -91,9 +109,11 @@ pub fn start(opts: Options) -> Result<Node> {
                 tracing::info!("{n} state files encrypted");
             }
             lacre_core::vault::protect(&opts.data, app::PROTECTED_FILES, opts.accept_current_state).map_err(|e| {
-                anyhow::anyhow!(
-                    "{e}. Si has restaurado tú una copia de seguridad, arranca una vez aceptando el estado actual"
-                )
+                if lacre_core::vault::is_rollback(&e) {
+                    anyhow::Error::new(StateRollback(e.to_string()))
+                } else {
+                    e.into()
+                }
             })?;
         }
         None if app::has_sealed_state(&opts.data) => {

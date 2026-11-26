@@ -1267,6 +1267,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Identidad recuperada: {handle}'**
   String identityRecovered(String handle);
+
+  /// No description provided for @rollbackExplanation.
+  ///
+  /// In es, this message translates to:
+  /// **'Algún archivo de datos no es el último que guardó la app: alguien puede haber puesto una copia anterior (por ejemplo, para deshacer un bloqueo). Si no has restaurado tú una copia de seguridad, no sigas.'**
+  String get rollbackExplanation;
+
+  /// No description provided for @acceptCurrentState.
+  ///
+  /// In es, this message translates to:
+  /// **'Aceptar el estado actual'**
+  String get acceptCurrentState;
+
+  /// No description provided for @acceptCurrentStateBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Hazlo solo si has restaurado tú una copia de seguridad. Se aceptarán los archivos tal como están y desde ahí se volverán a vigilar.'**
+  String get acceptCurrentStateBody;
 }
 
 class _AppLocalizationsDelegate

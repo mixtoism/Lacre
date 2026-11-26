@@ -197,5 +197,8 @@
   "forgetRoot": "Stop being the primary",
   "forgetRootBody": "The root key will be deleted from this device. To link or unlink devices you will need the recovery phrase. Have you written it down?",
   "forgetRootConfirm": "Delete the key",
-  "identityRecovered": "Identity recovered: {handle}"
+  "identityRecovered": "Identity recovered: {handle}",
+  "rollbackExplanation": "Some data file is not the last one the app saved: someone may have put back an older copy (for example, to undo a block). If you didn't restore a backup yourself, don't continue.",
+  "acceptCurrentState": "Accept the current state",
+  "acceptCurrentStateBody": "Only do this if you restored a backup yourself. The files will be accepted as they are and watched again from then on."
 }

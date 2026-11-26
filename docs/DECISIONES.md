@@ -1556,8 +1556,10 @@ puede afirmar que sea segura.
     atrás en ellos no da nada a un atacante y se borran a menudo.
   - Hasta el primer arranque con esta versión, los archivos v2 se pueden
     cambiar por otros v2 anteriores.
-- **Pendiente:** en la app, un botón para aceptar el estado actual tras el
-  aviso (ahora solo en la CLI).
+- **Pendiente:** ~~en la app, un botón para aceptar el estado actual tras
+  el aviso~~ → hecho: el aviso es un error tipado (`vault::Rollback`,
+  `node::StateRollback`) y la pantalla de error de arranque lo explica y
+  ofrece «Aceptar el estado actual», con confirmación.
 
 ## D-047 · Código de confirmación al vincular
 - **Contexto:** D-011 pedía confirmación visual en los dos dispositivos al

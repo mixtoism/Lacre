@@ -224,5 +224,8 @@
   "forgetRootBody": "Se borrará la clave raíz de este dispositivo. Para vincular o desvincular necesitarás la frase de recuperación. ¿La tienes anotada?",
   "forgetRootConfirm": "Borrar la clave",
   "identityRecovered": "Identidad recuperada: {handle}",
-  "@identityRecovered": {"placeholders": {"handle": {"type": "String"}}}
+  "@identityRecovered": {"placeholders": {"handle": {"type": "String"}}},
+  "rollbackExplanation": "Algún archivo de datos no es el último que guardó la app: alguien puede haber puesto una copia anterior (por ejemplo, para deshacer un bloqueo). Si no has restaurado tú una copia de seguridad, no sigas.",
+  "acceptCurrentState": "Aceptar el estado actual",
+  "acceptCurrentStateBody": "Hazlo solo si has restaurado tú una copia de seguridad. Se aceptarán los archivos tal como están y desde ahí se volverán a vigilar."
 }

@@ -23,15 +23,26 @@ Uint8List stickerBytes({required String id}) =>
 /// `data_key` es la clave para cifrar el estado en disco (D-033); en Android
 /// la da el Keystore. Sin ella se usa `LACRE_DATA_KEY` o, en el escritorio, el
 /// llavero del sistema.
+///
+/// Con `accept_current_state`, acepta los archivos de estado tal como están
+/// aunque parezcan una copia anterior (D-046): solo tras restaurar a
+/// propósito una copia de seguridad.
 Future<Profile> start({
   required String dataDir,
   required bool lanOnly,
   Uint8List? dataKey,
+  required bool acceptCurrentState,
 }) => RustLib.instance.api.crateApiLacreStart(
   dataDir: dataDir,
   lanOnly: lanOnly,
   dataKey: dataKey,
+  acceptCurrentState: acceptCurrentState,
 );
+
+/// ¿Falló el último `start` porque el estado parece una copia anterior
+/// (D-046)? Entonces la app ofrece aceptarlo.
+bool startFailedByRollback() =>
+    RustLib.instance.api.crateApiLacreStartFailedByRollback();
 
 Profile profile() => RustLib.instance.api.crateApiLacreProfile();
 

@@ -44,6 +44,12 @@ class Store extends ChangeNotifier {
   /// Error al arrancar el nodo.
   String? startError;
 
+  /// El arranque falló porque el estado parece una copia anterior (D-046).
+  bool startRollback = false;
+
+  String? _dataDir;
+  bool _lanOnly = false;
+
   /// Avisos para mostrar como SnackBar.
   final notices = StreamController<String>.broadcast();
 
@@ -96,7 +102,13 @@ class Store extends ChangeNotifier {
   static const _generalNotice = -1;
 
   /// Con `lanOnly` (o `LACRE_LAN=1`), sin Tor: solo red local, para pruebas.
-  Future<void> start({String? dataDir, bool lanOnly = false}) async {
+  Future<void> start({
+    String? dataDir,
+    bool lanOnly = false,
+    bool acceptCurrentState = false,
+  }) async {
+    _dataDir = dataDir;
+    _lanOnly = lanOnly;
     // LACRE_DATA permite arrancar varias instancias en el mismo equipo.
     final dir =
         dataDir ??
@@ -120,10 +132,12 @@ class Store extends ChangeNotifier {
         dataDir: dir,
         lanOnly: lanOnly || Platform.environment['LACRE_LAN'] == '1',
         dataKey: key,
+        acceptCurrentState: acceptCurrentState,
       );
     } catch (e) {
       debugPrint('lacre startup: $e');
       startError = '$e';
+      startRollback = lacre.startFailedByRollback();
       notifyListeners();
       return;
     }
@@ -426,6 +440,15 @@ class Store extends ChangeNotifier {
     await lacre.createIdentity(name: name);
     profile = lacre.profile();
     notifyListeners();
+  }
+
+  /// Vuelve a arrancar aceptando el estado actual tras el aviso de copia
+  /// anterior (D-046).
+  Future<void> acceptCurrentState() async {
+    startError = null;
+    startRollback = false;
+    notifyListeners();
+    await start(dataDir: _dataDir, lanOnly: _lanOnly, acceptCurrentState: true);
   }
 
   /// Recupera la identidad con su frase (D-048). Devuelve el handle.

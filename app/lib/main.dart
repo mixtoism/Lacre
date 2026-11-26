@@ -72,9 +72,26 @@ class LacreApp extends StatelessWidget {
                 body: Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text(
-                      context.l.startError('${store.startError}'),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.l.startError('${store.startError}'),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (store.startRollback) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            context.l.rollbackExplanation,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: () => _acceptState(context, store),
+                            child: Text(context.l.acceptCurrentState),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -95,6 +112,29 @@ class LacreApp extends StatelessWidget {
 }
 
 final _messenger = GlobalKey<ScaffoldMessengerState>();
+
+/// Tras el aviso de copia anterior (D-046): solo si la restauró la persona.
+Future<void> _acceptState(BuildContext context, Store store) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.warning_amber),
+      title: Text(context.l.acceptCurrentState),
+      content: Text(context.l.acceptCurrentStateBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(context.l.cancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(context.l.acceptCurrentState),
+        ),
+      ],
+    ),
+  );
+  if (ok == true) await store.acceptCurrentState();
+}
 
 /// Muestra los avisos del nodo como SnackBar.
 class _Notices extends StatefulWidget {

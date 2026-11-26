@@ -715,4 +715,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String identityRecovered(String handle) {
     return 'Identidad recuperada: $handle';
   }
+
+  @override
+  String get rollbackExplanation =>
+      'Algún archivo de datos no es el último que guardó la app: alguien puede haber puesto una copia anterior (por ejemplo, para deshacer un bloqueo). Si no has restaurado tú una copia de seguridad, no sigas.';
+
+  @override
+  String get acceptCurrentState => 'Aceptar el estado actual';
+
+  @override
+  String get acceptCurrentStateBody =>
+      'Hazlo solo si has restaurado tú una copia de seguridad. Se aceptarán los archivos tal como están y desde ahí se volverán a vigilar.';
 }

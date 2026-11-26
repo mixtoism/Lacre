@@ -275,8 +275,28 @@ fn v3_aad(rel: &str, generation: u64) -> Vec<u8> {
     [AAD_V3, &generation.to_be_bytes(), rel.as_bytes()].concat()
 }
 
+/// Un archivo de estado no es el último que se guardó (D-046).
+#[derive(Debug)]
+pub struct Rollback(pub String);
+
+impl std::fmt::Display for Rollback {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for Rollback {}
+
+/// ¿Es `e` un aviso de vuelta atrás (y no otro fallo de lectura)?
+pub fn is_rollback(e: &io::Error) -> bool {
+    e.get_ref().is_some_and(|i| i.is::<Rollback>())
+}
+
 fn rollback(rel: &str, why: &str) -> io::Error {
-    invalid(format!("{rel}: {why} (¿se ha devuelto a una copia anterior?)"))
+    io::Error::new(
+        io::ErrorKind::InvalidData,
+        Rollback(format!("{rel}: {why} (¿se ha devuelto a una copia anterior?)")),
+    )
 }
 
 impl Ledger {
@@ -481,7 +501,7 @@ mod tests {
     }
 
     fn is_rollback(e: io::Error) -> bool {
-        e.kind() == io::ErrorKind::InvalidData && e.to_string().contains("copia anterior")
+        super::is_rollback(&e) && e.to_string().contains("copia anterior")
     }
 
     #[test]
