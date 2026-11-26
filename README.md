@@ -325,10 +325,14 @@ is 60 s to allow for Tor circuits.
 
 - **Circuit relay v2.** Every node is a relay client. Nodes started with
   `--relay-server` offer relaying (up to 512 reservations, 1 h each, 30 min
-  circuits) and treat their listen addresses as external. A node reserves a
+  circuits) once an external address is confirmed: a public IP on the
+  interface, AutoNAT, UPnP or `--external`. A node reserves a
   slot on up to 2 relays it dialed directly.
 - **DCUtR** tries to upgrade relayed connections to direct ones by hole
   punching. **UPnP** opens a port when the router allows it.
+- **AutoNAT** (v1, every node is client and server): peers dial us back to
+  confirm which addresses are reachable. Relays only announce themselves on
+  Mainline after that (D-051).
 
 **Tor onion services (default on):**
 
@@ -433,7 +437,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-050), but nothing should be considered secure until audited.
+  (D-039–D-051), but nothing should be considered secure until audited.
 
 ---
 
@@ -549,6 +553,7 @@ code, Tor/relay status and device management. Bindings are regenerated with
 | `--port <n>`                  | `0` (random)   | TCP/QUIC listen port                                               |
 | `--bootstrap <multiaddr>`     | —              | Node to connect to on startup (repeatable; `/onion3/…` works)      |
 | `--relay-server`              | off            | Offer relaying (for nodes with a public IP or open port)           |
+| `--external <multiaddr>`      | —              | Public address to treat as reachable (port forwarding; repeatable) |
 | `--no-tor`                    | Tor on         | Disable the onion service and `.onion` dialing                     |
 | `--no-rendezvous`             | on             | Don't search Mainline DHT / trackers for relays                    |
 | `--dht-bootstrap <host:port>` | built-in       | Mainline DHT bootstrap node (repeatable; replaces defaults)        |
@@ -646,8 +651,8 @@ Current limitations:
 - Earlier history reaches a new device only from another own device that is
   online (within 7 days); there is no backup, and copied history carries no
   author signatures.
-- Relay discovery is IPv4 only; a `--relay-server` behind NAT advertises an
-  unreachable address (AutoNAT pending).
+- Relay discovery is IPv4 only. A public IP on the interface is assumed
+  reachable even if a firewall blocks it.
 - History is a single CBOR file rewritten on every message.
 
 Planned:
@@ -658,7 +663,7 @@ Planned:
 - Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.
 - SQLite/SQLCipher storage and OS keystore integration.
-- IPv6, AutoNAT, rate limiting of DHT writes, an optional Tor-only anonymous
+- IPv6, AutoNAT v2, an optional Tor-only anonymous
   mode.
 
 ---

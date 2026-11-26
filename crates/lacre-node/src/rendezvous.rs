@@ -106,12 +106,14 @@ pub fn spawn(cfg: Config, net: Client) {
                 };
             }
             if cfg.announce && last_announce.is_none_or(|t| t.elapsed() >= ANNOUNCE_EVERY) {
-                match tcp_port(&net).await {
+                // Solo con una dirección confirmada (D-051): si no, otros
+                // nodos perderían el tiempo llamando a un puerto cerrado.
+                match external_tcp_port(&net).await {
                     Some(port) => {
                         announce(dht.as_ref(), &cfg.trackers, topic, port).await;
                         last_announce = Some(tokio::time::Instant::now());
                     }
-                    None => debug!("no listening port yet; not announcing"),
+                    None => debug!("no confirmed public address yet; not announcing"),
                 }
             }
             let connected = net.connected_peers().await.map(|p| p.len()).unwrap_or(0);
@@ -149,6 +151,18 @@ fn start_dht(cfg: &Config) -> Result<AsyncDht> {
         b.server_mode();
     }
     Ok(b.build().context("socket de Mainline")?.as_async())
+}
+
+/// Puerto TCP de una dirección IPv4 confirmada como alcanzable. Es el que
+/// se anuncia: con el puerto redirigido puede no ser el de escucha.
+async fn external_tcp_port(net: &Client) -> Option<u16> {
+    net.external_addrs().await.ok()?.iter().find_map(|a| {
+        let mut it = a.iter();
+        match (it.next(), it.next()) {
+            (Some(Protocol::Ip4(_)), Some(Protocol::Tcp(p))) => Some(p),
+            _ => None,
+        }
+    })
 }
 
 async fn tcp_port(net: &Client) -> Option<u16> {

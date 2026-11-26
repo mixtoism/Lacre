@@ -55,7 +55,7 @@ DECISIONES.md.
 
 9. **AutoNAT** (D-018, D-019): un `--relay-server` tras NAT se anuncia con
    una dirección inalcanzable; anunciarse solo tras confirmar que se es
-   alcanzable.
+   alcanzable. → **Hecho (D-051):** AutoNAT v1, UPnP o `--external`.
 10. **IPv6** (D-019): en móvil suele haber IPv6 sin NAT, lo que facilita el
     hole punching.
 11. **Tor en el móvil** (D-020, D-021, D-023): ~~coste de batería~~

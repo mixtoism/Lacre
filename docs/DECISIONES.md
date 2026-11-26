@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-050),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-051),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -297,8 +297,9 @@ puede afirmar que sea segura.
 - **Limitaciones:**
   - Encontrar no es conectar: sigue haciendo falta al menos un relay
     alcanzable (IP pública o puerto abierto).
-  - Un `--relay-server` tras NAT anuncia una dirección inalcanzable. Pendiente:
-    anunciarse solo tras confirmar con AutoNAT que se es alcanzable.
+  - ~~Un `--relay-server` tras NAT anuncia una dirección inalcanzable. Pendiente:
+    anunciarse solo tras confirmar con AutoNAT que se es alcanzable.~~
+    *(Resuelto en D-051.)*
   - Solo IPv4.
 - **CGNAT:** muchas conexiones domésticas y casi todas las móviles tienen
   CGNAT. Ahí un nodo funciona bien como cliente (conexiones salientes al
@@ -1716,6 +1717,40 @@ puede afirmar que sea segura.
     (no hay copia de seguridad).
   - Los archivos se descargan después, como siempre, de quien siga en línea.
 - **Pendiente:** copia de seguridad cifrada del historial.
+
+## D-051 · AutoNAT: anunciarse solo si se es alcanzable
+
+- **Contexto:** un `--relay-server` daba por externas todas sus direcciones
+  de escucha y se anunciaba en Mainline aunque estuviera tras NAT: los demás
+  llamaban a un puerto cerrado (D-019). Decidido sin preguntar (se pidió
+  completar el proyecto).
+- **Decisión:**
+  - Todos los nodos llevan AutoNAT v1 de libp2p, como cliente y como
+    servidor. Como cliente pide a nodos conectados con IP pública que lo
+    llamen a sus direcciones candidatas (las que ven otros vía identify y
+    las de escucha); si lo consiguen, la dirección queda confirmada. Se
+    prueba a los 10 s, cada 90 s mientras no se sepa y cada 15 min después.
+    Como servidor solo llama a la IP desde la que le llega la petición,
+    con los límites de serie.
+  - Un `--relay-server` solo da por buenas sin comprobar sus direcciones de
+    escucha con IP pública (si no, el primer relay de una red no tendría
+    quién se las confirmara). Las privadas esperan a AutoNAT o a UPnP.
+  - `--external <multiaddr>` fija a mano una dirección pública (puerto
+    redirigido en el router, o pruebas en local).
+  - El relay de libp2p ya rechaza reservas sin direcciones externas; el
+    anuncio en Mainline y trackers también espera a tener una dirección IPv4
+    confirmada y anuncia su puerto, que puede no ser el de escucha.
+- **Motivo:** evita anuncios a puertos cerrados con la pieza estándar de
+  libp2p y sin servidores propios.
+- **Limitaciones:**
+  - Una IP pública en la interfaz se da por alcanzable aunque un
+    cortafuegos lo impida.
+  - AutoNAT necesita al menos un nodo conectado con IP pública. Cualquier
+    nodo puede pedir que lo llamen; el límite de 30 por minuto en total y 3
+    por peer (la ventana de serie de libp2p es de 1 s) acota el coste.
+  - Las direcciones confirmadas se anuncian también por identify a todos
+    los nodos (antes solo las de escucha); no revela más que la conexión.
+- **Pendiente:** AutoNAT v2 (comprueba cada dirección por separado).
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

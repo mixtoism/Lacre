@@ -21,7 +21,7 @@ use libp2p::multiaddr::Protocol;
 use libp2p::request_response::{self, OutboundRequestId, ProtocolSupport, ResponseChannel};
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent, behaviour::toggle::Toggle};
 use libp2p::{
-    Multiaddr, PeerId, StreamProtocol, Swarm, connection_limits, dcutr, identify, identity, mdns, noise, relay, tcp, upnp, yamux,
+    Multiaddr, PeerId, StreamProtocol, Swarm, autonat, connection_limits, dcutr, identify, identity, mdns, noise, relay, tcp, upnp, yamux,
 };
 use lacre_core::mls::verify_key_package;
 use lacre_core::record::{SignedRecord, dht_key, key_package_key};
@@ -85,6 +85,9 @@ struct Behaviour {
     relay_server: Toggle<relay::Behaviour>,
     dcutr: dcutr::Behaviour,
     upnp: upnp::tokio::Behaviour,
+    /// Confirma qué direcciones nuestras son alcanzables pidiendo a otros
+    /// nodos que nos llamen (D-051). Todos hacen también de servidor.
+    autonat: autonat::Behaviour,
 }
 
 pub struct NetConfig {
@@ -103,6 +106,9 @@ pub struct NetConfig {
     pub bootstrap: Vec<Multiaddr>,
     /// Archivo de la caché de peers (D-021).
     pub peer_cache: Option<PathBuf>,
+    /// Direcciones públicas fijadas a mano (puerto redirigido en el router);
+    /// se dan por alcanzables sin comprobarlo (D-051).
+    pub external: Vec<Multiaddr>,
 }
 
 enum Command {
@@ -113,6 +119,7 @@ enum Command {
     ClosestPeers { key: Vec<u8>, reply: oneshot::Sender<Vec<PeerId>> },
     ConnectedPeers { reply: oneshot::Sender<Vec<PeerId>> },
     ListenAddrs { reply: oneshot::Sender<Vec<Multiaddr>> },
+    ExternalAddrs { reply: oneshot::Sender<Vec<Multiaddr>> },
     PeerAddrs { peers: Vec<PeerId>, reply: oneshot::Sender<Vec<(PeerId, Vec<Multiaddr>)>> },
     Dial(Multiaddr),
     /// Registro entrante ya validado (la validación usa Argon2 y va aparte).
@@ -188,6 +195,11 @@ impl Client {
     /// Direcciones de escucha y externas confirmadas, con nuestro `/p2p/`.
     pub async fn listen_addrs(&self) -> Result<Vec<Multiaddr>> {
         self.call(|reply| Command::ListenAddrs { reply }).await
+    }
+
+    /// Direcciones confirmadas como alcanzables desde fuera (D-051).
+    pub async fn external_addrs(&self) -> Result<Vec<Multiaddr>> {
+        self.call(|reply| Command::ExternalAddrs { reply }).await
     }
 
     pub async fn respond(&self, channel: ResponseChannel<Response>, resp: Response) {
@@ -321,6 +333,19 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
                     .into(),
                 dcutr: dcutr::Behaviour::new(peer_id),
                 upnp: upnp::tokio::Behaviour::default(),
+                autonat: autonat::Behaviour::new(peer_id, autonat::Config {
+                    // Sin más espera que identify, y repetido cada cuarto
+                    // de hora (la dirección pública puede cambiar).
+                    boot_delay: Duration::from_secs(10),
+                    refresh_interval: Duration::from_secs(15 * 60),
+                    retry_interval: Duration::from_secs(90),
+                    // Como servidor: 30 llamadas por minuto en total y 3 por
+                    // peer (la ventana de serie es de 1 s).
+                    throttle_clients_global_max: 30,
+                    throttle_clients_peer_max: 3,
+                    throttle_clients_period: Duration::from_secs(60),
+                    ..Default::default()
+                }),
             })
         })?
         .with_swarm_config(|c| c.with_idle_connection_timeout(Duration::from_secs(120)))
@@ -332,6 +357,9 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
     if cfg.listen {
         swarm.listen_on(format!("/ip4/0.0.0.0/tcp/{}", cfg.port).parse()?)?;
         swarm.listen_on(format!("/ip4/0.0.0.0/udp/{}/quic-v1", cfg.port).parse()?)?;
+    }
+    for addr in cfg.external {
+        swarm.add_external_address(addr);
     }
     // El servicio onion funciona también tras NAT, así que no depende de `listen`.
     if let Some(addr) = onion {
@@ -412,6 +440,19 @@ async fn emit(events: &mpsc::Sender<NetEvent>, ev: NetEvent) {
 
 fn is_relayed(addr: &Multiaddr) -> bool {
     addr.iter().any(|p| p == Protocol::P2pCircuit)
+}
+
+/// Dirección IP pública (ni privada, ni de bucle, ni CGNAT, ni local).
+fn is_global(addr: &Multiaddr) -> bool {
+    match addr.iter().next() {
+        Some(Protocol::Ip4(ip)) => crate::peers::is_public(ip),
+        Some(Protocol::Ip6(ip)) => {
+            let s = ip.segments()[0];
+            // Unicast global: 2000::/3.
+            (s & 0xe000) == 0x2000
+        }
+        _ => false,
+    }
 }
 
 impl Network {
@@ -533,6 +574,9 @@ impl Network {
                     .collect();
                 let _ = reply.send(addrs);
             }
+            Command::ExternalAddrs { reply } => {
+                let _ = reply.send(self.swarm.external_addresses().cloned().collect());
+            }
             Command::PeerAddrs { peers, reply } => {
                 let mut out: Vec<(PeerId, Vec<Multiaddr>)> = peers.into_iter().map(|p| (p, Vec::new())).collect();
                 for bucket in self.kad().kbuckets() {
@@ -596,11 +640,12 @@ impl Network {
                 }
                 if is_relayed(&address) {
                     emit(&self.events, NetEvent::RelayReady(address)).await;
-                } else if self.relay_server && !matches!(address.iter().next(), Some(Protocol::Onion3(_))) {
+                } else if self.relay_server && is_global(&address) {
                     // El relay de libp2p solo se ofrece con alguna dirección
-                    // externa confirmada. Sin AutoNAT nadie la confirma: un
-                    // `--relay-server` se supone con IP pública y da por
-                    // buenas las suyas (pendiente: AutoNAT, D-019).
+                    // externa confirmada. Una IP pública en la propia interfaz
+                    // se da por buena: si no, el primer relay de una red no
+                    // tendría a nadie que se la confirmara. Tras NAT (IP
+                    // privada) la confirman AutoNAT o UPnP (D-051).
                     self.swarm.add_external_address(address);
                 }
             }
@@ -668,6 +713,12 @@ impl Network {
                 Err(e) => debug!(peer = %ev.remote_peer_id, "hole punching failed: {e}"),
             },
             SwarmEvent::Behaviour(BehaviourEvent::Upnp(ev)) => debug!("upnp: {ev:?}"),
+            SwarmEvent::Behaviour(BehaviourEvent::Autonat(autonat::Event::StatusChanged { new, .. })) => {
+                info!("autonat: {new:?}");
+            }
+            SwarmEvent::Behaviour(BehaviourEvent::Autonat(ev)) => debug!("autonat: {ev:?}"),
+            SwarmEvent::ExternalAddrConfirmed { address } => info!("reachable at {address}"),
+            SwarmEvent::ExternalAddrExpired { address } => info!("no longer reachable at {address}"),
             SwarmEvent::Behaviour(BehaviourEvent::Kad(ev)) => self.on_kad(ev),
             SwarmEvent::Behaviour(BehaviourEvent::Rr(ev)) => self.on_rr(ev).await,
             _ => {}
@@ -836,4 +887,22 @@ fn is_valid_record(record: &Record) -> bool {
             });
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn global_addresses() {
+        let g = |a: &str| is_global(&a.parse().unwrap());
+        assert!(g("/ip4/203.0.113.5/tcp/4001"));
+        assert!(!g("/ip4/192.168.1.10/tcp/4001"));
+        assert!(!g("/ip4/127.0.0.1/tcp/4001"));
+        assert!(!g("/ip4/100.64.1.1/tcp/4001"));
+        assert!(g("/ip6/2001:db8::1/tcp/4001"));
+        assert!(!g("/ip6/fd00::1/tcp/4001"));
+        assert!(!g("/ip6/fe80::1/tcp/4001"));
+        assert!(!g("/ip6/::1/tcp/4001"));
+    }
 }

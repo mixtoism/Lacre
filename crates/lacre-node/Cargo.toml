@@ -13,7 +13,7 @@ clap = { version = "4.6.7", features = ["derive"] }
 data-encoding = "2.11.1"
 ed25519-dalek = "2"
 futures = "0.3.34"
-libp2p = { version = "0.57", features = ["tokio", "tcp", "quic", "noise", "yamux", "kad", "mdns", "identify", "request-response", "cbor", "macros", "ed25519", "relay", "dcutr", "upnp", "dns"] }
+libp2p = { version = "0.57", features = ["tokio", "tcp", "quic", "noise", "yamux", "kad", "mdns", "identify", "request-response", "cbor", "macros", "ed25519", "relay", "dcutr", "upnp", "dns", "autonat"] }
 # Misma versión que usa libp2p-dns, para leer la configuración DNS nosotros.
 hickory-resolver = { version = "0.26", default-features = false, features = ["system-config"] }
 mainline = "8"

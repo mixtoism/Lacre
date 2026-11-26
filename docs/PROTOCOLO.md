@@ -365,6 +365,11 @@ pasar a conexión directa con DCUtR y abrir puertos con UPnP. Un relay de Lacre
 admite 512 reservas de 1 h, y circuitos de hasta 30 min y 64 MiB, porque
 también lleva tráfico cuando el hole punching falla.
 
+Todos los nodos hablan AutoNAT v1 de libp2p (`/libp2p/autonat/1.0.0`) como
+cliente y como servidor. Un relay solo acepta reservas y se anuncia (§6.5)
+con alguna dirección externa confirmada: confirmada por AutoNAT o UPnP,
+una IP pública en su interfaz, o fijada a mano.
+
 ### 6.5. Encuentro y arranque
 
 Un nodo conoce a otros por estas vías, en orden de preferencia:
@@ -382,7 +387,8 @@ Un nodo conoce a otros por estas vías, en orden de preferencia:
    ```
 
    y, como respaldo, en trackers UDP públicos [BEP15] con el mismo infohash.
-   Los relays se anuncian ahí cada 15 min con su puerto TCP. Quien busca
+   Los relays se anuncian ahí cada 15 min con el puerto TCP de una dirección
+   IPv4 confirmada (§6.4). Quien busca
    marca hasta 8 de las direcciones `/ip4/…/tcp/…` que encuentra. Las
    entradas falsas solo cuestan una llamada, porque la identidad la comprueba
    Noise.

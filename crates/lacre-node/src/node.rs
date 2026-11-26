@@ -29,6 +29,8 @@ pub struct Options {
     /// Buscar relays en Mainline y trackers (D-019).
     pub rendezvous: bool,
     pub bootstrap: Vec<Multiaddr>,
+    /// Direcciones públicas fijadas a mano (D-051).
+    pub external: Vec<Multiaddr>,
     pub dht_bootstrap: Vec<String>,
     /// `None` = `trackers.txt` del directorio de datos o la lista de serie.
     pub trackers: Option<Vec<String>>,
@@ -53,6 +55,7 @@ impl Options {
             tor: true,
             rendezvous: true,
             bootstrap: Vec::new(),
+            external: Vec::new(),
             dht_bootstrap: Vec::new(),
             trackers: None,
             tick: Duration::from_secs(30),
@@ -130,6 +133,7 @@ pub fn start(opts: Options) -> Result<Node> {
         tor: opts.tor.then(|| opts.data.clone()),
         bootstrap: opts.bootstrap,
         peer_cache: Some(opts.data.join("peers.txt")),
+        external: opts.external,
     };
     let (client, mut net_events, peer_id) = net::spawn(device.to_bytes(), cfg)?;
     if opts.rendezvous {

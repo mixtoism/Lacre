@@ -96,7 +96,7 @@ pub fn is_dialable_from_anywhere(addr: &Multiaddr) -> bool {
     }
 }
 
-fn is_public(ip: Ipv4Addr) -> bool {
+pub(crate) fn is_public(ip: Ipv4Addr) -> bool {
     let cgnat = ip.octets()[0] == 100 && (ip.octets()[1] & 0xc0) == 64;
     !(ip.is_private() || ip.is_loopback() || ip.is_link_local() || ip.is_unspecified() || ip.is_broadcast() || cgnat)
 }

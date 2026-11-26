@@ -28,8 +28,14 @@ struct Args {
     #[arg(long)]
     bootstrap: Vec<Multiaddr>,
     /// Ofrecer relay a otros nodos (para un nodo con IP pública o puerto abierto).
+    /// Tras NAT solo se ofrece cuando otros nodos confirman que se nos
+    /// alcanza (AutoNAT), UPnP abre el puerto o se indica con `--external`.
     #[arg(long)]
     relay_server: bool,
+    /// Dirección pública por la que se nos alcanza (p. ej. con el puerto
+    /// redirigido en el router): `/ip4/203.0.113.5/tcp/4001`. Se da por buena.
+    #[arg(long)]
+    external: Vec<Multiaddr>,
     /// No escuchar conexiones directas (simula estar tras NAT; para pruebas).
     #[arg(long, hide = true)]
     no_listen: bool,
@@ -121,6 +127,7 @@ async fn main() -> Result<()> {
         tor: !args.no_tor,
         rendezvous: !args.no_rendezvous,
         bootstrap: args.bootstrap.clone(),
+        external: args.external.clone(),
         dht_bootstrap: args.dht_bootstrap.clone(),
         trackers: (!args.tracker.is_empty())
             .then(|| args.tracker.iter().map(|t| rendezvous::normalize_tracker(t)).collect()),

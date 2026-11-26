@@ -53,7 +53,8 @@ refute() { # nodo patrón
 }
 ok() { echo "✔ $1"; }
 
-start relay --relay-server; sleep 1
+# En local la IP es privada: sin --external no se ofrecería relay (D-051).
+start relay --relay-server --external "/ip4/127.0.0.1/tcp/$BASE_PORT"; sleep 1
 start alice1; start alice2; start bob; start carol
 sleep 2
 for n in alice1 bob carol; do say $n "init ${n%1}"; done
