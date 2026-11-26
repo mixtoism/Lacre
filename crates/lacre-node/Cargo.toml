@@ -6,7 +6,7 @@ license.workspace = true
 
 [dependencies]
 anyhow = "1.0.104"
-arti-client = { version = "0.47", default-features = false, features = ["tokio", "rustls", "compression", "onion-service-client", "onion-service-service", "static-sqlite", "experimental-api", "ephemeral-keystore"] }
+arti-client = { version = "0.48", default-features = false, features = ["tokio", "rustls", "compression", "onion-service-client", "onion-service-service", "static-sqlite", "experimental-api", "ephemeral-keystore"] }
 blake3 = "1.8.7"
 chacha20poly1305 = "0.10"
 clap = { version = "4.6.7", features = ["derive"] }
@@ -22,14 +22,14 @@ rand = "0.8"
 safelog = "0.10"
 serde = { version = "1.0.229", features = ["derive"] }
 tokio = { version = "1.53.2", features = ["full"] }
-tor-cell = "0.47"
-tor-config = "0.47"
-tor-hscrypto = "0.47"
-tor-keymgr = { version = "0.47", features = ["ephemeral-keystore"] }
-tor-llcrypto = "0.47"
-tor-hsservice = "0.47"
-tor-proto = "0.47"
-tor-rtcompat = "0.47"
+tor-cell = "0.48"
+tor-config = "0.48"
+tor-hscrypto = "0.48"
+tor-keymgr = { version = "0.48", features = ["ephemeral-keystore"] }
+tor-llcrypto = "0.48"
+tor-hsservice = "0.48"
+tor-proto = "0.48"
+tor-rtcompat = "0.48"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 serde_bytes = "0.11"

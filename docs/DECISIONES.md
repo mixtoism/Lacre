@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-044),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-045),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -1482,6 +1482,40 @@ puede afirmar que sea segura.
     volcados): Arti lo advierte y Lacre no lo evita.
 - **Pendiente:** comprobar en Android que el servicio se publica igual tras
   el cambio.
+
+## D-045 · Avisos de seguridad de dependencias y Arti 0.48
+- **Contexto:** cruzando `Cargo.lock` con la base de avisos de RustSec
+  (2026-11-26) salieron fallos conocidos en dependencias: rustls
+  (degradación de intercambio de claves, secretos en `Debug`), rustls-webpki
+  (intermedios desconfiados), tokio, url, zstd/zstd-safe/zstd-sys, rustix y
+  ctutils.
+- **Decisión:**
+  - Actualizar todas las que tienen arreglo compatible (`cargo update`):
+    rustls 0.23.46, rustls-webpki 0.103.17, tokio 1.54.1, url 2.5.9,
+    zstd 0.14.5, zstd-safe 8.4.0, zstd-sys 2.2.0, rustix 1.1.6,
+    ctutils 0.4.8.
+  - Subir Arti de 0.47 a 0.48. Con 0.48 el servicio onion se publica en
+    unos 10 s: con 0.47 seguía «arrancando» a los 240 s. La dirección onion
+    derivada (D-044) se mantiene tras reiniciar.
+    Probado aquí: un segundo nodo sin escucha directa (`--no-listen`) se
+    conectó al primero por su dirección `/onion3/…`.
+  - El CI ya pasa `cargo audit`: un aviso nuevo para la compilación.
+- **Riesgos aceptados** (sin arreglo publicado que podamos usar):
+  - **SQLite** (libsqlite3-sys 0.38, CVE-2026-119375): lo trae Arti para la
+    caché del directorio de Tor, y Arti 0.48 sigue con rusqlite 0.40. Hace
+    falta que alguien escriba una base y su `-wal` manipulados en
+    `<datos>/tor/`. Quien puede hacer eso ya puede leer y cambiar los datos
+    del dispositivo.
+  - **rsa** (ataque Marvin, RUSTSEC-2023-0071): Arti solo verifica firmas
+    RSA de la red Tor y no descifra con RSA. El ataque no se aplica.
+  - **crypto-bigint 0.5** (tiempo no constante): lo usan p256/p384/k256 a
+    través de openmls. Lacre usa la suite MLS con X25519 y Ed25519
+    (`MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519`): ese código no
+    maneja secretos nuestros.
+  - Crates sin mantenimiento (bincode, chrono, humantime, paste, zvariant…):
+    no son fallos. Se revisan en cada actualización.
+- **Pendiente:** pasar a rusqlite ≥ 0.41 cuando Arti lo haga; seguir los
+  avisos en cada versión.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

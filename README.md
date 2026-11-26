@@ -424,7 +424,7 @@ Known risks and trade-offs:
   version is not detected.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-044), but nothing should be considered secure until audited.
+  (D-039–D-045), but nothing should be considered secure until audited.
 
 ---
 
