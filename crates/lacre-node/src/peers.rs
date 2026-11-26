@@ -71,7 +71,7 @@ impl PeerCache {
         self.peers.truncate(MAX_PEERS);
         let text: String = self.addrs().iter().map(|a| format!("{a}\n")).collect();
         if let Err(e) = write_private(&self.path, text.as_bytes()) {
-            warn!("no se pudo guardar la caché de peers: {e:#}");
+            warn!("could not save the peer cache: {e:#}");
         }
     }
 }

@@ -92,7 +92,7 @@ pub async fn send(
                     }
                 }
                 SwarmEvent::Behaviour(Event::OutboundFailure { request_id, error, peer, .. }) => {
-                    debug!(%peer, "mensajero: {error}");
+                    debug!(%peer, "courier: {error}");
                     pending.remove(&request_id);
                 }
                 _ => {}

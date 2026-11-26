@@ -91,7 +91,7 @@ pub fn spawn(cfg: Config, net: Client) {
             // que por sí sola despierta la radio cada poco.
             if power.borrow_and_update().low {
                 if dht.take().is_some() {
-                    debug!("reposo: Mainline detenida");
+                    debug!("low power: Mainline stopped");
                 }
                 let _ = power.changed().await;
                 continue;
@@ -100,7 +100,7 @@ pub fn spawn(cfg: Config, net: Client) {
                 dht = match start_dht(&cfg) {
                     Ok(d) => Some(d),
                     Err(e) => {
-                        warn!("no se pudo arrancar Mainline: {e:#}");
+                        warn!("could not start Mainline: {e:#}");
                         None
                     }
                 };
@@ -111,7 +111,7 @@ pub fn spawn(cfg: Config, net: Client) {
                         announce(dht.as_ref(), &cfg.trackers, topic, port).await;
                         last_announce = Some(tokio::time::Instant::now());
                     }
-                    None => debug!("sin puerto de escucha todavía; no se anuncia"),
+                    None => debug!("no listening port yet; not announcing"),
                 }
             }
             let connected = net.connected_peers().await.map(|p| p.len()).unwrap_or(0);
@@ -123,8 +123,8 @@ pub fn spawn(cfg: Config, net: Client) {
                 let mut found: Vec<_> = found.into_iter().collect();
                 found.shuffle(&mut rand::thread_rng());
                 if !found.is_empty() {
-                    info!("punto de encuentro: {} relay(s) encontrados", found.len());
-                    debug!(?found, "relays del punto de encuentro");
+                    info!("rendezvous: {} relay(s) found", found.len());
+                    debug!(?found, "rendezvous relays");
                 }
                 for addr in found.into_iter().take(MAX_DIALS) {
                     net.dial(tcp_multiaddr(addr)).await;
@@ -168,14 +168,14 @@ fn tcp_multiaddr(addr: SocketAddrV4) -> Multiaddr {
 async fn announce(dht: Option<&AsyncDht>, trackers: &[String], topic: [u8; 20], port: u16) {
     if let Some(dht) = dht {
         match dht.announce_peer(Id::from(topic), Some(port)).await {
-            Ok(_) => info!("anunciado como relay en Mainline (puerto {port})"),
-            Err(e) => warn!("anuncio en Mainline fallido: {e}"),
+            Ok(_) => info!("announced as relay on Mainline (port {port})"),
+            Err(e) => warn!("Mainline announce failed: {e}"),
         }
     }
     for t in trackers {
         match tracker_announce(t, topic, port, true).await {
-            Ok(_) => debug!(tracker = %t, "anunciado como relay"),
-            Err(e) => debug!(tracker = %t, "anuncio fallido: {e:#}"),
+            Ok(_) => debug!(tracker = %t, "announced as relay"),
+            Err(e) => debug!(tracker = %t, "announce failed: {e:#}"),
         }
     }
 }
@@ -194,7 +194,7 @@ async fn discover(dht: Option<&AsyncDht>, trackers: &[String], topic: [u8; 20], 
     for t in trackers {
         match tracker_announce(t, topic, port, false).await {
             Ok(peers) => found.extend(peers),
-            Err(e) => debug!(tracker = %t, "consulta fallida: {e:#}"),
+            Err(e) => debug!(tracker = %t, "lookup failed: {e:#}"),
         }
     }
     found.retain(|a| a.port() != 0 && is_public(a.ip()));

@@ -169,7 +169,7 @@ impl Client {
         match first {
             Ok(resp) => Ok(resp),
             Err(e) => {
-                debug!(%peer, "petición fallida ({e}); buscando en la DHT");
+                debug!(%peer, "request failed ({e}); looking up in the DHT");
                 self.closest_peers(peer.to_bytes()).await?;
                 self.call(|reply| Command::Request { peer, req, reply }).await?
             }
@@ -246,7 +246,7 @@ fn relay_server_config() -> relay::Config {
 /// arrancar el nodo.
 pub(crate) fn dns_config() -> (ResolverConfig, ResolverOpts) {
     hickory_resolver::system_conf::read_system_conf().unwrap_or_else(|e| {
-        warn!("sin configuración DNS del sistema ({e}); se usa Quad9");
+        warn!("no system DNS configuration ({e}); using Quad9");
         (ResolverConfig::udp_and_tcp(&hickory_resolver::config::QUAD9), ResolverOpts::default())
     })
 }
@@ -445,7 +445,7 @@ impl Network {
     /// Aplica el modo de energía actual (D-034).
     fn apply_power(&mut self) {
         let p = *self.power.borrow_and_update();
-        info!(reposo = p.low, wifi = p.wifi, "modo de energía");
+        info!(low_power = p.low, wifi = p.wifi, "power mode");
         let want_mdns = self.mdns && !p.low && p.wifi;
         if want_mdns != self.swarm.behaviour().mdns.is_enabled() {
             let me = *self.swarm.local_peer_id();
@@ -453,7 +453,7 @@ impl Network {
                 true => match mdns::tokio::Behaviour::new(mdns::Config::default(), me) {
                     Ok(b) => Some(b),
                     Err(e) => {
-                        warn!("no se pudo activar mDNS: {e}");
+                        warn!("could not enable mDNS: {e}");
                         None
                     }
                 },
@@ -469,7 +469,7 @@ impl Network {
             // reservas en relays solo cuestan conexiones vivas.
             if self.onion_ready {
                 for (relay, id) in std::mem::take(&mut self.relays) {
-                    debug!(%relay, "reposo: se suelta la reserva");
+                    debug!(%relay, "low power: releasing the reservation");
                     self.swarm.remove_listener(id);
                 }
             }
@@ -484,7 +484,7 @@ impl Network {
 
     fn dial(&mut self, addr: Multiaddr) {
         if let Err(e) = self.swarm.dial(addr.clone()) {
-            debug!(%addr, "no se pudo marcar: {e}");
+            debug!(%addr, "could not dial: {e}");
         }
     }
 
@@ -578,7 +578,7 @@ impl Network {
             return;
         }
         if let Err(e) = store.put(record) {
-            warn!("no se pudo guardar el registro: {e:?}");
+            warn!("could not store the record: {e:?}");
         }
     }
 
@@ -586,10 +586,10 @@ impl Network {
         match ev {
             SwarmEvent::NewListenAddr { address, .. } => {
                 if is_relayed(&address) {
-                    info!("escuchando en {address}");
+                    info!("listening on {address}");
                 } else {
                     // Con `/p2p/`, lista para usar como `--bootstrap` de otro nodo.
-                    info!("escuchando en {}", address.clone().with(Protocol::P2p(*self.swarm.local_peer_id())));
+                    info!("listening on {}", address.clone().with(Protocol::P2p(*self.swarm.local_peer_id())));
                 }
                 if matches!(address.iter().next(), Some(Protocol::Onion3(_))) {
                     self.onion_ready = true;
@@ -617,12 +617,12 @@ impl Network {
                     self.kad().add_address(&peer_id, address.clone());
                 }
                 if num_established.get() == 1 {
-                    debug!(%peer_id, relayed = endpoint.is_relayed(), "conectado");
+                    debug!(%peer_id, relayed = endpoint.is_relayed(), "connected");
                     emit(&self.events, NetEvent::Connected(peer_id)).await;
                 }
             }
             SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                debug!(?peer_id, "llamada fallida: {error}");
+                debug!(?peer_id, "dial failed: {error}");
             }
             SwarmEvent::ListenerClosed { addresses, .. } => {
                 // Si se cae la reserva en un relay, se podrá pedir otra.
@@ -634,7 +634,7 @@ impl Network {
             }
             SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                 for (peer, addr) in list {
-                    debug!(%peer, %addr, "descubierto por mDNS");
+                    debug!(%peer, %addr, "discovered via mDNS");
                     self.kad().add_address(&peer, addr);
                 }
             }
@@ -664,8 +664,8 @@ impl Network {
             }
             SwarmEvent::Behaviour(BehaviourEvent::RelayClient(ev)) => debug!("relay: {ev:?}"),
             SwarmEvent::Behaviour(BehaviourEvent::Dcutr(ev)) => match ev.result {
-                Ok(_) => info!(peer = %ev.remote_peer_id, "conexión directa tras hole punching"),
-                Err(e) => debug!(peer = %ev.remote_peer_id, "hole punching fallido: {e}"),
+                Ok(_) => info!(peer = %ev.remote_peer_id, "direct connection after hole punching"),
+                Err(e) => debug!(peer = %ev.remote_peer_id, "hole punching failed: {e}"),
             },
             SwarmEvent::Behaviour(BehaviourEvent::Upnp(ev)) => debug!("upnp: {ev:?}"),
             SwarmEvent::Behaviour(BehaviourEvent::Kad(ev)) => self.on_kad(ev),
@@ -695,10 +695,10 @@ impl Network {
         let circuit = addr.with(Protocol::P2p(relay)).with(Protocol::P2pCircuit);
         match self.swarm.listen_on(circuit.clone()) {
             Ok(id) => {
-                debug!(%circuit, "pidiendo reserva en relay");
+                debug!(%circuit, "requesting relay reservation");
                 self.relays.insert(relay, id);
             }
-            Err(e) => warn!(%circuit, "no se pudo pedir reserva: {e}"),
+            Err(e) => warn!(%circuit, "could not request reservation: {e}"),
         }
     }
 
@@ -734,11 +734,11 @@ impl Network {
                 // presupuesto por peer para que no se pueda agotar la
                 // memoria o la CPU mandando claves nuevas (D-042).
                 if !self.take_put_budget(source) {
-                    debug!(%source, "demasiados registros DHT de este peer");
+                    debug!(%source, "too many DHT records from this peer");
                     return;
                 }
                 let Ok(permit) = self.validating.clone().try_acquire_owned() else {
-                    debug!(%source, "validación de registros saturada: descartado");
+                    debug!(%source, "record validation saturated: discarded");
                     return;
                 };
                 let tx = self.self_tx.clone();
@@ -747,7 +747,7 @@ impl Network {
                     if is_valid_record(&record) {
                         let _ = tx.blocking_send(Command::StoreValidated(record));
                     } else {
-                        debug!(%source, "registro DHT inválido descartado");
+                        debug!(%source, "invalid DHT record discarded");
                     }
                 });
             }
