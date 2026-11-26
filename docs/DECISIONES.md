@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-057),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-058),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -204,7 +204,8 @@ puede afirmar que sea segura.
   - En iOS, la App Store tiene fricciones conocidas con GPL. Al ser los autores
     los dueños del copyright, se puede publicar igualmente, pero
     contribuciones de terceros sin acuerdo de licencia (CLA) complicarían esa
-    vía. Conviene decidir pronto si se pide CLA o DCO.
+    vía. Conviene decidir pronto si se pide CLA o DCO. **Decidido: DCO
+    (D-058).**
 
 ## D-015 · Interfaz con Flutter + flutter_rust_bridge
 
@@ -1952,5 +1953,19 @@ puede afirmar que sea segura.
   y el nodo publica su servicio onion; al lanzar la app otra vez la
   ventana vuelve, sin un segundo proceso.
 
+## D-058 · Contribuciones con DCO
+- **Contexto:** D-014 dejaba abierto si a quien contribuye se le pide un
+  acuerdo de licencia (CLA) o solo el Developer Certificate of Origin (DCO).
+- **Decisión:** DCO 1.1. Cada commit lleva `Signed-off-by:` (`git commit
+  -s`); se explica en `CONTRIBUTING.md`. Decisión del usuario, 2026-11-26.
+- **Motivo:** es lo más sencillo para quien contribuye y no pide ceder
+  derechos: cada autor conserva el copyright de lo suyo bajo GPL.
+- **Limitaciones:** sin CLA no se puede cambiar la licencia del código de
+  terceros. Publicar en la App Store con código ajeno dentro (D-014) pedirá
+  el permiso de esos autores, o una excepción de licencia que todos
+  acepten.
+- **Pendiente:** comprobar el `Signed-off-by` en la integración continua
+  cuando la haya.
+
 ## Preguntas abiertas
-- **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).
+- ~~**Contribuciones:** ¿CLA o DCO?~~ → **DCO (D-058).**

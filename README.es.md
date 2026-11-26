@@ -11,7 +11,7 @@ Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
 servidores intermedios.
 
 > **Estado: endurecida, sin auditar.** Se ha aplicado una revisión de
-> seguridad interna (D-039 a D-057), pero el protocolo (`v1`) aún puede
+> seguridad interna (D-039 a D-058), pero el protocolo (`v1`) aún puede
 > cambiar y el código no ha pasado ninguna auditoría independiente. No lo
 > uses todavía para nada delicado.
 
@@ -151,4 +151,6 @@ Tras cambiar `app/rust/src/api`, se regeneran los enlaces con
 
 ## Licencia
 
-[GPL-3.0 o posterior](LICENSE).
+[GPL-3.0 o posterior](LICENSE). Las contribuciones se aceptan con el
+Developer Certificate of Origin (`git commit -s`); ver
+[`CONTRIBUTING.md`](CONTRIBUTING.md).

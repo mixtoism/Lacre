@@ -11,7 +11,7 @@ Peer-to-peer messaging with end-to-end encryption, multi-device support and
 no intermediary servers.
 
 > **Status: hardened, unaudited.** An internal security review has been
-> applied (D-039–D-057), but the protocol is versioned (`v1`) and not frozen,
+> applied (D-039–D-058), but the protocol is versioned (`v1`) and not frozen,
 > and the code has not had an independent audit. Do not rely on it for
 > anything sensitive yet. The CLI output is currently in Spanish.
 
@@ -454,7 +454,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-057), but nothing should be considered secure until audited.
+  (D-039–D-058), but nothing should be considered secure until audited.
 
 ---
 
@@ -702,3 +702,6 @@ Planned:
 
 [GPL-3.0-or-later](LICENSE). All dependencies use GPL-3.0-compatible
 licenses (MIT, Apache-2.0, BSD, ISC, Zlib, Unicode, MPL-2.0).
+
+Contributions are accepted under the Developer Certificate of Origin
+(`git commit -s`); see [`CONTRIBUTING.md`](CONTRIBUTING.md).
