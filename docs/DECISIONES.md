@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-055),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-056),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -586,7 +586,7 @@ puede afirmar que sea segura.
     tamaño y tiempo, en la rama `worktree-doc-riesgos`.
 - **Pendiente:**
   - ~~Paquetes de stickers compartibles.~~ **Hecho (D-055).**
-  - Un paquete por defecto incluido en la app.
+  - ~~Un paquete por defecto incluido en la app.~~ **Hecho (D-056).**
   - ~~Convertir GIF a WebP animado para que quepan más.~~ **Hecho (D-055).**
 - **Pruebas:**
   - Unitarias en `sticker.rs`: formatos, dimensiones de cada formato, bomba
@@ -1886,8 +1886,9 @@ puede afirmar que sea segura.
     lo recibe ve cuántos stickers tiene y cuáles.
   - No hay paquete por defecto: necesita dibujos originales con licencia
     libre.
-- **Pendiente:** un paquete por defecto con dibujos propios; elegir qué
-  stickers van en el paquete (ahora va la colección entera, hasta 60).
+- **Pendiente:** ~~un paquete por defecto con dibujos propios~~ (D-056);
+  elegir qué stickers van en el paquete (ahora va la colección entera,
+  hasta 60).
 - **Pruebas:**
   - Unitarias: `sticker::tests::packs`; en `anim.rs`, conversión de un GIF
     (fotogramas, duración total y último fotograma iguales al original),
@@ -1895,6 +1896,33 @@ puede afirmar que sea segura.
     validó con `webpinfo` (libwebp) y Pillow.
   - `scripts/e2e.sh`: Bob comparte su colección, Carol la importa (2
     nuevos); Carol manda un GIF de más de 200 KB, que llega como WebP.
+
+## D-056 · Paquete de stickers por defecto
+- **Contexto:** D-025 y D-055 dejaban pendiente un paquete incluido en la
+  app, que no se podía hacer con dibujos ajenos sin licencia.
+- **Decisión:** 13 stickers originales de un sello de lacre con caras
+  (feliz, risa, amor, triste, enfado, sorpresa, guiño, dormido, gafas,
+  pensando, vale, no y un corazón). Se dibujan como SVG desde
+  `assets/stickers/generar.py`, se pasan a PNG de 256 px con `resvg` y se
+  empaquetan (`assets/stickers/generar.sh`, con el ejemplo
+  `empaquetar_stickers`) en `crates/lacre-node/assets/`, que se incluye en
+  el binario. La primera vez que se abre un nodo sin colección guardada,
+  la colección empieza con ellos; si se quitan, no vuelven. Sin texto:
+  sirven en cualquier idioma.
+- **Motivo:** dibujos propios generados por código: la licencia es la del
+  proyecto, se pueden regenerar y cambiar, y no hacen falta herramientas de
+  dibujo. Ir en `lacre-node` y no en Flutter hace que la CLI y la app los
+  tengan igual.
+- **Limitaciones:**
+  - 252 KB más en el binario.
+  - Un nodo siempre encendido también los guarda (unos 250 KB en disco).
+  - Son PNG estáticos; ningún animado.
+  - Licencia GPL como el resto; para unos stickers quizá convenga una más
+    abierta (CC0 o CC BY): decisión del autor.
+- **Pendiente:** más paquetes y elegir cuáles ver en el panel.
+- **Pruebas:** `sticker::tests::default_pack_only_once` (todos pasan
+  `check`; no vuelven tras quitarlos); `scripts/e2e.sh` sigue pasando con
+  la colección sembrada.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

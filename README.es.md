@@ -11,7 +11,7 @@ Mensajería P2P con cifrado de extremo a extremo, multidispositivo y sin
 servidores intermedios.
 
 > **Estado: endurecida, sin auditar.** Se ha aplicado una revisión de
-> seguridad interna (D-039 a D-055), pero el protocolo (`v1`) aún puede
+> seguridad interna (D-039 a D-056), pero el protocolo (`v1`) aún puede
 > cambiar y el código no ha pasado ninguna auditoría independiente. No lo
 > uses todavía para nada delicado.
 
@@ -47,7 +47,8 @@ el protocolo, en [`docs/PROTOCOLO.md`](docs/PROTOCOLO.md), y lo que falta, en
   descargarlos con el remitente desconectado (D-054).
 - **Stickers:** PNG, GIF, WebP o JPEG de hasta 200 KB. Un GIF animado que no
   cabe se convierte a WebP animado. La colección se comparte como un archivo
-  `.lacre-stickers` (D-055).
+  `.lacre-stickers` (D-055). Se empieza con 13 stickers propios de un sello
+  de lacre (D-056).
 - **Cifrado en disco:** estado, historial, fotos y archivos, con una clave del
   almacén del sistema (Keystore de Android, Secret Service, Llavero de macOS,
   DPAPI). Se detecta la vuelta atrás de un archivo de estado (D-046).
@@ -126,6 +127,10 @@ flutter run -d linux                              # escritorio (GTK 3)
 LACRE_DATA=/tmp/lacre-b flutter run -d linux      # segunda instancia independiente
 flutter build apk                                 # Android (SDK, NDK y JDK 17)
 ```
+
+Para Android hace falta un JDK 17 completo, no un JRE. Si el `java` del
+`PATH` es un JRE, Gradle falla con «does not provide the required
+capabilities: [JAVA_COMPILER]»: `flutter config --jdk-dir=/usr/lib/jvm/<jdk-17>`.
 
 Tras cambiar `app/rust/src/api`, se regeneran los enlaces con
 `flutter_rust_bridge_codegen generate` (desde `app/`).

@@ -124,23 +124,55 @@ pub fn check(bytes: &[u8]) -> Result<&'static str> {
     Ok(ext)
 }
 
+/// Paquete por defecto (D-056): dibujos originales del proyecto, generados
+/// con `assets/stickers/generar.sh`.
+pub const DEFAULT_PACK: &[u8] = include_bytes!("../assets/predeterminados.lacre-stickers");
+
 /// Almacén de stickers por contenido y colección propia.
 pub struct Stickers {
     dir: PathBuf,
     list_path: PathBuf,
     /// Colección propia, del más reciente al más antiguo.
     list: Vec<String>,
+    /// No había colección guardada: es la primera vez.
+    fresh: bool,
 }
 
 impl Stickers {
     pub fn open(data_dir: &Path) -> Result<Self> {
         let dir = data_dir.join("media");
         let list_path = data_dir.join("stickers.cbor");
-        let list = match read_private(&list_path)? {
-            Some(b) => cbor_from(&b)?,
-            None => Vec::new(),
+        let (list, fresh) = match read_private(&list_path)? {
+            Some(b) => (cbor_from(&b)?, false),
+            None => (Vec::new(), true),
         };
-        Ok(Self { dir, list_path, list })
+        Ok(Self { dir, list_path, list, fresh })
+    }
+
+    /// La primera vez, la colección empieza con el paquete por defecto. Si
+    /// luego se quitan, no vuelven.
+    pub fn seed_default(&mut self) -> Result<usize> {
+        if !self.fresh {
+            return Ok(0);
+        }
+        let (_, list) = unpack(DEFAULT_PACK)?;
+        let n = self.import(&list)?;
+        self.fresh = false;
+        Ok(n)
+    }
+
+    /// Añade stickers (ya comprobados) a la colección, en el mismo orden y
+    /// por delante de los que había. Devuelve cuántos eran nuevos.
+    pub fn import(&mut self, stickers: &[Vec<u8>]) -> Result<usize> {
+        let mut added = 0;
+        for b in stickers.iter().rev() {
+            let id = self.put(b)?;
+            added += !self.list.contains(&id) as usize;
+            self.list.retain(|s| s != &id);
+            self.list.insert(0, id);
+        }
+        self.save()?;
+        Ok(added)
     }
 
     /// Guarda los bytes (ya comprobados con [`check`]) y devuelve su nombre.
@@ -232,6 +264,25 @@ mod tests {
         let bomb = [&PNG[..16], &30000u32.to_be_bytes(), &30000u32.to_be_bytes()].concat();
         assert!(check(&bomb).unwrap_err().to_string().contains("30000×30000"));
         assert!(check(PNG).is_ok());
+    }
+
+    #[test]
+    fn default_pack_only_once() {
+        let dir = std::env::temp_dir().join(format!("lacre-stickers-seed-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let (_, all) = unpack(DEFAULT_PACK).unwrap();
+        assert!(all.len() >= 10, "{} stickers válidos en el paquete", all.len());
+        let mut st = Stickers::open(&dir).unwrap();
+        assert_eq!(st.seed_default().unwrap(), all.len());
+        assert_eq!(st.list().len(), all.len());
+        // Si se quitan, no vuelven al abrir de nuevo.
+        for id in st.list().to_vec() {
+            st.remove(&id).unwrap();
+        }
+        let mut st = Stickers::open(&dir).unwrap();
+        assert_eq!(st.seed_default().unwrap(), 0);
+        assert!(st.list().is_empty());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

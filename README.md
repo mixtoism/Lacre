@@ -79,7 +79,8 @@ references below point to entries in that file.
   be downloaded after the sender goes offline (D-026, D-054).
 - **Stickers.** Any PNG, GIF, WebP or JPEG up to 200 KB; animated GIFs that
   don't fit are converted to animated WebP in Rust. A sticker collection can
-  be shared as a `.lacre-stickers` file and imported (D-025, D-055).
+  be shared as a `.lacre-stickers` file and imported (D-025, D-055). New
+  installs start with 13 original wax-seal stickers (D-056).
 - **Persistent peer cache.** Peers seen before are reconnected on restart,
   with no bootstrap server.
 - **Local message history.** Up to 5,000 messages per chat are kept on disk.
@@ -453,7 +454,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-055), but nothing should be considered secure until audited.
+  (D-039–D-056), but nothing should be considered secure until audited.
 
 ---
 
@@ -531,6 +532,11 @@ cd app
 flutter run -d linux                         # data in ~/.local/share/org.lacre.app/node
 LACRE_DATA=/tmp/lacre-b flutter run -d linux     # a second, independent instance
 ```
+
+For Android, `flutter build apk` needs the Android SDK and NDK and a full
+JDK 17 (not a JRE). If `java` on your `PATH` is a JRE, Gradle fails with
+"does not provide the required capabilities: [JAVA_COMPILER]"; point
+Flutter at a JDK with `flutter config --jdk-dir=/usr/lib/jvm/<jdk-17>`.
 
 The app covers creating an identity or linking to an existing one, the chat
 list with network status, 1:1 and group chats, and a profile page with your QR
@@ -684,7 +690,6 @@ Planned:
 
 - Flutter builds for iOS, Windows and macOS (Linux and Android work).
 - Desktop background mode (tray icon or user service).
-- A default sticker pack with original artwork.
 - Encrypted history backup.
 - Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.

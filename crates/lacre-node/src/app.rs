@@ -754,7 +754,10 @@ impl App {
         let mailbox = Mailbox::open(dir.join("mailbox.cbor"))?;
         let depot = Depot::open(&dir);
         let history = History::open(dir.join("history.cbor"))?;
-        let stickers = Stickers::open(&dir)?;
+        let mut stickers = Stickers::open(&dir)?;
+        if let Err(e) = stickers.seed_default() {
+            warn!("could not add the default sticker pack: {e:#}");
+        }
         // Registros de contactos ya resueltos (firmados: se vuelven a verificar).
         let contacts = match read_private(&dir.join("contacts.cbor"))? {
             Some(b) => cbor_from::<Vec<Vec<u8>>>(&b)?
@@ -932,15 +935,7 @@ impl App {
         let bytes = fs::read(&path);
         let _ = fs::remove_file(&path);
         let (_, list) = sticker::unpack(&bytes?)?;
-        let mut st = self.stickers.lock().unwrap();
-        let mut added = 0;
-        // Al revés, para que queden en el mismo orden que en el paquete.
-        for b in list.iter().rev() {
-            let id = st.put(b)?;
-            added += !st.list().contains(&id) as usize;
-            st.keep(&id)?;
-        }
-        Ok(added)
+        self.stickers.lock().unwrap().import(&list)
     }
 
     // ---------------------------------------------------------- archivos
