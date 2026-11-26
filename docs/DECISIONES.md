@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-049),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-050),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -165,8 +165,8 @@ puede afirmar que sea segura.
 - **Pendiente:**
   - QR bidireccional con secreto de un solo uso y confirmación visual en ambos
     lados.
-  - Transferir el historial entre dispositivos propios: ahora un dispositivo
-    nuevo solo ve los mensajes posteriores a su entrada.
+  - ~~Transferir el historial entre dispositivos propios: ahora un dispositivo
+    nuevo solo ve los mensajes posteriores a su entrada.~~ *(Hecho en D-050.)*
 
 ## D-012 · Almacenamiento local (PoC)
 
@@ -1683,6 +1683,39 @@ puede afirmar que sea segura.
     podría ver como válidos dos relevos de dispositivos distintos; se
     resuelve igual que una bifurcación.
 - **Pendiente:** administradores múltiples y resolución de bifurcaciones.
+
+## D-050 · Historial anterior para dispositivos propios
+
+- **Contexto:** un dispositivo recién vinculado o recuperado con la frase
+  entra en los chats por Welcome y, por diseño de MLS, no puede descifrar
+  nada anterior: veía los chats vacíos (D-011). Decidido sin preguntar (se
+  pidió completar el proyecto).
+- **Decisión:**
+  - Al entrar en un chat que no conocía, el dispositivo pide el historial a
+    otro dispositivo suyo que esté en el grupo: `Request::History{group_id,
+    from}`, por páginas de 500 mensajes o unos 2 MiB. Solo directamente,
+    no por buzón.
+  - Quien responde exige que quien pide esté en su registro de identidad y
+    sea miembro MLS actual del grupo. Envía cada mensaje con los bytes del
+    sticker y la oferta del archivo.
+  - Quien recibe comprueba los stickers y ofertas como si llegaran en un
+    mensaje (ofertas del mismo grupo y con el mismo identificador), mezcla
+    sin duplicados y en orden de envío, y avisa: CLI «historial del chat
+    [n] recibido…», app con un aviso y recarga del chat.
+  - Si no hay otro dispositivo en línea, se reintenta en cada tick durante
+    7 días; después se da por perdido.
+- **Motivo:** es lo que espera quien cambia de móvil. Los mensajes ya están
+  en claro en los dispositivos de la misma persona, y el canal entre ellos
+  va cifrado y autenticado (Noise); no amplía a quién se revela nada.
+- **Limitaciones:**
+  - Un dispositivo propio comprometido puede inventar historial (remitentes
+    y textos falsos): el historial copiado no tiene firmas de los autores.
+  - Solo copia lo que guarda el otro dispositivo (hasta el máximo por chat)
+    y solo los chats en los que este sigue; lo de chats borrados se pierde.
+  - Si se pierden todos los dispositivos, la frase no recupera el historial
+    (no hay copia de seguridad).
+  - Los archivos se descargan después, como siempre, de quien siga en línea.
+- **Pendiente:** copia de seguridad cifrada del historial.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

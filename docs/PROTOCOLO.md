@@ -427,6 +427,7 @@ El apéndice A tiene el esquema completo.
 | `Avatar`          | Un miembro de un chat común, para pedir la foto de perfil | `Avatar{version, image}` |
 | `Accepted{groups}` | Otro dispositivo de la misma persona (§12.2)     | `Ack`             |
 | `Blocks{list}`    | Otro dispositivo de la misma persona (§12.3)      | `Ack`             |
+| `History{group_id, from}` | Otro dispositivo de la misma persona (§12.4) | `History{list, next}` |
 
 Cualquier petición se puede rechazar con `Error(tstr)`.
 
@@ -454,6 +455,8 @@ verificado del sobre.
   par autenticado. Nadie más puede leerlos ni borrarlos.
 - `Accepted` y `Blocks`: el remitente DEBE ser un dispositivo del registro
   de identidad del receptor.
+- `History`: solo se responde a un dispositivo del registro de identidad
+  del receptor que además es miembro MLS actual del grupo (§12.4).
 - `Avatar`: solo se responde a dispositivos que comparten con el receptor un
   chat activo y aceptado, y cuya persona no está bloqueada.
 - `Chunk`: solo se responde a dispositivos que son miembros actuales del
@@ -796,6 +799,26 @@ el propio, gana para cada sufijo la entrada con `at` mayor (la última
 escritura). Los desbloqueos también se recuerdan, para que una lista vieja no
 los deshaga. Los mensajes de personas bloqueadas se descartan al recibirlos.
 
+### 12.4. Historial anterior
+
+MLS no da acceso a los mensajes anteriores a la entrada en un grupo. Cuando
+un dispositivo entra en un chat que no conocía (Welcome), pide el historial
+a los demás dispositivos de su persona que están en ese grupo con
+`History{group_id, from}`, directamente (nunca dentro de un sobre).
+
+- La respuesta `History{list, next}` lleva los mensajes guardados a partir de
+  la posición `from`, como mucho 500 o unos 2 MiB, y `next` es la posición
+  desde la que seguir (`null` si no hay más). Cada `HistoryItem` lleva el
+  mensaje tal como lo guarda el emisor, los bytes del sticker y la oferta
+  del archivo, si los hay.
+- El receptor comprueba cada sticker como uno recibido y solo acepta una
+  oferta si es del mismo grupo y su identificador coincide con el del
+  mensaje; si no, descarta ese mensaje. Después mezcla lo recibido con lo
+  suyo sin duplicados, en orden de `sent_at`, hasta el máximo de mensajes
+  por chat.
+- Se pide a un dispositivo cada vez, hasta que uno responde; si no hay
+  ninguno en línea, se reintenta en cada tarea periódica durante 7 días.
+
 ## 13. Consideraciones de seguridad
 
 ### 13.1. Suplantación de handles
@@ -1036,13 +1059,27 @@ Request = "KeyPackage"
         / { "Accepted":     { groups: [ * ByteList ] } }
         / { "Blocks":       { list: { * tstr => BlockEntry } } }
 
+Request /= { "History":     { group_id: ByteList, from: uint } }
+
 Response = { "KeyPackage": bstr }
          / "Ack"
          / { "Envelopes": { list: [ * Envelope ], more: bool } }
          / { "Chunk":     bstr }
          / { "Avatar":    { version: uint, image: bstr / null } }
          / { "Taken":     { ids: [ * Bytes32 ] } }
+         / { "History":   { list: [ * HistoryItem ], next: uint / null } }
          / { "Error":     tstr }
+
+HistoryItem = {
+  message: StoredMessage,
+  ? sticker: bstr,                ; bytes del sticker
+  ? offer: { offer: FileOffer, group_id: ByteList, sender: Bytes32 },
+}
+StoredMessage = {
+  from: tstr, text: tstr, sent_at: uint, mine: bool, notice: bool,
+  ? sticker: tstr,                ; nombre local; el receptor lo ignora
+  ? file: { id: tstr, name: tstr, size: uint },
+}
 
 ChatMeta = {
   title:        tstr / null,
@@ -1072,6 +1109,7 @@ AppMessage = {
   ? file: FileOffer,
   ? avatar: uint,
   ? leave: true,
+  ? takeover: bstr,               ; CBOR de SignedRecord (§8.7)
 }
 
 FileOffer = { name: tstr, size: uint, key: Bytes32, hashes: bstr }

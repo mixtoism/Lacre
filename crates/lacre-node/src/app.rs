@@ -30,12 +30,12 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
 use crate::files::{self, FileOffer, Files, Partial, StoredOffer};
-use crate::history::{FileRef, History, StoredMessage};
+use crate::history::{FileRef, History, MAX_PER_CHAT, StoredMessage};
 use crate::mailbox::Mailbox;
 use crate::net::{Client, Inbound, device_pk_of, peer_id_of};
 use crate::peers::is_dialable_from_anywhere;
 use crate::people::{self, Avatars, Blocked, fold};
-use crate::proto::{ChatMeta, Request, Response};
+use crate::proto::{ChatMeta, HistoryItem, Request, Response};
 use crate::sticker::{self, Stickers};
 
 /// Mensajes MLS que no se pudieron procesar (p. ej. de una época futura) y
@@ -103,6 +103,9 @@ pub enum Event {
     RelayReady(String),
     /// Progreso de una descarga (`done == total`: terminada).
     FileProgress { id: String, done: u32, total: u32 },
+    /// Ha llegado el historial anterior de un chat (D-050): hay que volver
+    /// a leer sus mensajes.
+    HistoryLoaded { index: usize, added: usize },
 }
 
 /// Resumen de un chat para listarlo.
@@ -160,6 +163,10 @@ pub struct Chat {
     /// muestran sus mensajes aunque el commit que nos saca tarde en llegar.
     #[serde(default)]
     pub left: bool,
+    /// Desde cuándo (hora Unix) falta pedir el historial a otro dispositivo
+    /// nuestro (D-050); 0 si no hace falta.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub history_since: u64,
 }
 
 fn yes() -> bool {
@@ -595,6 +602,12 @@ fn device_of(members: &[MemberId], handle: &str) -> Option<[u8; 32]> {
 fn participates(participants: &[String], root_pk: &[u8; 32]) -> bool {
     suffix_of_root(root_pk).is_some_and(|s| participants.iter().any(|p| suffix_of(p) == s))
 }
+
+/// Mensajes del historial por respuesta, y bytes aproximados (D-050).
+const HISTORY_PAGE: usize = 500;
+const HISTORY_PAGE_BYTES: usize = 2 * 1024 * 1024;
+/// Durante cuánto se sigue intentando traer el historial de un chat nuevo.
+const HISTORY_TRIES: u64 = 7 * 24 * 3600;
 
 /// Trozos de un archivo que se piden a la vez.
 const FILE_WORKERS: usize = 4;
@@ -1592,6 +1605,7 @@ impl App {
                 accepted: true,
                 invited_by: None,
                 left: false,
+                history_since: 0,
             });
             self.save_chats(&st)?;
             group_id
@@ -1717,6 +1731,119 @@ impl App {
         self.update_meta(&chat, meta, false, None).await?;
         info!("group management handed over");
         Ok(handle)
+    }
+
+    /// Un trozo del historial de un chat para otro dispositivo nuestro
+    /// (D-050), con los stickers y las ofertas de archivo. Se corta por
+    /// número de mensajes y por bytes, para no pasar del límite de una
+    /// respuesta.
+    fn history_page(&self, group_id: &[u8], from: usize) -> (Vec<HistoryItem>, Option<u32>) {
+        let all = self.history.lock().unwrap().get(group_id);
+        let mut list = Vec::new();
+        let mut bytes = 0;
+        let mut i = from;
+        while i < all.len() && list.len() < HISTORY_PAGE && bytes < HISTORY_PAGE_BYTES {
+            let message = all[i].clone();
+            let sticker = message.sticker.as_ref().and_then(|id| self.stickers.lock().unwrap().read(id).ok());
+            let offer = message.file.as_ref().and_then(|f| self.files.lock().unwrap().get(&f.id).ok());
+            bytes += 256 + message.text.len() + message.from.len() + sticker.as_ref().map_or(0, Vec::len);
+            list.push(HistoryItem { message, sticker, offer });
+            i += 1;
+        }
+        (list, (i < all.len()).then_some(i as u32))
+    }
+
+    /// Pide el historial de un chat al que acabamos de entrar a otro
+    /// dispositivo nuestro que ya estaba en él (D-050). Si ninguno contesta,
+    /// se reintenta en cada tick durante `HISTORY_TRIES`.
+    async fn fetch_history(self: &Arc<Self>, group_id: &[u8]) {
+        let me = self.device_pk();
+        let (since, sources) = {
+            let st = self.state.lock().unwrap();
+            let Some(chat) = st.chats.iter().find(|c| c.group_id == group_id) else { return };
+            let Some(root) = st.identity.as_ref().map(|v| v.record.root_pk) else { return };
+            let members = st.mls.as_ref().and_then(|m| m.members(group_id).ok()).unwrap_or_default();
+            let sources: Vec<[u8; 32]> =
+                members.iter().filter(|m| m.root_pk == root && m.device_pk != me).map(|m| m.device_pk).collect();
+            (chat.history_since, sources)
+        };
+        if since == 0 {
+            return;
+        }
+        let mut done = sources.is_empty() || now() > since + HISTORY_TRIES;
+        let mut added = 0;
+        for device in &sources {
+            if done {
+                break;
+            }
+            match self.download_history(group_id, device).await {
+                Ok(n) => {
+                    if n > 0 {
+                        info!("chat history received from another own device");
+                    }
+                    added = n;
+                    done = true;
+                }
+                Err(e) => debug!("history request failed: {e:#}"),
+            }
+        }
+        if !done {
+            return;
+        }
+        let index = {
+            let mut st = self.state.lock().unwrap();
+            let Some(index) = st.chats.iter().position(|c| c.group_id == group_id) else { return };
+            st.chats[index].history_since = 0;
+            if let Err(e) = self.save_chats(&st) {
+                warn!("could not save the chats: {e:#}");
+            }
+            index
+        };
+        if added > 0 {
+            self.emit(Event::HistoryLoaded { index, added });
+        }
+    }
+
+    /// Descarga todo el historial de un chat de `device` y lo une al
+    /// nuestro. Devuelve cuántos mensajes se añadieron.
+    async fn download_history(&self, group_id: &[u8], device: &[u8; 32]) -> Result<usize> {
+        let peer = peer_id_of(device)?;
+        let mut items = Vec::new();
+        let mut from = 0u32;
+        loop {
+            let req = Request::History { group_id: group_id.to_vec(), from };
+            let (list, next) = match self.net.request(peer, req).await? {
+                Response::History { list, next } => (list, next),
+                Response::Error(e) => bail!("{e}"),
+                _ => bail!("respuesta inesperada"),
+            };
+            items.extend(list);
+            match next {
+                Some(n) if n > from && items.len() < MAX_PER_CHAT => from = n,
+                _ => break,
+            }
+        }
+        // Lo que llega se trata como cualquier mensaje: stickers y ofertas
+        // se comprueban antes de guardarlos.
+        let mut messages = Vec::with_capacity(items.len());
+        for HistoryItem { mut message, sticker, offer } in items.into_iter().take(MAX_PER_CHAT) {
+            message.sticker = None;
+            if let Some(bytes) = sticker {
+                match sticker::check(&bytes).and_then(|_| self.stickers.lock().unwrap().put(&bytes)) {
+                    Ok(id) => message.sticker = Some(id),
+                    Err(_) => continue,
+                }
+            }
+            if let Some(f) = &message.file {
+                let valid = offer.filter(|o| o.group_id == group_id && o.offer.id() == f.id);
+                match valid.map(|o| self.files.lock().unwrap().register(o)) {
+                    Some(Ok(_)) => {}
+                    _ => continue,
+                }
+            }
+            messages.push(message);
+        }
+        self.history.lock().unwrap().merge(group_id, messages)
     }
 
     /// Releva al committer de los chats cuyo dispositivo gestor era nuestro
@@ -2637,6 +2764,9 @@ impl App {
                         accepted,
                         invited_by: Some(invited_by.clone()),
                         left: false,
+                        // Un chat que ya existía antes de entrar nosotros:
+                        // otro dispositivo nuestro puede tener su historial.
+                        history_since: if old.is_none() { now() } else { 0 },
                     };
                     let index = match st.chats.iter().position(|c| c.group_id == group_id) {
                         Some(i) => {
@@ -2672,6 +2802,8 @@ impl App {
                 if let Some(request) = notify {
                     self.emit(Event::NewChat { index, name, request });
                 }
+                let app = self.clone();
+                tokio::spawn(async move { app.fetch_history(&group_id).await });
                 Ok(Response::Ack)
             }
             Request::Mls(bytes) => {
@@ -2696,6 +2828,22 @@ impl App {
                 Ok(Response::Ack)
             }
             Request::Ping => Ok(Response::Ack),
+            Request::History { group_id, from } => {
+                let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
+                {
+                    let st = self.state.lock().unwrap();
+                    if !st.identity.as_ref().is_some_and(|v| v.record.has_device(&device)) {
+                        bail!("solo de un dispositivo nuestro");
+                    }
+                    // Y que esté en el grupo: lo comprueba MLS, no él.
+                    let members = st.mls.as_ref().context("sin identidad")?.members(&group_id)?;
+                    if !members.iter().any(|m| m.device_pk == device) {
+                        bail!("ese dispositivo no está en el chat");
+                    }
+                }
+                let (list, next) = self.history_page(&group_id, from as usize);
+                Ok(Response::History { list, next })
+            }
             Request::Accepted { groups } => {
                 let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
                 let mut st = self.state.lock().unwrap();
@@ -3132,6 +3280,13 @@ impl App {
         }
         self.retry_pending();
         self.fetch_avatars();
+        let pending: Vec<Vec<u8>> = {
+            let st = self.state.lock().unwrap();
+            st.chats.iter().filter(|c| c.history_since > 0).map(|c| c.group_id.clone()).collect()
+        };
+        for g in pending {
+            self.fetch_history(&g).await;
+        }
     }
 
     /// Guarda un mensaje para reintentarlo. Con cupo por grupo y menos sitio

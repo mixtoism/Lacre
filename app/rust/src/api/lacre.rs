@@ -200,6 +200,9 @@ pub enum UiEvent {
     RelayReady { addr: String },
     /// Progreso de una descarga: trozos que ya están de `total`.
     FileProgress { id: String, done: u32, total: u32 },
+    /// Otro dispositivo nuestro nos ha pasado `added` mensajes anteriores
+    /// del chat (D-050): hay que volver a cargarlo.
+    HistoryLoaded { index: u32, added: u32 },
 }
 
 impl From<Event> for UiEvent {
@@ -215,6 +218,7 @@ impl From<Event> for UiEvent {
             Event::UnverifiedMember { index, name } => Self::UnverifiedMember { index: index as u32, name },
             Event::RelayReady(addr) => Self::RelayReady { addr },
             Event::FileProgress { id, done, total } => Self::FileProgress { id, done, total },
+            Event::HistoryLoaded { index, added } => Self::HistoryLoaded { index: index as u32, added: added as u32 },
         }
     }
 }

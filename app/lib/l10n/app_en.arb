@@ -152,6 +152,8 @@
   "linkConfirmBody": "The other device must show this same code:\n\n{confirm}\n\nIf it doesn't match, someone else linked it: unlink it from your profile.",
   "chatRequestFrom": "Chat request from {name}",
   "newChatWith": "New chat: {name}",
+  "historyLoaded": "{count, plural, =1{Received 1 earlier message from another of your devices} other{Received {count} earlier messages from another of your devices}}",
+  "@historyLoaded": {"placeholders": {"count": {"type": "int"}}},
   "expelled": "This device has been removed from a chat",
   "unverifiedMember": "⚠ Unverified member in the chat: {name}",
   "noticeFull": "Sender and message",

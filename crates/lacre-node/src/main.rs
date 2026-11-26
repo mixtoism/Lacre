@@ -197,6 +197,9 @@ fn print_event(ev: Event) {
         Event::Message { index, message, .. } if message.notice => println!("\n[{index}] · {}", message.text),
         Event::Message { index, message, .. } => println!("\n[{index}] {}: {}", message.from, body(&message)),
         Event::Removed { .. } => println!("\n⚠ este dispositivo ha sido expulsado de un chat"),
+        Event::HistoryLoaded { index, added } => {
+            println!("\n✔ historial del chat [{index}] recibido de otro dispositivo tuyo ({added} mensajes)")
+        }
         Event::UnverifiedMember { name, .. } => println!("\n⚠ miembro no verificado en el chat: {name}"),
         Event::RelayReady(addr) => println!("\n✔ alcanzable a través de relay: {addr}"),
         Event::FileProgress { .. } | Event::ChatsChanged => {}

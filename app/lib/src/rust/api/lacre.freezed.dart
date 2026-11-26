@@ -428,7 +428,7 @@ extension UiEventPatterns on UiEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UiEvent_Linked value)?  linked,TResult Function( UiEvent_DeviceLinked value)?  deviceLinked,TResult Function( UiEvent_NewChat value)?  newChat,TResult Function( UiEvent_Avatar value)?  avatar,TResult Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult Function( UiEvent_Message value)?  message,TResult Function( UiEvent_Removed value)?  removed,TResult Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult Function( UiEvent_RelayReady value)?  relayReady,TResult Function( UiEvent_FileProgress value)?  fileProgress,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UiEvent_Linked value)?  linked,TResult Function( UiEvent_DeviceLinked value)?  deviceLinked,TResult Function( UiEvent_NewChat value)?  newChat,TResult Function( UiEvent_Avatar value)?  avatar,TResult Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult Function( UiEvent_Message value)?  message,TResult Function( UiEvent_Removed value)?  removed,TResult Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult Function( UiEvent_RelayReady value)?  relayReady,TResult Function( UiEvent_FileProgress value)?  fileProgress,TResult Function( UiEvent_HistoryLoaded value)?  historyLoaded,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
@@ -441,7 +441,8 @@ return message(_that);case UiEvent_Removed() when removed != null:
 return removed(_that);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that);case UiEvent_RelayReady() when relayReady != null:
 return relayReady(_that);case UiEvent_FileProgress() when fileProgress != null:
-return fileProgress(_that);case _:
+return fileProgress(_that);case UiEvent_HistoryLoaded() when historyLoaded != null:
+return historyLoaded(_that);case _:
   return orElse();
 
 }
@@ -459,7 +460,7 @@ return fileProgress(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UiEvent_Linked value)  linked,required TResult Function( UiEvent_DeviceLinked value)  deviceLinked,required TResult Function( UiEvent_NewChat value)  newChat,required TResult Function( UiEvent_Avatar value)  avatar,required TResult Function( UiEvent_ChatsChanged value)  chatsChanged,required TResult Function( UiEvent_Message value)  message,required TResult Function( UiEvent_Removed value)  removed,required TResult Function( UiEvent_UnverifiedMember value)  unverifiedMember,required TResult Function( UiEvent_RelayReady value)  relayReady,required TResult Function( UiEvent_FileProgress value)  fileProgress,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UiEvent_Linked value)  linked,required TResult Function( UiEvent_DeviceLinked value)  deviceLinked,required TResult Function( UiEvent_NewChat value)  newChat,required TResult Function( UiEvent_Avatar value)  avatar,required TResult Function( UiEvent_ChatsChanged value)  chatsChanged,required TResult Function( UiEvent_Message value)  message,required TResult Function( UiEvent_Removed value)  removed,required TResult Function( UiEvent_UnverifiedMember value)  unverifiedMember,required TResult Function( UiEvent_RelayReady value)  relayReady,required TResult Function( UiEvent_FileProgress value)  fileProgress,required TResult Function( UiEvent_HistoryLoaded value)  historyLoaded,}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked():
@@ -472,7 +473,8 @@ return message(_that);case UiEvent_Removed():
 return removed(_that);case UiEvent_UnverifiedMember():
 return unverifiedMember(_that);case UiEvent_RelayReady():
 return relayReady(_that);case UiEvent_FileProgress():
-return fileProgress(_that);}
+return fileProgress(_that);case UiEvent_HistoryLoaded():
+return historyLoaded(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -486,7 +488,7 @@ return fileProgress(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UiEvent_Linked value)?  linked,TResult? Function( UiEvent_DeviceLinked value)?  deviceLinked,TResult? Function( UiEvent_NewChat value)?  newChat,TResult? Function( UiEvent_Avatar value)?  avatar,TResult? Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult? Function( UiEvent_Message value)?  message,TResult? Function( UiEvent_Removed value)?  removed,TResult? Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult? Function( UiEvent_RelayReady value)?  relayReady,TResult? Function( UiEvent_FileProgress value)?  fileProgress,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UiEvent_Linked value)?  linked,TResult? Function( UiEvent_DeviceLinked value)?  deviceLinked,TResult? Function( UiEvent_NewChat value)?  newChat,TResult? Function( UiEvent_Avatar value)?  avatar,TResult? Function( UiEvent_ChatsChanged value)?  chatsChanged,TResult? Function( UiEvent_Message value)?  message,TResult? Function( UiEvent_Removed value)?  removed,TResult? Function( UiEvent_UnverifiedMember value)?  unverifiedMember,TResult? Function( UiEvent_RelayReady value)?  relayReady,TResult? Function( UiEvent_FileProgress value)?  fileProgress,TResult? Function( UiEvent_HistoryLoaded value)?  historyLoaded,}){
 final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
@@ -499,7 +501,8 @@ return message(_that);case UiEvent_Removed() when removed != null:
 return removed(_that);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that);case UiEvent_RelayReady() when relayReady != null:
 return relayReady(_that);case UiEvent_FileProgress() when fileProgress != null:
-return fileProgress(_that);case _:
+return fileProgress(_that);case UiEvent_HistoryLoaded() when historyLoaded != null:
+return historyLoaded(_that);case _:
   return null;
 
 }
@@ -516,7 +519,7 @@ return fileProgress(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle,  String confirm)?  linked,TResult Function( String label,  String confirm)?  deviceLinked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle,  String confirm)?  linked,TResult Function( String label,  String confirm)?  deviceLinked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,TResult Function( int index,  int added)?  historyLoaded,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
 return linked(_that.handle,_that.confirm);case UiEvent_DeviceLinked() when deviceLinked != null:
@@ -528,7 +531,8 @@ return message(_that.index,_that.message,_that.local);case UiEvent_Removed() whe
 return removed(_that.index);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that.index,_that.name);case UiEvent_RelayReady() when relayReady != null:
 return relayReady(_that.addr);case UiEvent_FileProgress() when fileProgress != null:
-return fileProgress(_that.id,_that.done,_that.total);case _:
+return fileProgress(_that.id,_that.done,_that.total);case UiEvent_HistoryLoaded() when historyLoaded != null:
+return historyLoaded(_that.index,_that.added);case _:
   return orElse();
 
 }
@@ -546,7 +550,7 @@ return fileProgress(_that.id,_that.done,_that.total);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle,  String confirm)  linked,required TResult Function( String label,  String confirm)  deviceLinked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle,  String confirm)  linked,required TResult Function( String label,  String confirm)  deviceLinked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,required TResult Function( int index,  int added)  historyLoaded,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked():
 return linked(_that.handle,_that.confirm);case UiEvent_DeviceLinked():
@@ -558,7 +562,8 @@ return message(_that.index,_that.message,_that.local);case UiEvent_Removed():
 return removed(_that.index);case UiEvent_UnverifiedMember():
 return unverifiedMember(_that.index,_that.name);case UiEvent_RelayReady():
 return relayReady(_that.addr);case UiEvent_FileProgress():
-return fileProgress(_that.id,_that.done,_that.total);}
+return fileProgress(_that.id,_that.done,_that.total);case UiEvent_HistoryLoaded():
+return historyLoaded(_that.index,_that.added);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -572,7 +577,7 @@ return fileProgress(_that.id,_that.done,_that.total);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle,  String confirm)?  linked,TResult? Function( String label,  String confirm)?  deviceLinked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle,  String confirm)?  linked,TResult? Function( String label,  String confirm)?  deviceLinked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,TResult? Function( int index,  int added)?  historyLoaded,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
 return linked(_that.handle,_that.confirm);case UiEvent_DeviceLinked() when deviceLinked != null:
@@ -584,7 +589,8 @@ return message(_that.index,_that.message,_that.local);case UiEvent_Removed() whe
 return removed(_that.index);case UiEvent_UnverifiedMember() when unverifiedMember != null:
 return unverifiedMember(_that.index,_that.name);case UiEvent_RelayReady() when relayReady != null:
 return relayReady(_that.addr);case UiEvent_FileProgress() when fileProgress != null:
-return fileProgress(_that.id,_that.done,_that.total);case _:
+return fileProgress(_that.id,_that.done,_that.total);case UiEvent_HistoryLoaded() when historyLoaded != null:
+return historyLoaded(_that.index,_that.added);case _:
   return null;
 
 }
@@ -1247,6 +1253,76 @@ class _$UiEvent_FileProgressCopyWithImpl<$Res>
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,done: null == done ? _self.done : done // ignore: cast_nullable_to_non_nullable
 as int,total: null == total ? _self.total : total // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class UiEvent_HistoryLoaded extends UiEvent {
+  const UiEvent_HistoryLoaded({required this.index, required this.added}): super._();
+  
+
+ final  int index;
+ final  int added;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UiEvent_HistoryLoadedCopyWith<UiEvent_HistoryLoaded> get copyWith => _$UiEvent_HistoryLoadedCopyWithImpl<UiEvent_HistoryLoaded>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_HistoryLoaded&&(identical(other.index, index) || other.index == index)&&(identical(other.added, added) || other.added == added));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,index,added);
+}
+
+@override
+String toString() {
+    return 'UiEvent.historyLoaded(index: $index, added: $added)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UiEvent_HistoryLoadedCopyWith<$Res> implements $UiEventCopyWith<$Res> {
+  factory $UiEvent_HistoryLoadedCopyWith(UiEvent_HistoryLoaded value, $Res Function(UiEvent_HistoryLoaded) _then) = _$UiEvent_HistoryLoadedCopyWithImpl;
+@useResult
+$Res call({
+ int index, int added
+});
+
+
+
+
+}
+/// @nodoc
+class _$UiEvent_HistoryLoadedCopyWithImpl<$Res>
+    implements $UiEvent_HistoryLoadedCopyWith<$Res> {
+  _$UiEvent_HistoryLoadedCopyWithImpl(this._self, this._then);
+
+  final UiEvent_HistoryLoaded _self;
+  final $Res Function(UiEvent_HistoryLoaded) _then;
+
+/// Create a copy of UiEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? index = null,Object? added = null,}) {
+  return _then(UiEvent_HistoryLoaded(
+index: null == index ? _self.index : index // ignore: cast_nullable_to_non_nullable
+as int,added: null == added ? _self.added : added // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }

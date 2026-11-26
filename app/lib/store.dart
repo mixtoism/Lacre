@@ -56,6 +56,10 @@ class Store extends ChangeNotifier {
   /// Mensajes nuevos, para la pantalla del chat abierto.
   final messages = StreamController<(int, lacre.Message)>.broadcast();
 
+  /// Chats con mensajes anteriores recién recibidos de otro dispositivo
+  /// nuestro (D-050): la pantalla del chat los vuelve a cargar.
+  final historyLoaded = StreamController<int>.broadcast();
+
   /// Descargas en curso: id del archivo → fracción descargada.
   final downloads = <String, double>{};
 
@@ -275,6 +279,9 @@ class Store extends ChangeNotifier {
         notices.add(systemL10n.unverifiedMember(name));
       case lacre.UiEvent_RelayReady(:final addr):
         relay = addr;
+      case lacre.UiEvent_HistoryLoaded(:final index, :final added):
+        historyLoaded.add(index);
+        notices.add(systemL10n.historyLoaded(added));
     }
     _refreshChats();
   }

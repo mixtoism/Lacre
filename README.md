@@ -76,6 +76,8 @@ references below point to entries in that file.
 - **Persistent peer cache.** Peers seen before are reconnected on restart,
   with no bootstrap server.
 - **Local message history.** Up to 5,000 messages per chat are kept on disk.
+  A newly linked or recovered device gets earlier messages from another of
+  its person's devices (D-050).
 - **Headless mode.** Run an always-on node (mailbox, relay, onion entry
   point) under systemd or Docker.
 - **Reusable core.** All identity and crypto logic lives in a
@@ -431,7 +433,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-049), but nothing should be considered secure until audited.
+  (D-039–D-050), but nothing should be considered secure until audited.
 
 ---
 
@@ -641,7 +643,9 @@ Current limitations:
   and another device of the same person takes over automatically when the
   manager device is revoked (D-049). If the manager's whole identity is lost,
   membership is frozen.
-- Newly linked devices only see messages sent after they joined.
+- Earlier history reaches a new device only from another own device that is
+  online (within 7 days); there is no backup, and copied history carries no
+  author signatures.
 - Relay discovery is IPv4 only; a `--relay-server` behind NAT advertises an
   unreachable address (AutoNAT pending).
 - History is a single CBOR file rewritten on every message.
@@ -650,7 +654,7 @@ Planned:
 
 - Flutter builds for Android, iOS, Windows and macOS (the app and its
   `lacre_api` bridge already exist; Linux works), QR scanning with the camera.
-- History transfer between own devices.
+- Encrypted history backup.
 - Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.
 - SQLite/SQLCipher storage and OS keystore integration.

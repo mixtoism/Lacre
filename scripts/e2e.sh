@@ -103,6 +103,11 @@ say bob2 "send 0 desde el movil"
 wait_for alice2 "(movil): desde el movil"
 refute alice2 "no autorizado"
 ok "dispositivo vinculado tarde entra en los chats existentes"
+# Historial anterior (D-050): se lo pasa el otro dispositivo de Bob.
+for _ in 1 2; do wait_for bob2 "historial del chat \[[01]\] recibido" $((TICK * 3)); done
+sleep 1; : > bob2.out; say bob2 "history 0"; say bob2 "history 1"
+wait_for bob2 "bob#.*: hola alicia"; wait_for bob2 "(portatil): hola grupo"
+ok "el dispositivo vinculado recibe el historial anterior de los chats (D-050)"
 
 say alice1 "unlink $(field alice2 'link [a-z2-7]*')"
 wait_for alice2 "expulsado" $((TICK * 3))

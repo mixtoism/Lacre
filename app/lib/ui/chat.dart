@@ -41,6 +41,7 @@ class _ChatPageState extends State<ChatPage> {
   final _focus = FocusNode();
   late List<lacre.Message> _messages;
   late StreamSubscription<(int, lacre.Message)> _sub;
+  late StreamSubscription<int> _history;
 
   /// Panel de emojis y stickers abierto.
   bool _panel = false;
@@ -80,6 +81,11 @@ class _ChatPageState extends State<ChatPage> {
         .where((m) => m.$1 == widget.index)
         .listen((m) {
           setState(() => _messages.add(m.$2));
+        });
+    _history = widget.store.historyLoaded.stream
+        .where((i) => i == widget.index)
+        .listen((_) {
+          setState(() => _messages = lacre.messages(index: widget.index));
         });
   }
 
@@ -137,6 +143,7 @@ class _ChatPageState extends State<ChatPage> {
     if (widget.store.viewing == widget.index) widget.store.view(null);
     _search?.dispose();
     _sub.cancel();
+    _history.cancel();
     _input.dispose();
     _focus.dispose();
     super.dispose();

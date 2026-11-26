@@ -612,4 +612,11 @@ sealed class UiEvent with _$UiEvent {
     required int done,
     required int total,
   }) = UiEvent_FileProgress;
+
+  /// Otro dispositivo nuestro nos ha pasado `added` mensajes anteriores
+  /// del chat (D-050): hay que volver a cargarlo.
+  const factory UiEvent.historyLoaded({
+    required int index,
+    required int added,
+  }) = UiEvent_HistoryLoaded;
 }

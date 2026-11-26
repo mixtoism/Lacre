@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 use lacre_core::envelope::Envelope;
 use serde::{Deserialize, Serialize};
 
+use crate::files::StoredOffer;
+use crate::history::StoredMessage;
 use crate::people::BlockEntry;
 
 /// Tamaño máximo de un KeyPackage publicado en la DHT.
@@ -22,6 +24,17 @@ pub struct ChatMeta {
     pub participants: Vec<String>,
     /// Dispositivo que crea el grupo; es el único que hace commits (D-007).
     pub committer: [u8; 32],
+}
+
+/// Un mensaje del historial que pasa a otro dispositivo nuestro (D-050),
+/// con los bytes del sticker y la oferta del archivo, si los hay.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HistoryItem {
+    pub message: StoredMessage,
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub sticker: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub offer: Option<StoredOffer>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -82,6 +95,9 @@ pub enum Request {
     /// Entre dispositivos de la misma persona: bloqueos y desbloqueos, con
     /// su hora (D-031). Solo se admite de un dispositivo de nuestro registro.
     Blocks { list: BTreeMap<String, BlockEntry> },
+    /// Historial de un chat desde el mensaje `from`, a otro dispositivo
+    /// nuestro que ya estaba en él (D-050).
+    History { group_id: Vec<u8>, from: u32 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -105,5 +121,7 @@ pub enum Response {
         #[serde(with = "serde_bytes")]
         record: Vec<u8>,
     },
+    /// Un trozo del historial; `next`: desde dónde seguir pidiendo.
+    History { list: Vec<HistoryItem>, next: Option<u32> },
     Error(String),
 }

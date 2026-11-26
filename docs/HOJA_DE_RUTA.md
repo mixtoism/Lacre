@@ -34,7 +34,8 @@ DECISIONES.md.
    uso y confirmación visual en los dos dispositivos. → **Secreto de un solo
    uso hecho (D-039). Confirmación visual hecha (D-047).**
 6. **Historial al vincular** (D-011): un dispositivo nuevo solo ve los
-   mensajes posteriores a su entrada.
+   mensajes posteriores a su entrada. → **Hecho (D-050):** se lo pasa
+   otro dispositivo propio. Queda una copia de seguridad cifrada.
 7. **Límite de escrituras en la DHT** (D-005): validar un registro cuesta un
    Argon2; limitar la tasa por peer. → **Hecho (D-042).** Queda probar en
    redes grandes y frente a Sybil.

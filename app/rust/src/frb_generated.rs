@@ -2214,6 +2214,14 @@ impl SseDecode for crate::api::lacre::UiEvent {
                     total: var_total,
                 };
             }
+            10 => {
+                let mut var_index = <u32>::sse_decode(deserializer);
+                let mut var_added = <u32>::sse_decode(deserializer);
+                return crate::api::lacre::UiEvent::HistoryLoaded {
+                    index: var_index,
+                    added: var_added,
+                };
+            }
             _ => {
                 unimplemented!("");
             }
@@ -2583,6 +2591,12 @@ impl flutter_rust_bridge::IntoDart for crate::api::lacre::UiEvent {
                 id.into_into_dart().into_dart(),
                 done.into_into_dart().into_dart(),
                 total.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::lacre::UiEvent::HistoryLoaded { index, added } => [
+                10.into_dart(),
+                index.into_into_dart().into_dart(),
+                added.into_into_dart().into_dart(),
             ]
             .into_dart(),
             _ => {
@@ -2967,6 +2981,11 @@ impl SseEncode for crate::api::lacre::UiEvent {
                 <String>::sse_encode(id, serializer);
                 <u32>::sse_encode(done, serializer);
                 <u32>::sse_encode(total, serializer);
+            }
+            crate::api::lacre::UiEvent::HistoryLoaded { index, added } => {
+                <i32>::sse_encode(10, serializer);
+                <u32>::sse_encode(index, serializer);
+                <u32>::sse_encode(added, serializer);
             }
             _ => {
                 unimplemented!("");

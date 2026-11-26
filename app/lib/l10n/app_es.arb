@@ -175,6 +175,8 @@
   "@chatRequestFrom": {"placeholders": {"name": {"type": "String"}}},
   "newChatWith": "Nuevo chat: {name}",
   "@newChatWith": {"placeholders": {"name": {"type": "String"}}},
+  "historyLoaded": "{count, plural, =1{Recibido 1 mensaje anterior de otro dispositivo tuyo} other{Recibidos {count} mensajes anteriores de otro dispositivo tuyo}}",
+  "@historyLoaded": {"placeholders": {"count": {"type": "int"}}},
   "expelled": "Este dispositivo ha sido expulsado de un chat",
   "unverifiedMember": "⚠ Miembro no verificado en el chat: {name}",
   "@unverifiedMember": {"placeholders": {"name": {"type": "String"}}},

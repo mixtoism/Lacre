@@ -552,6 +552,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String historyLoaded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Received $count earlier messages from another of your devices',
+      one: 'Received 1 earlier message from another of your devices',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get expelled => 'This device has been removed from a chat';
 
   @override

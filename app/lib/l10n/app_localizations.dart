@@ -998,6 +998,12 @@ abstract class AppLocalizations {
   /// **'Nuevo chat: {name}'**
   String newChatWith(String name);
 
+  /// No description provided for @historyLoaded.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{Recibido 1 mensaje anterior de otro dispositivo tuyo} other{Recibidos {count} mensajes anteriores de otro dispositivo tuyo}}'**
+  String historyLoaded(int count);
+
   /// No description provided for @expelled.
   ///
   /// In es, this message translates to:

@@ -1902,6 +1902,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           done: dco_decode_u_32(raw[2]),
           total: dco_decode_u_32(raw[3]),
         );
+      case 10:
+        return UiEvent_HistoryLoaded(
+          index: dco_decode_u_32(raw[1]),
+          added: dco_decode_u_32(raw[2]),
+        );
       default:
         throw Exception("unreachable");
     }
@@ -2350,6 +2355,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           done: var_done,
           total: var_total,
         );
+      case 10:
+        var var_index = sse_decode_u_32(deserializer);
+        var var_added = sse_decode_u_32(deserializer);
+        return UiEvent_HistoryLoaded(index: var_index, added: var_added);
       default:
         throw UnimplementedError('');
     }
@@ -2767,6 +2776,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         sse_encode_String(id, serializer);
         sse_encode_u_32(done, serializer);
         sse_encode_u_32(total, serializer);
+      case UiEvent_HistoryLoaded(index: final index, added: final added):
+        sse_encode_i_32(10, serializer);
+        sse_encode_u_32(index, serializer);
+        sse_encode_u_32(added, serializer);
     }
   }
 
