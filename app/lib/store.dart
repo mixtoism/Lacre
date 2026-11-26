@@ -77,6 +77,10 @@ class Store extends ChangeNotifier {
   /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
   final deviceLinked = StreamController<String>.broadcast();
 
+  /// Avisos con el código de confirmación de una vinculación (D-047): se
+  /// quedan a la vista hasta que se cierran.
+  final confirmations = StreamController<String>.broadcast();
+
   /// Chat que se está viendo.
   int? viewing;
 
@@ -230,11 +234,11 @@ class Store extends ChangeNotifier {
           notifyListeners();
         }
         return;
-      case lacre.UiEvent_Linked(:final handle):
-        notices.add(systemL10n.deviceLinked(handle));
+      case lacre.UiEvent_Linked(:final handle, :final confirm):
+        confirmations.add(systemL10n.deviceLinked(handle, confirm));
         profile = lacre.profile();
-      case lacre.UiEvent_DeviceLinked(:final label):
-        notices.add(systemL10n.deviceJoined(label));
+      case lacre.UiEvent_DeviceLinked(:final label, :final confirm):
+        confirmations.add(systemL10n.deviceJoined(label, confirm));
         deviceLinked.add(label);
       case lacre.UiEvent_NewChat(:final index, :final name, :final request):
         final text = request

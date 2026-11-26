@@ -23,7 +23,30 @@ String newDeviceLabel(BuildContext context) =>
 bool _reachableAnywhere(String code) => code.contains('/onion3/');
 
 /// Explica por qué no se pudo vincular. Devuelve `true` si se vinculó.
-Future<bool> explainLink(BuildContext context, lacre.LinkResult r) async {
+///
+/// Si ha ido bien y `showConfirm`, enseña el código de confirmación (D-047)
+/// que el otro dispositivo también muestra.
+Future<bool> explainLink(BuildContext context, lacre.LinkResult r,
+    {bool showConfirm = true}) async {
+  if (r case lacre.LinkResult_Done(:final confirm)) {
+    if (showConfirm && context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.verified_user_outlined),
+          title: Text(context.l.linkConfirmTitle),
+          content: Text(context.l.linkConfirmBody(confirm)),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l.ok),
+            ),
+          ],
+        ),
+      );
+    }
+    return true;
+  }
   final text = switch (r) {
     lacre.LinkResult_Done() => null,
     lacre.LinkResult_BadCode() => context.l.linkBadCode,
@@ -312,7 +335,8 @@ class _JoinPanelState extends State<JoinPanel> with _Refreshing {
     if (!mounted) return;
     setState(() => _busy = false);
     // Si sale bien, el evento `Linked` cambia de pantalla.
-    if (r != null) await explainLink(context, r);
+    // El aviso del evento `Linked` ya enseña el código de confirmación.
+    if (r != null) await explainLink(context, r, showConfirm: false);
   }
 
   Future<void> _scan() async {

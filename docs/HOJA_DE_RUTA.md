@@ -27,7 +27,7 @@ DECISIONES.md.
 
 5. **Vinculación segura** (D-011): QR bidireccional con secreto de un solo
    uso y confirmación visual en los dos dispositivos. → **Secreto de un solo
-   uso hecho (D-039).** Queda la confirmación visual.
+   uso hecho (D-039). Confirmación visual hecha (D-047).**
 6. **Historial al vincular** (D-011): un dispositivo nuevo solo ve los
    mensajes posteriores a su entrada.
 7. **Límite de escrituras en la DHT** (D-005): validar un registro cuesta un

@@ -953,8 +953,20 @@ abstract class AppLocalizations {
   /// No description provided for @deviceLinked.
   ///
   /// In es, this message translates to:
-  /// **'Dispositivo vinculado a {handle}'**
-  String deviceLinked(String handle);
+  /// **'Dispositivo vinculado a {handle}. El otro tiene que mostrar el código {confirm}; si no, desvincúlalo.'**
+  String deviceLinked(String handle, String confirm);
+
+  /// No description provided for @linkConfirmTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Comprueba el código'**
+  String get linkConfirmTitle;
+
+  /// No description provided for @linkConfirmBody.
+  ///
+  /// In es, this message translates to:
+  /// **'El otro dispositivo tiene que mostrar este mismo código:\n\n{confirm}\n\nSi no coincide, lo ha vinculado otra persona: desvincúlalo desde el perfil.'**
+  String linkConfirmBody(String confirm);
 
   /// No description provided for @chatRequestFrom.
   ///
@@ -1115,8 +1127,8 @@ abstract class AppLocalizations {
   /// No description provided for @deviceJoined.
   ///
   /// In es, this message translates to:
-  /// **'«{label}» se ha vinculado'**
-  String deviceJoined(String label);
+  /// **'«{label}» se ha vinculado. Tiene que mostrar el código {confirm}; si no, desvincúlalo.'**
+  String deviceJoined(String label, String confirm);
 
   /// No description provided for @labelPhone.
   ///

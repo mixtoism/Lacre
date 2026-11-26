@@ -818,9 +818,19 @@ hay frase de recuperación ni forma de transferir el papel de primario.
 El `LinkGrant` solo se acepta con el secreto de un solo uso del código de
 vincular (D-039). Quien vea ese código en sus 10 minutos de vida puede
 adelantarse al dueño. El código fallaría después al dueño, que lo notaría.
-No hay confirmación visual en los dos dispositivos. Tras vincular, la lista
-de dispositivos muestra todos los del registro, y el primario puede
-desvincular uno desconocido.
+
+Al terminar, los dos dispositivos muestran un código de confirmación
+(D-047), que la persona compara:
+
+```
+h = BLAKE3(derive_key "p2message/link-confirm/v1", raíz || dispositivo || secreto)
+código = u32be(h[0..4]) mod 1000000, como "ddd ddd"
+```
+
+`secreto` es el del código de vincular o el token de la invitación. Si no
+coinciden, alguien ha cambiado el QR o se ha adelantado. Además, tras
+vincular, la lista de dispositivos muestra todos los del registro, y el
+primario puede desvincular uno desconocido.
 
 ### 13.4. Committer único
 
@@ -914,6 +924,7 @@ cualquiera de ellos rompe la compatibilidad:
 | `p2message/envelope/v3\0`                  | Dominio de la firma del sobre |
 | `p2message/envelope/v3 seal`               | Contexto de la KDF del sobre |
 | `p2message/safety-number/v1`               | Contexto del número de seguridad |
+| `p2message/link-confirm/v1`                | Contexto del código de confirmación al vincular |
 | `p2message/onion-id/v1`                    | Contexto de la clave onion (implementación) |
 | `p2message/v1 rendezvous relays`           | Contexto del infohash de encuentro |
 | `p2message 2026 file id`, `p2message 2026 file token` | Contextos de la KDF de archivos |

@@ -376,7 +376,8 @@ class Hit {
 sealed class LinkResult with _$LinkResult {
   const LinkResult._();
 
-  const factory LinkResult.done() = LinkResult_Done;
+  /// `confirm`: tiene que coincidir con el que muestra el otro (D-047).
+  const factory LinkResult.done({required String confirm}) = LinkResult_Done;
 
   /// No es un código de vinculación o está mal copiado.
   const factory LinkResult.badCode() = LinkResult_BadCode;
@@ -534,11 +535,17 @@ class Sticker {
 sealed class UiEvent with _$UiEvent {
   const UiEvent._();
 
-  const factory UiEvent.linked({required String handle}) = UiEvent_Linked;
+  /// `confirm`: código que el otro dispositivo también muestra (D-047).
+  const factory UiEvent.linked({
+    required String handle,
+    required String confirm,
+  }) = UiEvent_Linked;
 
   /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
-  const factory UiEvent.deviceLinked({required String label}) =
-      UiEvent_DeviceLinked;
+  const factory UiEvent.deviceLinked({
+    required String label,
+    required String confirm,
+  }) = UiEvent_DeviceLinked;
 
   /// `request`: de alguien con quien aún no hablamos; hay que aceptarlo.
   const factory UiEvent.newChat({

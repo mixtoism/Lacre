@@ -63,7 +63,10 @@ ok "identidades: $HA $HB $HC"
 
 say alice1 "link $(field alice2 'link [a-z2-7:]*') portatil"
 wait_for alice2 "vinculado a $HA"
-ok "portátil de Alicia vinculado"
+wait_for alice1 "portatil» vinculado (confirmación"
+CA=$(grep -o "vinculado a $HA (confirmación: [0-9 ]*)" alice2.out | grep -o "[0-9]\{3\} [0-9]\{3\}")
+[ -n "$CA" ] && grep -q "vinculado (confirmación: $CA)" alice1.out || { echo "FALLO: el código de confirmación no coincide"; cat alice1.out alice2.out; exit 1; }
+ok "portátil de Alicia vinculado; los dos muestran el mismo código ($CA)"
 
 say alice1 "chat $HB"
 wait_for bob "\(nuevo\|solicitud de\) chat \[0\]"; wait_for alice2 "\(nuevo\|solicitud de\) chat \[0\]"
@@ -90,6 +93,9 @@ say bob "invite"
 wait_for bob "invitación: "
 say bob2 "join $(field bob 'invitación: [^ ]*') movil"
 wait_for bob2 "vinculado a $HB"; wait_for bob "«movil» se ha vinculado"
+wait_for bob2 "unido (confirmación"
+CB=$(grep -o "unido (confirmación: [0-9 ]*)" bob2.out | grep -o "[0-9]\{3\} [0-9]\{3\}")
+[ -n "$CB" ] && grep -q "«movil» se ha vinculado con la invitación (confirmación: $CB)" bob.out || { echo "FALLO: el código de confirmación de la invitación no coincide"; cat bob.out bob2.out; exit 1; }
 say bob2 "join $(field bob 'invitación: [^ ]*') otro"
 wait_for bob2 "ya tiene identidad"
 wait_for bob2 "\(nuevo\|solicitud de\) chat .*alice" $((TICK * 3)); wait_for bob2 "\(nuevo\|solicitud de\) chat .*amigos" $((TICK * 3))

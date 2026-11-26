@@ -1699,7 +1699,10 @@ impl SseDecode for crate::api::lacre::LinkResult {
         let mut tag_ = <i32>::sse_decode(deserializer);
         match tag_ {
             0 => {
-                return crate::api::lacre::LinkResult::Done;
+                let mut var_confirm = <String>::sse_decode(deserializer);
+                return crate::api::lacre::LinkResult::Done {
+                    confirm: var_confirm,
+                };
             }
             1 => {
                 return crate::api::lacre::LinkResult::BadCode;
@@ -1968,11 +1971,19 @@ impl SseDecode for crate::api::lacre::UiEvent {
         match tag_ {
             0 => {
                 let mut var_handle = <String>::sse_decode(deserializer);
-                return crate::api::lacre::UiEvent::Linked { handle: var_handle };
+                let mut var_confirm = <String>::sse_decode(deserializer);
+                return crate::api::lacre::UiEvent::Linked {
+                    handle: var_handle,
+                    confirm: var_confirm,
+                };
             }
             1 => {
                 let mut var_label = <String>::sse_decode(deserializer);
-                return crate::api::lacre::UiEvent::DeviceLinked { label: var_label };
+                let mut var_confirm = <String>::sse_decode(deserializer);
+                return crate::api::lacre::UiEvent::DeviceLinked {
+                    label: var_label,
+                    confirm: var_confirm,
+                };
             }
             2 => {
                 let mut var_index = <u32>::sse_decode(deserializer);
@@ -2225,7 +2236,9 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Hit> for crate::api::l
 impl flutter_rust_bridge::IntoDart for crate::api::lacre::LinkResult {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::lacre::LinkResult::Done => [0.into_dart()].into_dart(),
+            crate::api::lacre::LinkResult::Done { confirm } => {
+                [0.into_dart(), confirm.into_into_dart().into_dart()].into_dart()
+            }
             crate::api::lacre::LinkResult::BadCode => [1.into_dart()].into_dart(),
             crate::api::lacre::LinkResult::Unreachable => [2.into_dart()].into_dart(),
             crate::api::lacre::LinkResult::Refused { reason } => {
@@ -2334,12 +2347,18 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::lacre::Sticker> for crate::ap
 impl flutter_rust_bridge::IntoDart for crate::api::lacre::UiEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::lacre::UiEvent::Linked { handle } => {
-                [0.into_dart(), handle.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::lacre::UiEvent::DeviceLinked { label } => {
-                [1.into_dart(), label.into_into_dart().into_dart()].into_dart()
-            }
+            crate::api::lacre::UiEvent::Linked { handle, confirm } => [
+                0.into_dart(),
+                handle.into_into_dart().into_dart(),
+                confirm.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::lacre::UiEvent::DeviceLinked { label, confirm } => [
+                1.into_dart(),
+                label.into_into_dart().into_dart(),
+                confirm.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
             crate::api::lacre::UiEvent::NewChat {
                 index,
                 name,
@@ -2490,8 +2509,9 @@ impl SseEncode for crate::api::lacre::LinkResult {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::lacre::LinkResult::Done => {
+            crate::api::lacre::LinkResult::Done { confirm } => {
                 <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(confirm, serializer);
             }
             crate::api::lacre::LinkResult::BadCode => {
                 <i32>::sse_encode(1, serializer);
@@ -2711,13 +2731,15 @@ impl SseEncode for crate::api::lacre::UiEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::lacre::UiEvent::Linked { handle } => {
+            crate::api::lacre::UiEvent::Linked { handle, confirm } => {
                 <i32>::sse_encode(0, serializer);
                 <String>::sse_encode(handle, serializer);
+                <String>::sse_encode(confirm, serializer);
             }
-            crate::api::lacre::UiEvent::DeviceLinked { label } => {
+            crate::api::lacre::UiEvent::DeviceLinked { label, confirm } => {
                 <i32>::sse_encode(1, serializer);
                 <String>::sse_encode(label, serializer);
+                <String>::sse_encode(confirm, serializer);
             }
             crate::api::lacre::UiEvent::NewChat {
                 index,

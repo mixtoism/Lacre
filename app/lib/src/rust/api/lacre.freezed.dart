@@ -126,10 +126,10 @@ return refused(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  done,TResult Function()?  badCode,TResult Function()?  unreachable,TResult Function( String reason)?  refused,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String confirm)?  done,TResult Function()?  badCode,TResult Function()?  unreachable,TResult Function( String reason)?  refused,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case LinkResult_Done() when done != null:
-return done();case LinkResult_BadCode() when badCode != null:
+return done(_that.confirm);case LinkResult_BadCode() when badCode != null:
 return badCode();case LinkResult_Unreachable() when unreachable != null:
 return unreachable();case LinkResult_Refused() when refused != null:
 return refused(_that.reason);case _:
@@ -150,10 +150,10 @@ return refused(_that.reason);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  done,required TResult Function()  badCode,required TResult Function()  unreachable,required TResult Function( String reason)  refused,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String confirm)  done,required TResult Function()  badCode,required TResult Function()  unreachable,required TResult Function( String reason)  refused,}) {final _that = this;
 switch (_that) {
 case LinkResult_Done():
-return done();case LinkResult_BadCode():
+return done(_that.confirm);case LinkResult_BadCode():
 return badCode();case LinkResult_Unreachable():
 return unreachable();case LinkResult_Refused():
 return refused(_that.reason);}
@@ -170,10 +170,10 @@ return refused(_that.reason);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  done,TResult? Function()?  badCode,TResult? Function()?  unreachable,TResult? Function( String reason)?  refused,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String confirm)?  done,TResult? Function()?  badCode,TResult? Function()?  unreachable,TResult? Function( String reason)?  refused,}) {final _that = this;
 switch (_that) {
 case LinkResult_Done() when done != null:
-return done();case LinkResult_BadCode() when badCode != null:
+return done(_that.confirm);case LinkResult_BadCode() when badCode != null:
 return badCode();case LinkResult_Unreachable() when unreachable != null:
 return unreachable();case LinkResult_Refused() when refused != null:
 return refused(_that.reason);case _:
@@ -188,33 +188,69 @@ return refused(_that.reason);case _:
 
 
 class LinkResult_Done extends LinkResult {
-  const LinkResult_Done(): super._();
+  const LinkResult_Done({required this.confirm}): super._();
   
 
+ final  String confirm;
 
-
+/// Create a copy of LinkResult
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$LinkResult_DoneCopyWith<LinkResult_Done> get copyWith => _$LinkResult_DoneCopyWithImpl<LinkResult_Done>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult_Done);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LinkResult_Done&&(identical(other.confirm, confirm) || other.confirm == confirm));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode {
+    return Object.hash(runtimeType,confirm);
+}
 
 @override
 String toString() {
-    return 'LinkResult.done()';
+    return 'LinkResult.done(confirm: $confirm)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $LinkResult_DoneCopyWith<$Res> implements $LinkResultCopyWith<$Res> {
+  factory $LinkResult_DoneCopyWith(LinkResult_Done value, $Res Function(LinkResult_Done) _then) = _$LinkResult_DoneCopyWithImpl;
+@useResult
+$Res call({
+ String confirm
+});
 
 
+
+
+}
+/// @nodoc
+class _$LinkResult_DoneCopyWithImpl<$Res>
+    implements $LinkResult_DoneCopyWith<$Res> {
+  _$LinkResult_DoneCopyWithImpl(this._self, this._then);
+
+  final LinkResult_Done _self;
+  final $Res Function(LinkResult_Done) _then;
+
+/// Create a copy of LinkResult
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? confirm = null,}) {
+  return _then(LinkResult_Done(
+confirm: null == confirm ? _self.confirm : confirm // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
 
 /// @nodoc
 
@@ -480,11 +516,11 @@ return fileProgress(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle)?  linked,TResult Function( String label)?  deviceLinked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String handle,  String confirm)?  linked,TResult Function( String label,  String confirm)?  deviceLinked,TResult Function( int index,  String name,  bool request)?  newChat,TResult Function( String handle)?  avatar,TResult Function()?  chatsChanged,TResult Function( int index,  Message message,  bool local)?  message,TResult Function( int index)?  removed,TResult Function( int index,  String name)?  unverifiedMember,TResult Function( String addr)?  relayReady,TResult Function( String id,  int done,  int total)?  fileProgress,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
-return linked(_that.handle);case UiEvent_DeviceLinked() when deviceLinked != null:
-return deviceLinked(_that.label);case UiEvent_NewChat() when newChat != null:
+return linked(_that.handle,_that.confirm);case UiEvent_DeviceLinked() when deviceLinked != null:
+return deviceLinked(_that.label,_that.confirm);case UiEvent_NewChat() when newChat != null:
 return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar() when avatar != null:
 return avatar(_that.handle);case UiEvent_ChatsChanged() when chatsChanged != null:
 return chatsChanged();case UiEvent_Message() when message != null:
@@ -510,11 +546,11 @@ return fileProgress(_that.id,_that.done,_that.total);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle)  linked,required TResult Function( String label)  deviceLinked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String handle,  String confirm)  linked,required TResult Function( String label,  String confirm)  deviceLinked,required TResult Function( int index,  String name,  bool request)  newChat,required TResult Function( String handle)  avatar,required TResult Function()  chatsChanged,required TResult Function( int index,  Message message,  bool local)  message,required TResult Function( int index)  removed,required TResult Function( int index,  String name)  unverifiedMember,required TResult Function( String addr)  relayReady,required TResult Function( String id,  int done,  int total)  fileProgress,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked():
-return linked(_that.handle);case UiEvent_DeviceLinked():
-return deviceLinked(_that.label);case UiEvent_NewChat():
+return linked(_that.handle,_that.confirm);case UiEvent_DeviceLinked():
+return deviceLinked(_that.label,_that.confirm);case UiEvent_NewChat():
 return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar():
 return avatar(_that.handle);case UiEvent_ChatsChanged():
 return chatsChanged();case UiEvent_Message():
@@ -536,11 +572,11 @@ return fileProgress(_that.id,_that.done,_that.total);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle)?  linked,TResult? Function( String label)?  deviceLinked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String handle,  String confirm)?  linked,TResult? Function( String label,  String confirm)?  deviceLinked,TResult? Function( int index,  String name,  bool request)?  newChat,TResult? Function( String handle)?  avatar,TResult? Function()?  chatsChanged,TResult? Function( int index,  Message message,  bool local)?  message,TResult? Function( int index)?  removed,TResult? Function( int index,  String name)?  unverifiedMember,TResult? Function( String addr)?  relayReady,TResult? Function( String id,  int done,  int total)?  fileProgress,}) {final _that = this;
 switch (_that) {
 case UiEvent_Linked() when linked != null:
-return linked(_that.handle);case UiEvent_DeviceLinked() when deviceLinked != null:
-return deviceLinked(_that.label);case UiEvent_NewChat() when newChat != null:
+return linked(_that.handle,_that.confirm);case UiEvent_DeviceLinked() when deviceLinked != null:
+return deviceLinked(_that.label,_that.confirm);case UiEvent_NewChat() when newChat != null:
 return newChat(_that.index,_that.name,_that.request);case UiEvent_Avatar() when avatar != null:
 return avatar(_that.handle);case UiEvent_ChatsChanged() when chatsChanged != null:
 return chatsChanged();case UiEvent_Message() when message != null:
@@ -560,10 +596,11 @@ return fileProgress(_that.id,_that.done,_that.total);case _:
 
 
 class UiEvent_Linked extends UiEvent {
-  const UiEvent_Linked({required this.handle}): super._();
+  const UiEvent_Linked({required this.handle, required this.confirm}): super._();
   
 
  final  String handle;
+ final  String confirm;
 
 /// Create a copy of UiEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -575,18 +612,18 @@ $UiEvent_LinkedCopyWith<UiEvent_Linked> get copyWith => _$UiEvent_LinkedCopyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_Linked&&(identical(other.handle, handle) || other.handle == handle));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_Linked&&(identical(other.handle, handle) || other.handle == handle)&&(identical(other.confirm, confirm) || other.confirm == confirm));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,handle);
+    return Object.hash(runtimeType,handle,confirm);
 }
 
 @override
 String toString() {
-    return 'UiEvent.linked(handle: $handle)';
+    return 'UiEvent.linked(handle: $handle, confirm: $confirm)';
 }
 
 
@@ -597,7 +634,7 @@ abstract mixin class $UiEvent_LinkedCopyWith<$Res> implements $UiEventCopyWith<$
   factory $UiEvent_LinkedCopyWith(UiEvent_Linked value, $Res Function(UiEvent_Linked) _then) = _$UiEvent_LinkedCopyWithImpl;
 @useResult
 $Res call({
- String handle
+ String handle, String confirm
 });
 
 
@@ -614,9 +651,10 @@ class _$UiEvent_LinkedCopyWithImpl<$Res>
 
 /// Create a copy of UiEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? handle = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? handle = null,Object? confirm = null,}) {
   return _then(UiEvent_Linked(
 handle: null == handle ? _self.handle : handle // ignore: cast_nullable_to_non_nullable
+as String,confirm: null == confirm ? _self.confirm : confirm // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -628,10 +666,11 @@ as String,
 
 
 class UiEvent_DeviceLinked extends UiEvent {
-  const UiEvent_DeviceLinked({required this.label}): super._();
+  const UiEvent_DeviceLinked({required this.label, required this.confirm}): super._();
   
 
  final  String label;
+ final  String confirm;
 
 /// Create a copy of UiEvent
 /// with the given fields replaced by the non-null parameter values.
@@ -643,18 +682,18 @@ $UiEvent_DeviceLinkedCopyWith<UiEvent_DeviceLinked> get copyWith => _$UiEvent_De
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_DeviceLinked&&(identical(other.label, label) || other.label == label));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UiEvent_DeviceLinked&&(identical(other.label, label) || other.label == label)&&(identical(other.confirm, confirm) || other.confirm == confirm));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,label);
+    return Object.hash(runtimeType,label,confirm);
 }
 
 @override
 String toString() {
-    return 'UiEvent.deviceLinked(label: $label)';
+    return 'UiEvent.deviceLinked(label: $label, confirm: $confirm)';
 }
 
 
@@ -665,7 +704,7 @@ abstract mixin class $UiEvent_DeviceLinkedCopyWith<$Res> implements $UiEventCopy
   factory $UiEvent_DeviceLinkedCopyWith(UiEvent_DeviceLinked value, $Res Function(UiEvent_DeviceLinked) _then) = _$UiEvent_DeviceLinkedCopyWithImpl;
 @useResult
 $Res call({
- String label
+ String label, String confirm
 });
 
 
@@ -682,9 +721,10 @@ class _$UiEvent_DeviceLinkedCopyWithImpl<$Res>
 
 /// Create a copy of UiEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? label = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? label = null,Object? confirm = null,}) {
   return _then(UiEvent_DeviceLinked(
 label: null == label ? _self.label : label // ignore: cast_nullable_to_non_nullable
+as String,confirm: null == confirm ? _self.confirm : confirm // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

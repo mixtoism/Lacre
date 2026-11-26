@@ -517,8 +517,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String deviceLinked(String handle) {
-    return 'Device linked to $handle';
+  String deviceLinked(String handle, String confirm) {
+    return 'Device linked to $handle. The other one must show the code $confirm; if not, unlink it.';
+  }
+
+  @override
+  String get linkConfirmTitle => 'Check the code';
+
+  @override
+  String linkConfirmBody(String confirm) {
+    return 'The other device must show this same code:\n\n$confirm\n\nIf it doesn\'t match, someone else linked it: unlink it from your profile.';
   }
 
   @override
@@ -616,8 +624,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String deviceJoined(String label) {
-    return '“$label” has been linked';
+  String deviceJoined(String label, String confirm) {
+    return '“$label” has been linked. It must show the code $confirm; if not, unlink it.';
   }
 
   @override

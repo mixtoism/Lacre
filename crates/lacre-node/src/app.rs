@@ -80,10 +80,11 @@ const KEEPALIVE_RETRY_MAX: Duration = Duration::from_secs(15 * 60);
 /// Avisos para la interfaz (la CLI los imprime; la app los muestra).
 #[derive(Clone, Debug)]
 pub enum Event {
-    /// Este dispositivo ha sido vinculado a una identidad.
-    Linked { handle: String },
+    /// Este dispositivo ha sido vinculado a una identidad. `confirm`: código
+    /// que tiene que coincidir con el del otro dispositivo (D-047).
+    Linked { handle: String, confirm: String },
     /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
-    DeviceLinked { label: String },
+    DeviceLinked { label: String, confirm: String },
     /// Nos han añadido a un chat. `request`: de alguien con quien aún no
     /// hablamos; hay que aceptarlo (D-029).
     NewChat { index: usize, name: String, request: bool },
@@ -1131,7 +1132,10 @@ impl App {
     /// Vincula un dispositivo nuevo a partir de su código. Primero se
     /// comprueba que se llega a él: un dispositivo que no se entera de que
     /// está vinculado no debe quedarse en el registro (D-037).
-    pub async fn link(self: &Arc<Self>, code: &str, label: &str) -> Result<()> {
+    ///
+    /// Devuelve el código de confirmación (D-047), que el dispositivo nuevo
+    /// también muestra.
+    pub async fn link(self: &Arc<Self>, code: &str, label: &str) -> Result<String> {
         if self.state.lock().unwrap().root.is_none() {
             bail!("solo el dispositivo primario puede vincular otros");
         }
@@ -1144,6 +1148,7 @@ impl App {
         let was_linked = self.state.lock().unwrap().identity.as_ref().is_some_and(|v| v.record.has_device(&device));
         let label = clean_label(label);
         let verified = self.edit_devices(|rec| Ok(rec.add_device(device, &label)?)).await?;
+        let confirm = lacre_core::identity::link_confirmation(&verified.record.root_pk, &device, &secret);
         let grant = Request::LinkGrant { record: verified.signed.to_bytes()?, secret };
         let refused = match self.net.request(peer, grant).await {
             Ok(Response::Ack) => None,
@@ -1164,7 +1169,7 @@ impl App {
         // Al conectar aún no tenía identidad y no lo habrá admitido.
         self.share_with_own(peer).await;
         self.after_devices_changed().await;
-        Ok(())
+        Ok(confirm)
     }
 
     /// Invitación para que un dispositivo nuevo se vincule escaneándola
@@ -1191,21 +1196,21 @@ impl App {
 
     /// Desde el dispositivo nuevo: entra en la identidad con la invitación
     /// que muestra el primario (D-037).
-    pub async fn join(self: &Arc<Self>, code: &str, label: &str) -> Result<()> {
+    pub async fn join(self: &Arc<Self>, code: &str, label: &str) -> Result<String> {
         if self.handle().is_some() {
             bail!("este dispositivo ya tiene identidad");
         }
         let (primary, token, addrs) = parse_invite(code)?;
         let peer = peer_id_of(&primary)?;
         self.reach(peer, &addrs).await?;
-        let req = Request::Join { token, label: clean_label(label) };
+        let req = Request::Join { token: token.clone(), label: clean_label(label) };
         match self.net.request(peer, req).await {
             Ok(Response::Granted { record }) => {
                 let verified = SignedRecord::from_bytes(&record)?.verify()?;
                 if !verified.record.has_device(&primary) {
                     return Err(LinkError::Refused("la invitación no es de esa identidad".into()).into());
                 }
-                self.accept_grant(verified)
+                self.accept_grant(verified, &token)
             }
             Ok(Response::Error(why)) => Err(LinkError::Refused(why).into()),
             Ok(other) => Err(LinkError::Refused(format!("{other:?}")).into()),
@@ -1241,7 +1246,9 @@ impl App {
     }
 
     /// Acepta el registro que nos incluye: este dispositivo queda vinculado.
-    fn accept_grant(&self, verified: VerifiedRecord) -> Result<()> {
+    /// `secret`: el del código o la invitación, para el código de
+    /// confirmación (D-047).
+    fn accept_grant(&self, verified: VerifiedRecord, secret: &[u8]) -> Result<String> {
         if !verified.record.has_device(&self.device_pk()) {
             bail!("el registro no incluye este dispositivo");
         }
@@ -1257,9 +1264,10 @@ impl App {
             Some(_) => bail!("este dispositivo ya pertenece a otra identidad"),
         }
         let handle = verified.handle.clone();
+        let confirm = lacre_core::identity::link_confirmation(&verified.record.root_pk, &self.device_pk(), secret);
         self.set_identity(&mut st, verified)?;
-        self.emit(Event::Linked { handle: handle.to_string() });
-        Ok(())
+        self.emit(Event::Linked { handle: handle.to_string(), confirm: confirm.clone() });
+        Ok(confirm)
     }
 
     /// Revoca un dispositivo: deja de estar en el registro y se le expulsa
@@ -2345,7 +2353,7 @@ impl App {
                 if !take_token(&self.link_secret, &secret) {
                     bail!("el código de vinculación no vale o ha caducado");
                 }
-                self.accept_grant(verified)?;
+                self.accept_grant(verified, &secret)?;
                 Ok(Response::Ack)
             }
             Request::Join { token, label } => {
@@ -2355,7 +2363,8 @@ impl App {
                 let device = device_pk_of(&peer).context("peer sin clave Ed25519")?;
                 let label = clean_label(&label);
                 let verified = self.edit_devices(|rec| Ok(rec.add_device(device, &label)?)).await?;
-                self.emit(Event::DeviceLinked { label });
+                let confirm = lacre_core::identity::link_confirmation(&verified.record.root_pk, &device, &token);
+                self.emit(Event::DeviceLinked { label, confirm });
                 let app = self.clone();
                 self.rt.spawn(async move {
                     // Que procese antes el registro de la respuesta.

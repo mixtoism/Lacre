@@ -178,8 +178,12 @@ fn body(m: &StoredMessage) -> String {
 
 fn print_event(ev: Event) {
     match ev {
-        Event::Linked { handle } => println!("\n✔ dispositivo vinculado a {handle}"),
-        Event::DeviceLinked { label } => println!("\n✔ «{label}» se ha vinculado con la invitación"),
+        Event::Linked { handle, confirm } => {
+            println!("\n✔ dispositivo vinculado a {handle} (confirmación: {confirm})")
+        }
+        Event::DeviceLinked { label, confirm } => {
+            println!("\n✔ «{label}» se ha vinculado con la invitación (confirmación: {confirm})")
+        }
         Event::NewChat { index, name, request: false } => println!("\n✉ nuevo chat [{index}] {name}"),
         Event::NewChat { index, name, request: true } => println!("\n✉ solicitud de chat [{index}] {name}"),
         Event::Avatar { handle } => println!("\n✔ foto de perfil de {handle}"),
@@ -237,13 +241,14 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
         }
         "link" => {
             let (code, label) = rest.split_once(' ').unwrap_or((rest, "dispositivo"));
-            app.link(code, label.trim()).await?;
-            println!("dispositivo «{}» vinculado", label.trim());
+            let confirm = app.link(code, label.trim()).await?;
+            println!("dispositivo «{}» vinculado (confirmación: {confirm})", label.trim());
         }
         "invite" => println!("invitación: {}", app.invite().await?),
         "join" => {
             let (code, label) = rest.split_once(' ').unwrap_or((rest, "dispositivo"));
-            app.join(code, label.trim()).await?;
+            let confirm = app.join(code, label.trim()).await?;
+            println!("unido (confirmación: {confirm})");
         }
         "unlink" => {
             app.unlink(rest).await?;

@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-046),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-047),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -1558,6 +1558,36 @@ puede afirmar que sea segura.
     cambiar por otros v2 anteriores.
 - **Pendiente:** en la app, un botón para aceptar el estado actual tras el
   aviso (ahora solo en la CLI).
+
+## D-047 · Código de confirmación al vincular
+- **Contexto:** D-011 pedía confirmación visual en los dos dispositivos al
+  vincular. D-039 añadió el secreto de un solo uso, pero quien veía el
+  código (o cambiaba el QR) podía vincular su dispositivo, o hacer que el
+  nuevo entrase en otra identidad, sin que nada lo mostrase en el momento.
+- **Decisión:**
+  - Al terminar, los dos dispositivos muestran 6 cifras: `link-confirm =
+    BLAKE3(derive_key "p2message/link-confirm/v1", raíz ‖ dispositivo ‖
+    secreto)`, los 4 primeros bytes (u32 BE) mod 1 000 000, como `123 456`.
+  - `raíz`: la clave raíz del registro aceptado. `dispositivo`: la clave
+    del dispositivo nuevo. `secreto`: el del código de vincular (flujo A) o
+    el token de la invitación (flujo B).
+  - El primario lo calcula con el registro que firma. El nuevo lo calcula
+    con el registro que recibe y su propia clave. La persona los compara.
+  - App: diálogo en quien inicia la vinculación y aviso que no se va solo en
+    el otro. CLI: `(confirmación: 123 456)`.
+- **Motivo:** si alguien cambia el QR o se adelanta con el código, la raíz o
+  el dispositivo no son los esperados y los códigos no coinciden. Así se ve
+  en el momento, sin repasar la lista de dispositivos. No cambia el
+  protocolo en la red: cada parte lo calcula con lo que ya tiene.
+- **Limitaciones:**
+  - Son 6 cifras. Un atacante que elija su clave de dispositivo y conozca
+    el secreto podría probar claves hasta igualar el código que verá el
+    dueño (unas 10⁶ claves Ed25519, rápido), pero tendría que saber de
+    antemano qué código muestra el otro lado, que depende de la raíz real.
+    Sirve para detectar errores y sustituciones, no como prueba
+    criptográfica fuerte. El número de seguridad (D-043) sí lo es.
+  - Solo sirve si la persona lo compara de verdad. Si no coincide, hay que
+    desvincular el dispositivo a mano.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

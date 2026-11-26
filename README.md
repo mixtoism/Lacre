@@ -412,8 +412,8 @@ Known risks and trade-offs:
 - **Last-resort KeyPackages** weaken forward secrecy of the first message
   until the next update.
 - **Device linking** requires the one-time secret from the new device's
-  link code (valid 10 minutes). A visual confirmation on both screens is
-  still planned.
+  link code (valid 10 minutes). Both screens then show a 6-digit
+  confirmation code to compare (D-047); a mismatch means someone else linked.
 - **The QR reveals addresses**: the device's onion address and, if it has
   one, its public IP.
 - **Tor mode is not anonymous** (see §7).
@@ -427,7 +427,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-046), but nothing should be considered secure until audited.
+  (D-039–D-047), but nothing should be considered secure until audited.
 
 ---
 
@@ -645,8 +645,7 @@ Planned:
 - Flutter builds for Android, iOS, Windows and macOS (the app and its
   `lacre_api` bridge already exist; Linux works), QR scanning with the camera.
 - 24-word recovery phrase and primary-role transfer.
-- QR-based mutual confirmation for device linking; history transfer between
-  own devices.
+- History transfer between own devices.
 - Committer transfer, multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.
 - SQLite/SQLCipher storage and OS keystore integration.

@@ -157,6 +157,20 @@ pub fn safety_number(a: &[u8; 32], b: &[u8; 32]) -> String {
         .join(" ")
 }
 
+/// Código de confirmación de una vinculación (D-047): 6 cifras que los dos
+/// dispositivos muestran y la persona compara. Depende de la identidad, del
+/// dispositivo vinculado y del secreto de un solo uso del código o la
+/// invitación, así que solo coincide si el que vinculó es quien se cree.
+pub fn link_confirmation(root: &[u8; 32], device: &[u8; 32], secret: &[u8]) -> String {
+    let h = blake3::Hasher::new_derive_key("p2message/link-confirm/v1")
+        .update(root)
+        .update(device)
+        .update(secret)
+        .finalize();
+    let n = u32::from_be_bytes(h.as_bytes()[..4].try_into().unwrap()) % 1_000_000;
+    format!("{:03} {:03}", n / 1000, n % 1000)
+}
+
 pub fn encode_key(pk: &VerifyingKey) -> String {
     BASE32_NOPAD.encode(pk.as_bytes()).to_lowercase()
 }
@@ -215,4 +229,14 @@ mod tests {
         assert!(ab.split(' ').all(|g| g.len() == 5 && g.bytes().all(|d| d.is_ascii_digit())));
     }
 
+    #[test]
+    fn link_confirmation_depends_on_every_input() {
+        let (r, d) = ([1u8; 32], [2u8; 32]);
+        let c = link_confirmation(&r, &d, b"secreto");
+        assert_eq!(c, link_confirmation(&r, &d, b"secreto"));
+        assert_eq!(c.len(), 7);
+        assert_ne!(c, link_confirmation(&[3u8; 32], &d, b"secreto"));
+        assert_ne!(c, link_confirmation(&r, &[3u8; 32], b"secreto"));
+        assert_ne!(c, link_confirmation(&r, &d, b"otro"));
+    }
 }

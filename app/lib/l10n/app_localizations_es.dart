@@ -517,8 +517,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String deviceLinked(String handle) {
-    return 'Dispositivo vinculado a $handle';
+  String deviceLinked(String handle, String confirm) {
+    return 'Dispositivo vinculado a $handle. El otro tiene que mostrar el código $confirm; si no, desvincúlalo.';
+  }
+
+  @override
+  String get linkConfirmTitle => 'Comprueba el código';
+
+  @override
+  String linkConfirmBody(String confirm) {
+    return 'El otro dispositivo tiene que mostrar este mismo código:\n\n$confirm\n\nSi no coincide, lo ha vinculado otra persona: desvincúlalo desde el perfil.';
   }
 
   @override
@@ -616,8 +624,8 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String deviceJoined(String label) {
-    return '«$label» se ha vinculado';
+  String deviceJoined(String label, String confirm) {
+    return '«$label» se ha vinculado. Tiene que mostrar el código $confirm; si no, desvincúlalo.';
   }
 
   @override

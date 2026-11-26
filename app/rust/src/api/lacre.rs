@@ -183,9 +183,10 @@ pub struct SendResult {
 }
 
 pub enum UiEvent {
-    Linked { handle: String },
+    /// `confirm`: código que el otro dispositivo también muestra (D-047).
+    Linked { handle: String, confirm: String },
     /// Un dispositivo nuevo ha entrado con nuestra invitación (D-037).
-    DeviceLinked { label: String },
+    DeviceLinked { label: String, confirm: String },
     /// `request`: de alguien con quien aún no hablamos; hay que aceptarlo.
     NewChat { index: u32, name: String, request: bool },
     /// Ha cambiado la foto de perfil de alguien (o la nuestra).
@@ -204,8 +205,8 @@ pub enum UiEvent {
 impl From<Event> for UiEvent {
     fn from(ev: Event) -> Self {
         match ev {
-            Event::Linked { handle } => Self::Linked { handle },
-            Event::DeviceLinked { label } => Self::DeviceLinked { label },
+            Event::Linked { handle, confirm } => Self::Linked { handle, confirm },
+            Event::DeviceLinked { label, confirm } => Self::DeviceLinked { label, confirm },
             Event::NewChat { index, name, request } => Self::NewChat { index: index as u32, name, request },
             Event::Avatar { handle } => Self::Avatar { handle },
             Event::ChatsChanged => Self::ChatsChanged,
@@ -362,7 +363,8 @@ pub fn devices() -> Result<Vec<Device>> {
 
 /// Cómo acabó un intento de vincular (D-037).
 pub enum LinkResult {
-    Done,
+    /// `confirm`: tiene que coincidir con el que muestra el otro (D-047).
+    Done { confirm: String },
     /// No es un código de vinculación o está mal copiado.
     BadCode,
     /// No se llegó al otro dispositivo (¿app cerrada, sin conexión?).
@@ -371,8 +373,11 @@ pub enum LinkResult {
     Refused { reason: String },
 }
 
-fn link_result(r: Result<()>) -> Result<LinkResult> {
-    let Err(e) = r else { return Ok(LinkResult::Done) };
+fn link_result(r: Result<String>) -> Result<LinkResult> {
+    let e = match r {
+        Ok(confirm) => return Ok(LinkResult::Done { confirm }),
+        Err(e) => e,
+    };
     match e.downcast_ref::<LinkError>() {
         Some(LinkError::BadCode) => Ok(LinkResult::BadCode),
         Some(LinkError::Unreachable) => Ok(LinkResult::Unreachable),

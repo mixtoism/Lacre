@@ -1522,7 +1522,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
       case 0:
-        return LinkResult_Done();
+        return LinkResult_Done(confirm: dco_decode_String(raw[1]));
       case 1:
         return LinkResult_BadCode();
       case 2:
@@ -1705,9 +1705,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
       case 0:
-        return UiEvent_Linked(handle: dco_decode_String(raw[1]));
+        return UiEvent_Linked(
+          handle: dco_decode_String(raw[1]),
+          confirm: dco_decode_String(raw[2]),
+        );
       case 1:
-        return UiEvent_DeviceLinked(label: dco_decode_String(raw[1]));
+        return UiEvent_DeviceLinked(
+          label: dco_decode_String(raw[1]),
+          confirm: dco_decode_String(raw[2]),
+        );
       case 2:
         return UiEvent_NewChat(
           index: dco_decode_u_32(raw[1]),
@@ -1886,7 +1892,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var tag_ = sse_decode_i_32(deserializer);
     switch (tag_) {
       case 0:
-        return LinkResult_Done();
+        var var_confirm = sse_decode_String(deserializer);
+        return LinkResult_Done(confirm: var_confirm);
       case 1:
         return LinkResult_BadCode();
       case 2:
@@ -2138,10 +2145,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     switch (tag_) {
       case 0:
         var var_handle = sse_decode_String(deserializer);
-        return UiEvent_Linked(handle: var_handle);
+        var var_confirm = sse_decode_String(deserializer);
+        return UiEvent_Linked(handle: var_handle, confirm: var_confirm);
       case 1:
         var var_label = sse_decode_String(deserializer);
-        return UiEvent_DeviceLinked(label: var_label);
+        var var_confirm = sse_decode_String(deserializer);
+        return UiEvent_DeviceLinked(label: var_label, confirm: var_confirm);
       case 2:
         var var_index = sse_decode_u_32(deserializer);
         var var_name = sse_decode_String(deserializer);
@@ -2324,8 +2333,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_link_result(LinkResult self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case LinkResult_Done():
+      case LinkResult_Done(confirm: final confirm):
         sse_encode_i_32(0, serializer);
+        sse_encode_String(confirm, serializer);
       case LinkResult_BadCode():
         sse_encode_i_32(1, serializer);
       case LinkResult_Unreachable():
@@ -2550,12 +2560,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_ui_event(UiEvent self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case UiEvent_Linked(handle: final handle):
+      case UiEvent_Linked(handle: final handle, confirm: final confirm):
         sse_encode_i_32(0, serializer);
         sse_encode_String(handle, serializer);
-      case UiEvent_DeviceLinked(label: final label):
+        sse_encode_String(confirm, serializer);
+      case UiEvent_DeviceLinked(label: final label, confirm: final confirm):
         sse_encode_i_32(1, serializer);
         sse_encode_String(label, serializer);
+        sse_encode_String(confirm, serializer);
       case UiEvent_NewChat(
         index: final index,
         name: final name,

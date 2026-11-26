@@ -114,6 +114,13 @@ class _NoticesState extends State<_Notices> {
     widget.store.notices.stream.listen((text) {
       _messenger.currentState?.showSnackBar(SnackBar(content: Text(text)));
     });
+    widget.store.confirmations.stream.listen((text) {
+      _messenger.currentState?.showSnackBar(SnackBar(
+        content: Text(text),
+        duration: const Duration(minutes: 5),
+        showCloseIcon: true,
+      ));
+    });
   }
 
   @override
