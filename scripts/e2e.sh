@@ -136,7 +136,7 @@ ok "un nodo en reposo recibe y envía"
 # --- Quitar y volver a añadir a una persona (Carol creó «amigos»: es su
 # chat 0 y el 1 de los demás).
 say alice1 "remove 1 $HB"
-wait_for alice1 "solo puede añadir o quitar personas el dispositivo que creó"
+wait_for alice1 "solo puede añadir o quitar personas el dispositivo que gestiona"
 say carol "remove 0 $HB"
 wait_for alice1 "· carol#.* quitó a bob#"; wait_for bob "· carol#.* quitó a bob#"
 wait_for bob "expulsado" 30; wait_for bob2 "expulsado" 30
@@ -326,6 +326,35 @@ say carol2 phrase; wait_for carol2 "frase de recuperación: $PH"
 stop carol; : > carol.out; start carol
 say carol whoami; wait_for carol "handle: $HC"; refute carol "falta un archivo"
 ok "frase de recuperación: otro dispositivo recupera la identidad y entra en sus chats; papel de primario transferido (D-048)"
+
+# Relevo del gestor (D-049): Carol revoca el dispositivo que gestionaba
+# «amigos» y su otro dispositivo toma el relevo; luego pasa la gestión a
+# Alicia, y el dispositivo de Alicia que gestiona, al borrar el grupo, sale
+# y se la devuelve a Carol.
+GC=$(grep -o "\(nuevo\|solicitud de\) chat \[[0-9]*\] amigos" carol2.out | head -1 | grep -o "[0-9][0-9]*")
+: > alice1.out; : > bob.out
+say carol2 "unlink $(field carol 'código de dispositivo: [a-z2-7]*')"
+wait_for alice1 "carol#.* gestiona ahora el chat desde otro dispositivo" $((TICK * 4))
+wait_for bob "carol#.* gestiona ahora el chat desde otro dispositivo"
+wait_for carol "expulsado" $((TICK * 4))
+say carol2 "send $GC relevo hecho"
+wait_for alice1 "carol#.*: relevo hecho"; wait_for bob "carol#.*: relevo hecho"
+: > carol2.out; say carol2 "members $GC"; wait_for carol2 "lo gestionas tú"
+ok "dispositivo gestor revocado: otro de la misma persona toma el relevo y lo expulsa (D-049)"
+say carol2 "handover $GC $HA"; wait_for carol2 "gestiona ahora el chat \[$GC\]"
+wait_for bob "carol#.* pasó la gestión del chat a alice#"
+: > alice1.out; : > alice2.out
+say alice1 "members 1"; say alice2 "members 1"; sleep 2
+AM=$(grep -l "lo gestionas tú" alice1.out alice2.out | head -1 | cut -d. -f1)
+[[ -n $AM ]] || { echo "FALLO: ningún dispositivo de Alicia gestiona el chat"; cat alice1.out alice2.out; exit 1; }
+: > carol2.out; : > bob.out
+say "$AM" "delete 1"; wait_for "$AM" "borrado"
+wait_for carol2 "alice#.* salió del chat" $((TICK * 2)); wait_for bob "alice#.* pasó la gestión del chat a carol#"
+: > carol2.out; say carol2 "members $GC"; wait_for carol2 "lo gestionas tú" $((TICK * 2))
+sleep $((TICK * 2))
+say bob "send 1 sin alicia"; wait_for carol2 "bob#.*: sin alicia"
+sleep 2; refute alice1 "sin alicia"; refute alice2 "sin alicia"
+ok "gestión traspasada a otra persona; quien gestiona y borra el grupo sale y la deja a otra (D-049)"
 
 # Cifrado en disco (D-033): nada legible sin la clave, el relay (en claro)
 # se migra al arrancar con clave, y sin ella ya no arranca.

@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-048),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-049),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -116,8 +116,8 @@ puede afirmar que sea segura.
   - Si se pierde el committer, la membresía del grupo queda congelada.
   - ~~Aún no se pueden añadir ni quitar *personas* de un grupo existente.~~
     Superada por D-024.
-- **Pendiente:** transferir el rol de committer, administradores múltiples y
-  resolución de bifurcaciones.
+- **Pendiente:** ~~transferir el rol de committer~~ (hecho en D-049),
+  administradores múltiples y resolución de bifurcaciones.
 
 ## D-008 · PeerId de libp2p = clave del dispositivo
 
@@ -816,7 +816,7 @@ puede afirmar que sea segura.
     hubiéramos aceptado: salimos a propósito.
   - Si el grupo lo gestiona este dispositivo, borrar solo lo oculta, como en
     D-029: el grupo sigue para los demás. Pasar la gestión a otro queda para
-    más adelante. La app lo explica en la confirmación («Salir y borrar»
+    más adelante. *(Superado por D-049: se pasa la gestión y se sale.)* La app lo explica en la confirmación («Salir y borrar»
     frente a «Borrar»).
   - Un 1:1 sigue como en D-029: solo se oculta y reaparece con el siguiente
     mensaje.
@@ -839,7 +839,8 @@ puede afirmar que sea segura.
 - **Limitaciones:** si el committer está desconectado, la salida espera en
   su buzón y mientras tanto seguimos en el grupo MLS (aunque no se muestre
   nada). Si el committer desaparece para siempre no hay forma de salir del
-  grupo, igual que no la hay de añadir a nadie.
+  grupo, igual que no la hay de añadir a nadie. *(D-049 lo resuelve si el
+  committer perdido se revoca del registro de su persona.)*
 
 ## D-032 · Android en segundo plano y avisos de mensajes
 - **Contexto:** sin servidores no hay notificaciones push (FCM pasaría por
@@ -1624,13 +1625,64 @@ puede afirmar que sea segura.
     registros con `seq` mayores. La única salida es una identidad nueva.
   - Recuperar necesita encontrar el registro en la red: sin conexión con
     ningún nodo que lo tenga, no se sabe el nombre ni los dispositivos.
-  - Los grupos cuyo committer era un dispositivo perdido siguen congelados
-    hasta que se pueda traspasar el committer (hoja de ruta, punto 4). El
+  - ~~Los grupos cuyo committer era un dispositivo perdido siguen congelados
+    hasta que se pueda traspasar el committer (hoja de ruta, punto 4).~~
+    Resuelto en D-049: al quitarlo del registro, el recuperado lo releva. El
     historial anterior no llega al dispositivo recuperado (punto 6).
   - En Android la frase se muestra con FLAG_SECURE (sin capturas ni vista
     previa en recientes). En el escritorio no hay forma general de
     impedirlo.
   - Solo lista inglesa.
+
+## D-049 · Traspaso y relevo del committer
+
+- **Contexto:** con un único committer por grupo (D-007), perder ese
+  dispositivo congelaba el grupo: nadie podía entrar, salir ni ser expulsado,
+  ni siquiera el propio dispositivo perdido. Quien gestionaba un grupo
+  tampoco podía salir de él (D-031). Decidido sin preguntar (se pidió
+  completar el proyecto).
+- **Decisión:**
+  - **Traspaso a mano:** el committer manda un `meta` con otro `committer`:
+    el dispositivo de clave más baja, dentro del grupo, de la persona
+    elegida. Los miembros lo aceptan si viene del committer actual y el
+    nuevo es una hoja de alguien del chat. CLI: `handover <n> <handle>`; app:
+    menú de cada persona en «Personas».
+  - **Al salir:** borrar un grupo que gestionamos ya no lo deja oculto con
+    nosotros dentro. Antes se pasa la gestión al primer participante con
+    dispositivos en el grupo, en el mismo `meta` que nos quita con
+    `leave = true`, y es el nuevo committer quien nos expulsa. Si no queda
+    nadie, solo se oculta, como antes.
+  - **Relevo automático:** si el dispositivo committer desaparece del
+    registro firmado de su persona (lo revocó, o se recuperó con
+    `--only-this`), el dispositivo de esa persona con la clave más baja de
+    entre los que siguen en el grupo envía un `meta` con él como committer y
+    su `SignedRecord` en `takeover`. Los miembros lo comprueban sin red
+    (registro válido, de la misma raíz, sin el committer, con el remitente,
+    el remitente es el de clave más baja, sin más cambios, y no contradice un
+    registro más nuevo que tengan). Se intenta en cada tick y tras cambiar
+    nuestros dispositivos. Después el nuevo committer sincroniza y expulsa
+    al revocado.
+  - Los commits del nuevo committer que lleguen antes que el `meta` esperan
+    en la cola de reintentos, que se vuelve a procesar al aplicar el cambio.
+  - Aviso en el chat: «X pasó la gestión del chat a Y» o «X gestiona ahora
+    el chat desde otro dispositivo».
+- **Motivo:** cubre los casos que se dan de verdad (dejar un grupo, perder o
+  revocar un móvil) sin introducir commits concurrentes: en cada momento
+  sigue habiendo un único committer. El relevo no necesita que el committer
+  viejo colabore, porque la revocación ya está firmada por la raíz.
+- **Limitaciones:**
+  - Si el committer revocado sigue funcionando y hace un commit a la vez que
+    llega el relevo, distintos miembros pueden aplicar uno u otro primero:
+    el grupo se bifurca (sigue pendiente la resolución de bifurcaciones).
+  - Si se pierde la identidad entera del committer (sin frase ni otros
+    dispositivos), el grupo sigue congelado: nadie de otra persona puede
+    relevarlo.
+  - El relevo lo hace un único dispositivo (el de clave más baja); si está
+    desconectado, espera a que vuelva.
+  - Un participante con registros desfasados de dos versiones distintas
+    podría ver como válidos dos relevos de dispositivos distintos; se
+    resuelve igual que una bifurcación.
+- **Pendiente:** administradores múltiples y resolución de bifurcaciones.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

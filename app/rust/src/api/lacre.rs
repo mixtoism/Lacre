@@ -521,6 +521,12 @@ pub async fn remove_member(index: u32, handle: String) -> Result<()> {
     on_rt(async move { app.remove_member(index as usize, &handle).await }).await
 }
 
+/// Pasa la gestión de un chat que gestionamos a otra persona (D-049).
+pub async fn hand_over(index: u32, handle: String) -> Result<()> {
+    let app = app()?;
+    on_rt(async move { app.hand_over(index as usize, &handle).await.map(|_| ()) }).await
+}
+
 fn parse_targets(targets: &[String]) -> Result<Vec<Target>> {
     targets
         .iter()

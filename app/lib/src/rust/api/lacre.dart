@@ -150,6 +150,10 @@ Future<void> removeMember({required int index, required String handle}) =>
       handle: handle,
     );
 
+/// Pasa la gestión de un chat que gestionamos a otra persona (D-049).
+Future<void> handOver({required int index, required String handle}) =>
+    RustLib.instance.api.crateApiLacreHandOver(index: index, handle: handle);
+
 /// Tamaño máximo de un sticker, en bytes.
 int maxStickerBytes() => RustLib.instance.api.crateApiLacreMaxStickerBytes();
 

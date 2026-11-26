@@ -24,6 +24,9 @@ DECISIONES.md.
 4. **Transferir el rol de committer** (D-007, D-031): si el committer de un
    grupo desaparece, no se puede añadir, quitar ni salir. También:
    administradores múltiples y resolución de bifurcaciones.
+   → **Traspaso hecho (D-049):** a mano, al salir del grupo y automático
+   cuando se revoca el dispositivo gestor. Quedan los administradores
+   múltiples y la resolución de bifurcaciones.
 
 ## Seguridad
 

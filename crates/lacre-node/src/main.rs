@@ -81,8 +81,9 @@ comandos:
   group <título> <h1> <h2>...  crea un grupo
   chats                        lista tus chats
   members <n>                  muestra quién participa en el chat n
-  add <n> <h1|qr> [h2…]        añade personas al chat n (solo quien lo creó)
-  remove <n> <handle>          quita a una persona del chat n (solo quien lo creó)
+  add <n> <h1|qr> [h2…]        añade personas al chat n (solo quien lo gestiona)
+  remove <n> <handle>          quita a una persona del chat n (solo quien lo gestiona)
+  handover <n> <handle>        pasa la gestión del chat n a esa persona
   send <n> <texto>             envía un mensaje al chat n
   sticker <n> <archivo>        envía una imagen (PNG/GIF/WebP/JPEG, ≤200 KB) como sticker
   file <n> <archivo>           envía un archivo (≤100 MB)
@@ -319,7 +320,7 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
                 println!("  {p}");
             }
             if editable {
-                println!("  (puedes añadir y quitar personas: add / remove)");
+                println!("  (lo gestionas tú: add / remove / handover)");
             }
         }
         "add" => {
@@ -336,6 +337,11 @@ async fn run_command(app: &Arc<App>, line: &str) -> Result<()> {
             let (n, handle) = rest.split_once(' ').context("uso: remove <n> <handle>")?;
             app.remove_member(n.parse()?, handle).await?;
             println!("{} quitado del chat [{n}]", handle.trim());
+        }
+        "handover" => {
+            let (n, handle) = rest.split_once(' ').context("uso: handover <n> <handle>")?;
+            let to = app.hand_over(n.parse()?, handle).await?;
+            println!("{to} gestiona ahora el chat [{n}]");
         }
         "send" | "sticker" | "file" => {
             let (n, arg) =

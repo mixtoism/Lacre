@@ -565,8 +565,25 @@ persona (`UnverifiedMember`) pero no la rechaza. Ver §13.6.
 
 - **Añadir o quitar personas**: el committer cambia `participants`, envía un
   mensaje de aplicación con el nuevo `meta` (§9) y sincroniza (§8.5). Los
-  miembros DEBEN ignorar un `meta` que no venga del committer o que cambie el
-  committer.
+  miembros DEBEN ignorar un `meta` que no venga del committer, salvo el
+  relevo descrito abajo.
+- **Traspasar la gestión**: el committer envía un `meta` con otro
+  `committer`. Los miembros DEBEN comprobar que el nuevo es una hoja del
+  grupo cuya raíz es de uno de los `participants`. Desde ese mensaje solo
+  aceptan commits del nuevo; los que llegaron antes esperan en la cola de
+  reintentos (§8.5). Si el committer sale del grupo, primero traspasa la
+  gestión al primer participante con dispositivos en el grupo (en el mismo
+  `meta`, sin él y con `leave = true`), y es el nuevo quien lo expulsa.
+- **Relevo de un committer revocado**: si el dispositivo committer ya no está
+  en el registro de su persona, el dispositivo de esa persona con la
+  `device_pk` más baja de entre los que siguen en el grupo y en el registro
+  envía un `meta` con `committer` = él mismo y `takeover` = su
+  `SignedRecord`. Cada miembro DEBE comprobar: que el registro es válido y de
+  la raíz del committer y del remitente; que no incluye al committer y sí al
+  remitente; que el remitente es el de clave más baja; que `participants` y
+  `title` no cambian; y que no tiene ya un registro de esa raíz con mayor
+  `seq` que siga incluyendo al committer. Después el nuevo committer
+  sincroniza y expulsa al revocado.
 - **Salir**: el miembro envía un mensaje de aplicación con `leave = true` y
   sin `meta`. El committer lo quita de `participants`, envía el nuevo `meta`
   con `leave = true` y sincroniza. Si el mensaje de salida lo envió otro
@@ -584,7 +601,8 @@ AppMessage = {
   ? sticker: bstr,            ; imagen ≤ 200 KiB (§9.1)
   ? file:    FileOffer,       ; oferta de archivo (§11)
   ? avatar:  uint,            ; versión de la foto de perfil (≥ 1)
-  ? leave:   bool             ; solo si es true
+  ? leave:   bool,            ; solo si es true
+  ? takeover: bstr            ; SignedRecord del relevo (§8.7)
 }
 ```
 

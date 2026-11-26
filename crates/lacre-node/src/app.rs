@@ -189,6 +189,10 @@ struct AppMessage {
     /// `meta`, el committer avisa de que los quitados salieron ellos.
     #[serde(default, skip_serializing_if = "is_false")]
     leave: bool,
+    /// Relevo del committer revocado (D-049): registro firmado de su
+    /// persona, ya sin él, que manda otro dispositivo suyo junto con `meta`.
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    takeover: Option<Vec<u8>>,
 }
 
 fn is_false(v: &bool) -> bool {
@@ -547,9 +551,9 @@ fn participant_of(participants: &[String], root_pk: &[u8; 32]) -> String {
         .unwrap_or_else(|| format!("desconocido#{suffix}"))
 }
 
-/// Aviso que resume un cambio de participantes hecho por `by`. Con `leave`,
-/// los quitados salieron ellos (D-031).
-fn meta_notice(old: &ChatMeta, new: &ChatMeta, by: &str, leave: bool) -> Option<String> {
+/// Aviso que resume un cambio de participantes (o de gestor, D-049) hecho
+/// por `by`. Con `leave`, los quitados salieron ellos (D-031).
+fn meta_notice(old: &ChatMeta, new: &ChatMeta, by: &str, leave: bool, members: &[MemberId]) -> Option<String> {
     let added: Vec<&str> =
         new.participants.iter().filter(|p| !old.participants.contains(p)).map(String::as_str).collect();
     let removed: Vec<&str> =
@@ -563,7 +567,33 @@ fn meta_notice(old: &ChatMeta, new: &ChatMeta, by: &str, leave: bool) -> Option<
     } else if !removed.is_empty() {
         parts.push(format!("{by} quitó a {}", removed.join(", ")));
     }
+    if old.committer != new.committer {
+        let from = members.iter().find(|m| m.device_pk == old.committer).map(|m| m.root_pk);
+        match members.iter().find(|m| m.device_pk == new.committer) {
+            Some(to) if from == Some(to.root_pk) => {
+                parts.push(format!("{} gestiona ahora el chat desde otro dispositivo", participant_of(&new.participants, &to.root_pk)));
+            }
+            Some(to) => parts.push(format!("{by} pasó la gestión del chat a {}", participant_of(&new.participants, &to.root_pk))),
+            None => {}
+        }
+    }
     (!parts.is_empty()).then(|| parts.join("; "))
+}
+
+/// Dispositivo que hereda la gestión de un chat (D-049): el de clave más
+/// baja, entre los miembros del grupo MLS, de la persona `handle`.
+fn device_of(members: &[MemberId], handle: &str) -> Option<[u8; 32]> {
+    let suffix = handle.parse::<Handle>().ok()?.suffix;
+    members
+        .iter()
+        .filter(|m| suffix_of_root(&m.root_pk).is_some_and(|s| s == suffix))
+        .map(|m| m.device_pk)
+        .min()
+}
+
+/// ¿Es `root_pk` la raíz de alguno de los participantes?
+fn participates(participants: &[String], root_pk: &[u8; 32]) -> bool {
+    suffix_of_root(root_pk).is_some_and(|s| participants.iter().any(|p| suffix_of(p) == s))
 }
 
 /// Trozos de un archivo que se piden a la vez.
@@ -1373,6 +1403,7 @@ impl App {
     /// Tras cambiar nuestros dispositivos: sincroniza los grupos que
     /// controlamos y avisa a los committers del resto.
     async fn after_devices_changed(self: &Arc<Self>) {
+        self.take_over_orphans().await;
         let me = self.device_pk();
         let chats = self.state.lock().unwrap().chats.clone();
         for chat in chats.into_iter().filter(|c| c.active) {
@@ -1587,7 +1618,7 @@ impl App {
             bail!("ya no perteneces a este chat");
         }
         if chat.meta.committer != self.device_pk() {
-            bail!("solo puede añadir o quitar personas el dispositivo que creó el chat");
+            bail!("solo puede añadir o quitar personas el dispositivo que gestiona el chat");
         }
         Ok(chat)
     }
@@ -1621,7 +1652,7 @@ impl App {
         }
         // Primero la lista nueva (así los miembros conocen los nombres de
         // quienes entran) y después el commit que los añade, con el Welcome.
-        self.update_meta(&chat, meta, false).await?;
+        self.update_meta(&chat, meta, false, None).await?;
         self.sync_group(&chat.group_id).await
     }
 
@@ -1640,31 +1671,93 @@ impl App {
         meta.participants.retain(|p| *p != handle);
         // El aviso le llega también a quien sale; después, el commit que lo
         // expulsa.
-        self.update_meta(&chat, meta, false).await?;
+        self.update_meta(&chat, meta, false, None).await?;
         self.sync_group(&chat.group_id).await
     }
 
     /// Guarda la nueva lista de participantes y la manda al grupo, firmada
-    /// por el committer dentro de MLS.
-    async fn update_meta(&self, chat: &Chat, meta: ChatMeta, leave: bool) -> Result<()> {
+    /// por el committer dentro de MLS. Con `takeover`, la manda quien releva
+    /// a un committer revocado (D-049).
+    async fn update_meta(&self, chat: &Chat, meta: ChatMeta, leave: bool, takeover: Option<Vec<u8>>) -> Result<()> {
         let _guard = self.send_lock.lock().await;
         let sent_at = now();
+        let members = self.with_mls(|m| Ok(m.members(&chat.group_id)?))?;
         let (index, by) = {
             let mut st = self.state.lock().unwrap();
             let index = st.chats.iter().position(|c| c.group_id == chat.group_id).context("chat desconocido")?;
             st.chats[index].meta = meta.clone();
             self.save_chats(&st)?;
             let root_pk = st.identity.as_ref().context("sin identidad")?.record.root_pk;
-            (index, participant_of(&meta.participants, &root_pk))
+            (index, participant_of(&chat.meta.participants, &root_pk))
         };
-        if let Some(text) = meta_notice(&chat.meta, &meta, &by, leave) {
+        if let Some(text) = meta_notice(&chat.meta, &meta, &by, leave, &members) {
             self.record(index, &chat.group_id, StoredMessage { from: by, text, sent_at, mine: true, notice: true, sticker: None, file: None }, true);
         }
-        let body = cbor_to(&AppMessage { text: String::new(), sent_at, meta: Some(meta), sticker: None, file: None, avatar: 0, leave })?;
-        let (msg, members) =
-            self.with_mls(|m| Ok((m.encrypt(&chat.group_id, &body)?, m.members(&chat.group_id)?)))?;
+        let body = cbor_to(&AppMessage { text: String::new(), sent_at, meta: Some(meta), sticker: None, file: None, avatar: 0, leave, takeover })?;
+        let msg = self.with_mls(|m| Ok(m.encrypt(&chat.group_id, &body)?))?;
         self.fan_out(&members, Request::Mls(msg)).await;
         Ok(())
+    }
+
+    /// Pasa la gestión de un chat (D-049) a otra persona del chat, o a otro
+    /// dispositivo nuestro si `handle` somos nosotros. Solo el committer.
+    pub async fn hand_over(self: &Arc<Self>, index: usize, handle: &str) -> Result<String> {
+        let chat = self.editable_chat(index)?;
+        let handle = handle.trim().parse::<Handle>()?.to_string();
+        if !chat.meta.participants.contains(&handle) {
+            bail!("{handle} no está en el chat");
+        }
+        let me = self.device_pk();
+        let members = self.with_mls(|m| Ok(m.members(&chat.group_id)?))?;
+        let others: Vec<MemberId> = members.into_iter().filter(|m| m.device_pk != me).collect();
+        let heir = device_of(&others, &handle)
+            .with_context(|| format!("{handle} aún no tiene ningún dispositivo en el grupo"))?;
+        let mut meta = chat.meta.clone();
+        meta.committer = heir;
+        self.update_meta(&chat, meta, false, None).await?;
+        info!("group management handed over");
+        Ok(handle)
+    }
+
+    /// Releva al committer de los chats cuyo dispositivo gestor era nuestro
+    /// y ya no está en nuestro registro (revocado o perdido, D-049). Solo lo
+    /// hace el dispositivo nuestro de clave más baja que esté en el grupo,
+    /// para que no haya dos relevos a la vez.
+    async fn take_over_orphans(self: &Arc<Self>) {
+        let me = self.device_pk();
+        let (record, signed, chats) = {
+            let st = self.state.lock().unwrap();
+            let Some(id) = &st.identity else { return };
+            let Ok(signed) = id.signed.to_bytes() else { return };
+            (id.record.clone(), signed, st.chats.clone())
+        };
+        if !record.has_device(&me) {
+            return;
+        }
+        for chat in chats.into_iter().filter(|c| c.active && !c.left && c.meta.committer != me) {
+            let Ok(members) = self.with_mls(|m| Ok(m.members(&chat.group_id)?)) else { continue };
+            let orphan = members
+                .iter()
+                .any(|m| m.device_pk == chat.meta.committer && m.root_pk == record.root_pk && !record.has_device(&m.device_pk));
+            let heir = members
+                .iter()
+                .filter(|m| m.root_pk == record.root_pk && record.has_device(&m.device_pk))
+                .map(|m| m.device_pk)
+                .min();
+            if !orphan || heir != Some(me) {
+                continue;
+            }
+            let mut meta = chat.meta.clone();
+            meta.committer = me;
+            let result = async {
+                self.update_meta(&chat, meta, false, Some(signed.clone())).await?;
+                self.sync_group(&chat.group_id).await
+            };
+            match result.await {
+                Ok(()) => info!("took over a group whose managing device was revoked"),
+                Err(e) => warn!("group takeover failed: {e:#}"),
+            }
+        }
     }
 
     pub fn chats(&self) -> Vec<ChatSummary> {
@@ -1703,10 +1796,11 @@ impl App {
     /// Borra un chat de este dispositivo: su historial y de la lista. Un 1:1
     /// vuelve a aparecer (vacío) si llega otro mensaje. De un grupo, además,
     /// se sale: se le pide al committer que nos quite (D-031). Si el
-    /// committer somos nosotros, solo se oculta (el grupo sigue para los
-    /// demás).
+    /// committer somos nosotros, antes se pasa la gestión a otra persona del
+    /// chat (D-049), que es quien nos quita.
     pub fn delete_chat(self: &Arc<Self>, index: usize) -> Result<()> {
-        let leave = {
+        let me = self.device_pk();
+        let (leave, hand_over) = {
             let mut st = self.state.lock().unwrap();
             st.chats.get(index).context("no existe ese chat")?;
             let index = canonical(&st.chats, index);
@@ -1716,21 +1810,50 @@ impl App {
                 st.chats[i].hidden = true;
                 history.clear(&st.chats[i].group_id)?;
             }
+            drop(history);
+            let my_root = st.identity.as_ref().map(|v| v.record.root_pk);
+            let c = &st.chats[index];
+            let group = is_group(c) && c.active && !c.left;
+            // Heredero: el primer participante (que no seamos nosotros) con
+            // algún dispositivo en el grupo.
+            let heir = if group && c.meta.committer == me {
+                let members = st.mls.as_ref().and_then(|m| m.members(&c.group_id).ok()).unwrap_or_default();
+                let others: Vec<MemberId> = members.into_iter().filter(|m| Some(m.root_pk) != my_root).collect();
+                c.meta.participants.iter().find_map(|p| device_of(&others, p))
+            } else {
+                None
+            };
+            let leave = group && c.meta.committer != me;
             let c = &mut st.chats[index];
-            let leave = is_group(c) && c.active && !c.left && c.meta.committer != self.device_pk();
-            if leave {
+            if leave || heir.is_some() {
                 c.left = true;
             }
             let chat = c.clone();
             self.save_chats(&st)?;
-            leave.then_some(chat)
+            let hand_over = heir.map(|heir| {
+                let mut meta = chat.meta.clone();
+                let mine = my_root.map(|r| participant_of(&meta.participants, &r));
+                meta.participants.retain(|p| Some(p) != mine.as_ref());
+                meta.committer = heir;
+                (chat.clone(), meta)
+            });
+            (leave.then_some(chat), hand_over)
         };
         if let Some(chat) = leave {
             let app = self.clone();
             self.rt.spawn(async move {
-                let msg = AppMessage { text: String::new(), sent_at: now(), meta: None, sticker: None, file: None, avatar: 0, leave: true };
+                let msg = AppMessage { text: String::new(), sent_at: now(), meta: None, sticker: None, file: None, avatar: 0, leave: true, takeover: None };
                 if let Err(e) = app.deliver(&chat, msg).await {
                     warn!("could not request leaving the group: {e:#}");
+                }
+            });
+        }
+        if let Some((chat, meta)) = hand_over {
+            let app = self.clone();
+            self.rt.spawn(async move {
+                match app.update_meta(&chat, meta, true, None).await {
+                    Ok(()) => info!("left a managed group and handed it over"),
+                    Err(e) => warn!("could not hand over the group before leaving: {e:#}"),
                 }
             });
         }
@@ -1759,7 +1882,7 @@ impl App {
         }
         let mut meta = chat.meta.clone();
         meta.participants.retain(|p| *p != handle);
-        self.update_meta(&chat, meta, true).await?;
+        self.update_meta(&chat, meta, true, None).await?;
         self.sync_group(group_id).await
     }
 
@@ -2072,7 +2195,7 @@ impl App {
             warn!("pre-send sync failed: {e:#}");
         }
         let avatar = self.my_avatar_version();
-        self.deliver(&chat, AppMessage { text, sent_at, meta: None, sticker, file, avatar, leave: false }).await
+        self.deliver(&chat, AppMessage { text, sent_at, meta: None, sticker, file, avatar, leave: false, takeover: None }).await
     }
 
     async fn deliver(&self, chat: &Chat, msg: AppMessage) -> Result<SendReport> {
@@ -2122,7 +2245,7 @@ impl App {
                 .collect()
         };
         for chat in chats {
-            let msg = AppMessage { text: String::new(), sent_at: now(), meta: None, sticker: None, file: None, avatar: version, leave: false };
+            let msg = AppMessage { text: String::new(), sent_at: now(), meta: None, sticker: None, file: None, avatar: version, leave: false, takeover: None };
             if let Err(e) = self.deliver(&chat, msg).await {
                 debug!("new profile photo notice: {e:#}");
             }
@@ -2530,7 +2653,7 @@ impl App {
                 };
                 if let Some(old) = old {
                     let by = participant_of(&meta.participants, &committer.root_pk);
-                    if let Some(text) = meta_notice(&old.meta, &meta, &by, false) {
+                    if let Some(text) = meta_notice(&old.meta, &meta, &by, false, &[]) {
                         let mine = self.is_mine(&committer.root_pk);
                         let message = StoredMessage { from: by, text, sent_at: now(), mine, notice: true, sticker: None, file: None };
                         self.record(index, &group_id, message, false);
@@ -2714,6 +2837,50 @@ impl App {
         }
     }
 
+    /// Comprueba un relevo de committer (D-049): `signed` es el registro
+    /// firmado de la persona del committer, que ya no lo incluye, y quien lo
+    /// manda es el dispositivo suyo de clave más baja que sigue en el grupo.
+    /// Solo cambia el gestor, nada más del chat.
+    fn check_takeover(
+        st: &State,
+        old: &ChatMeta,
+        new: &ChatMeta,
+        sender: &MemberId,
+        members: &[MemberId],
+        signed: &[u8],
+    ) -> Result<()> {
+        let v = SignedRecord::from_bytes(signed)?.verify()?;
+        let committer = members.iter().find(|m| m.device_pk == old.committer).context("el committer no está en el grupo")?;
+        if v.record.root_pk != committer.root_pk || sender.root_pk != committer.root_pk {
+            bail!("relevo de un committer de otra persona");
+        }
+        if v.record.has_device(&committer.device_pk) || !v.record.has_device(&sender.device_pk) {
+            bail!("relevo de un committer que sigue en su registro");
+        }
+        let heir = members
+            .iter()
+            .filter(|m| m.root_pk == v.record.root_pk && v.record.has_device(&m.device_pk))
+            .map(|m| m.device_pk)
+            .min();
+        if heir != Some(sender.device_pk) || new.committer != sender.device_pk {
+            bail!("relevo de un dispositivo que no le toca");
+        }
+        if new.participants != old.participants || new.title != old.title {
+            bail!("un relevo no puede cambiar el chat");
+        }
+        // Si ya tenemos un registro más nuevo de esa persona que sigue
+        // incluyendo al committer, el relevo viene de uno viejo.
+        let cached = st
+            .identity
+            .as_ref()
+            .filter(|i| i.record.root_pk == v.record.root_pk)
+            .or_else(|| st.contacts.get(&v.record.root_pk));
+        if cached.is_some_and(|c| c.record.seq > v.record.seq && c.record.has_device(&committer.device_pk)) {
+            bail!("relevo con un registro anterior al que tenemos");
+        }
+        Ok(())
+    }
+
     /// Procesa un mensaje MLS. Si falla (p. ej. llega antes que el commit
     /// que lo hace válido), se guarda para reintentarlo tras el siguiente.
     /// Devuelve el grupo si se aplicó un commit.
@@ -2754,9 +2921,19 @@ impl App {
                     return Ok(None);
                 }
                 if let Some(meta) = msg.meta {
-                    // Cambio de participantes: solo vale del committer.
-                    if sender.device_pk != chat.meta.committer || meta.committer != chat.meta.committer {
-                        bail!("cambio de participantes que no viene del committer");
+                    let members = st.mls.as_ref().context("sin identidad")?.members(&group_id)?;
+                    // Cambio de participantes o de gestor: solo vale del
+                    // committer o de quien releva a uno revocado (D-049).
+                    match &msg.takeover {
+                        None if sender.device_pk == chat.meta.committer => {}
+                        Some(signed) if !forged => Self::check_takeover(&st, &chat.meta, &meta, &sender, &members, signed)?,
+                        _ => bail!("cambio de participantes que no viene del committer"),
+                    }
+                    if meta.committer != chat.meta.committer {
+                        let heir = members.iter().find(|m| m.device_pk == meta.committer);
+                        if !heir.is_some_and(|m| participates(&meta.participants, &m.root_pk)) {
+                            bail!("el nuevo gestor no es un dispositivo de alguien del chat");
+                        }
                     }
                     st.chats[index].meta = meta.clone();
                     // Nuestra persona salió (desde otro dispositivo).
@@ -2766,10 +2943,15 @@ impl App {
                     }
                     self.save_chats(&st)?;
                     drop(st);
-                    let by = participant_of(&meta.participants, &sender.root_pk);
-                    if let Some(text) = meta_notice(&chat.meta, &meta, &by, msg.leave) {
+                    let by = participant_of(&chat.meta.participants, &sender.root_pk);
+                    if let Some(text) = meta_notice(&chat.meta, &meta, &by, msg.leave, &members) {
                         let message = StoredMessage { from: by, text, sent_at: msg.sent_at, mine, notice: true, sticker: None, file: None };
                         self.record(index, &group_id, message, false);
+                    }
+                    // Los commits del nuevo gestor que llegaron antes que el
+                    // relevo esperan en la cola: ya valen.
+                    if meta.committer != chat.meta.committer {
+                        self.retry_pending();
                     }
                     return Ok(None);
                 }
@@ -2937,6 +3119,7 @@ impl App {
         self.publish().await;
         self.fetch_all_mailboxes().await;
         self.push_mailbox();
+        self.take_over_orphans().await;
         let me = self.device_pk();
         let groups: Vec<Vec<u8>> = {
             let st = self.state.lock().unwrap();

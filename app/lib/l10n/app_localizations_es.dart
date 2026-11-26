@@ -182,7 +182,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deleteChatBodyManager =>
-      'Se borran sus mensajes de este dispositivo. Como el grupo lo gestiona este dispositivo, sigues en él: los demás pueden seguir escribiendo y el chat reaparecerá vacío.';
+      'Saldrás del grupo en todos tus dispositivos y se borrarán sus mensajes de este. Como lo gestionas tú, antes se pasa la gestión a otra persona del chat.';
 
   @override
   String get deleteChatBodyLeave =>
@@ -257,12 +257,24 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get onlyCreatorEdits =>
-      'Solo quien creó el chat puede añadir o quitar personas.';
+      'Solo quien gestiona el chat puede añadir o quitar personas.';
 
   @override
   String removePerson(String handle) {
     return 'Quitar a $handle';
   }
+
+  @override
+  String get handOver => 'Pasar la gestión';
+
+  @override
+  String handOverTitle(String handle) {
+    return '¿Pasar la gestión a $handle?';
+  }
+
+  @override
+  String get handOverBody =>
+      'Podrá añadir y quitar personas desde uno de sus dispositivos, y tú dejarás de poder hacerlo.';
 
   @override
   String get addPeople => 'Añadir personas';

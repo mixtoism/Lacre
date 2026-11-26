@@ -395,7 +395,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteChatBodyManager.
   ///
   /// In es, this message translates to:
-  /// **'Se borran sus mensajes de este dispositivo. Como el grupo lo gestiona este dispositivo, sigues en él: los demás pueden seguir escribiendo y el chat reaparecerá vacío.'**
+  /// **'Saldrás del grupo en todos tus dispositivos y se borrarán sus mensajes de este. Como lo gestionas tú, antes se pasa la gestión a otra persona del chat.'**
   String get deleteChatBodyManager;
 
   /// No description provided for @deleteChatBodyLeave.
@@ -515,7 +515,7 @@ abstract class AppLocalizations {
   /// No description provided for @onlyCreatorEdits.
   ///
   /// In es, this message translates to:
-  /// **'Solo quien creó el chat puede añadir o quitar personas.'**
+  /// **'Solo quien gestiona el chat puede añadir o quitar personas.'**
   String get onlyCreatorEdits;
 
   /// No description provided for @removePerson.
@@ -523,6 +523,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Quitar a {handle}'**
   String removePerson(String handle);
+
+  /// No description provided for @handOver.
+  ///
+  /// In es, this message translates to:
+  /// **'Pasar la gestión'**
+  String get handOver;
+
+  /// No description provided for @handOverTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Pasar la gestión a {handle}?'**
+  String handOverTitle(String handle);
+
+  /// No description provided for @handOverBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Podrá añadir y quitar personas desde uno de sus dispositivos, y tú dejarás de poder hacerlo.'**
+  String get handOverBody;
 
   /// No description provided for @addPeople.
   ///

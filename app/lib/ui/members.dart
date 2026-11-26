@@ -6,7 +6,8 @@ import '../store.dart';
 import 'common.dart';
 import 'scan.dart';
 
-/// Personas de un chat. Quien lo creó (D-007) puede añadir y quitar.
+/// Personas de un chat. Quien lo gestiona (D-007) puede añadir, quitar y
+/// pasar la gestión a otra persona (D-049).
 class MembersPage extends StatefulWidget {
   const MembersPage({super.key, required this.store, required this.index});
 
@@ -44,6 +45,22 @@ class _MembersPageState extends State<MembersPage> {
     await guard(
       context,
       () => lacre.removeMember(index: widget.index, handle: handle),
+    );
+    if (mounted) setState(() => _removing = null);
+  }
+
+  Future<void> _handOver(String handle) async {
+    final ok = await confirm(
+      context,
+      title: context.l.handOverTitle(handle),
+      body: context.l.handOverBody,
+      action: context.l.handOver,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _removing = handle);
+    await guard(
+      context,
+      () => lacre.handOver(index: widget.index, handle: handle),
     );
     if (mounted) setState(() => _removing = null);
   }
@@ -122,12 +139,26 @@ class _MembersPageState extends State<MembersPage> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : members.canEdit
-                      ? IconButton(
-                          tooltip: context.l.removePerson(p),
-                          icon: const Icon(Icons.person_remove),
-                          onPressed: _removing == null
-                              ? () => _remove(p)
-                              : null,
+                      ? PopupMenuButton<bool>(
+                          enabled: _removing == null,
+                          onSelected: (remove) =>
+                              remove ? _remove(p) : _handOver(p),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: false,
+                              child: ListTile(
+                                leading: const Icon(Icons.admin_panel_settings),
+                                title: Text(context.l.handOver),
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: true,
+                              child: ListTile(
+                                leading: const Icon(Icons.person_remove),
+                                title: Text(context.l.removePerson(p)),
+                              ),
+                            ),
+                          ],
                         )
                       : null,
                 ),

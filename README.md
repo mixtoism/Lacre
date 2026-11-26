@@ -228,9 +228,13 @@ IdentityRecord {
   - joiners verify every member against the DHT and warn about any
     unverified member.
 - **Single committer per group.** Without a server to order messages, two
-  concurrent commits would fork the group. Only the device that created the
-  group may commit (adds, removes, epoch changes). Everyone else rejects
-  commits from any other device.
+  concurrent commits would fork the group. Only one device (the committer,
+  the creator by default) may commit (adds, removes, epoch changes). Everyone
+  else rejects commits from any other device.
+  - The committer can hand the role over to another participant, and does so
+    before leaving a group it manages. If the committer device is revoked,
+    the lowest-keyed remaining device of the same person takes over by
+    sending its signed identity record, which proves the revocation (D-049).
   - The committer syncs every tick (30 s by default) and before each send: it
     resolves the participants' records, adds new devices and removes revoked
     ones. Other members can ask for a sync with `SyncHint`.
@@ -427,7 +431,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-048), but nothing should be considered secure until audited.
+  (D-039–D-049), but nothing should be considered secure until audited.
 
 ---
 
@@ -632,9 +636,11 @@ Current limitations:
 - The root key exists only on the primary device and in its 24-word recovery
   phrase (D-048). Whoever has the phrase owns the identity, and a leaked
   root key cannot be rotated: the handle is derived from it.
-- Only the group creator can commit. If it is offline, membership changes
-  wait; if it is lost, membership is frozen. People cannot yet be added to or
-  removed from an existing group.
+- Only one device per group (its manager, the creator by default) can commit.
+  If it is offline, membership changes wait. Management can be handed over,
+  and another device of the same person takes over automatically when the
+  manager device is revoked (D-049). If the manager's whole identity is lost,
+  membership is frozen.
 - Newly linked devices only see messages sent after they joined.
 - Relay discovery is IPv4 only; a `--relay-server` behind NAT advertises an
   unreachable address (AutoNAT pending).
@@ -645,7 +651,7 @@ Planned:
 - Flutter builds for Android, iOS, Windows and macOS (the app and its
   `lacre_api` bridge already exist; Linux works), QR scanning with the camera.
 - History transfer between own devices.
-- Committer transfer, multiple admins and fork resolution.
+- Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.
 - SQLite/SQLCipher storage and OS keystore integration.
 - IPv6, AutoNAT, rate limiting of DHT writes, an optional Tor-only anonymous

@@ -14,16 +14,21 @@ Future<bool> deleteChat(
   Store store,
   lacre.ChatInfo chat,
 ) async {
-  // En un grupo que no gestionamos, borrar es salir de él (D-031).
+  // Borrar un grupo es salir de él (D-031). Si lo gestionamos, antes se
+  // pasa la gestión a otra persona (D-049); si no queda nadie, solo se borra.
   var manager = false;
+  var alone = false;
   if (chat.peer == null && chat.active) {
     try {
-      manager = lacre.chatMembers(index: chat.index).canEdit;
+      final members = lacre.chatMembers(index: chat.index);
+      manager = members.canEdit;
+      alone = members.participants.length <= 1;
     } catch (_) {}
   }
   final l = context.l;
+  final justDelete = chat.peer != null || !chat.active || alone;
   final String body;
-  if (chat.peer != null || !chat.active) {
+  if (justDelete) {
     body = l.deleteChatBodyDirect;
   } else if (manager) {
     body = l.deleteChatBodyManager;
@@ -34,9 +39,7 @@ Future<bool> deleteChat(
     context,
     title: l.deleteChatTitle(chat.name),
     body: body,
-    action: manager || chat.peer != null || !chat.active
-        ? l.delete
-        : l.leaveAndDelete,
+    action: justDelete ? l.delete : l.leaveAndDelete,
   );
   if (!ok || !context.mounted) return false;
   final done = await guard(context, () async {
