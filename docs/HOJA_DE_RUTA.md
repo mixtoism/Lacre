@@ -57,7 +57,8 @@ DECISIONES.md.
    una dirección inalcanzable; anunciarse solo tras confirmar que se es
    alcanzable. → **Hecho (D-051):** AutoNAT v1, UPnP o `--external`.
 10. **IPv6** (D-019): en móvil suele haber IPv6 sin NAT, lo que facilita el
-    hole punching.
+    hole punching. → **Hecho (D-052):** escucha, caché y QR con IPv6.
+    Queda el encuentro en Mainline por IPv6.
 11. **Tor en el móvil** (D-020, D-021, D-023): ~~coste de batería~~
     **(modo de reposo, D-034)**. Queda: mostrar «conectando a Tor…» mientras
     se publica el servicio onion; comprobar desde fuera que sigue publicado.

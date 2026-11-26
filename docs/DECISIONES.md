@@ -3,7 +3,7 @@
 Cada decisión lleva su motivo y lo que queda pendiente. Si una decisión se
 revisa, no se borra: se marca como **sustituida por D-xxx**.
 
-Estado: endurecida tras una revisión de seguridad interna (D-039 a D-051),
+Estado: endurecida tras una revisión de seguridad interna (D-039 a D-052),
 2026-11-26. **No ha pasado ninguna auditoría externa**: hasta entonces no se
 puede afirmar que sea segura.
 
@@ -300,7 +300,8 @@ puede afirmar que sea segura.
   - ~~Un `--relay-server` tras NAT anuncia una dirección inalcanzable. Pendiente:
     anunciarse solo tras confirmar con AutoNAT que se es alcanzable.~~
     *(Resuelto en D-051.)*
-  - Solo IPv4.
+  - ~~Solo IPv4.~~ *(Conexiones por IPv6 en D-052; el punto de encuentro
+    sigue siendo solo IPv4.)*
 - **CGNAT:** muchas conexiones domésticas y casi todas las móviles tienen
   CGNAT. Ahí un nodo funciona bien como cliente (conexiones salientes al
   relay), igual que BitTorrent, pero no puede ser relay. Los móviles serán
@@ -308,8 +309,8 @@ puede afirmar que sea segura.
   (D-016). DCUtR falla a menudo tras CGNAT y entonces el tráfico sigue por
   el relay.
 - **Pendiente:**
-  - Soporte IPv6: en móvil suele haber IPv6 sin traducción de direcciones,
-    lo que facilita el hole punching.
+  - ~~Soporte IPv6: en móvil suele haber IPv6 sin traducción de direcciones,
+    lo que facilita el hole punching.~~ *(Hecho en D-052.)*
   - ~~Direcciones del dispositivo en el QR y caché de peers en disco~~ →
     hecho en D-021.
   - ~~Modo `--headless` para desplegar relays~~ → hecho: `--headless` y
@@ -1751,6 +1752,29 @@ puede afirmar que sea segura.
   - Las direcciones confirmadas se anuncian también por identify a todos
     los nodos (antes solo las de escucha); no revela más que la conexión.
 - **Pendiente:** AutoNAT v2 (comprueba cada dirección por separado).
+
+## D-052 · IPv6
+
+- **Contexto:** solo se escuchaba en IPv4, y la caché de peers y los QR solo
+  guardaban IPv4 pública (D-019, D-021). En el móvil suele haber IPv6
+  pública sin NAT. Decidido sin preguntar (se pidió completar el proyecto).
+- **Decisión:**
+  - Se escucha también en `/ip6/::` (TCP y QUIC, mismo puerto). Si el equipo
+    no tiene IPv6, se sigue solo con IPv4.
+  - Las direcciones IPv6 unicast globales (2000::/3, sin la de
+    documentación) cuentan como alcanzables desde otras redes: van a la
+    caché de peers, a los QR y a los códigos de vincular (como mucho dos,
+    para que el QR no crezca) y AutoNAT las comprueba (D-051).
+- **Motivo:** dos dispositivos con IPv6 pueden conectarse directamente sin
+  relay ni hole punching, si el cortafuegos de la red lo permite.
+- **Limitaciones:**
+  - Muchas redes móviles filtran las conexiones entrantes también en IPv6;
+    entonces sigue haciendo falta relay o DCUtR.
+  - El punto de encuentro en Mainline y trackers sigue siendo solo IPv4
+    (BEP 32 no está en la biblioteca usada).
+  - Las direcciones IPv6 temporales cambian a menudo: un QR antiguo puede
+    llevar una que ya no vale (la onion y los relays siguen sirviendo).
+- **Pendiente:** encuentro por IPv6.
 
 ## Preguntas abiertas
 - **Contribuciones:** ¿CLA o DCO? Afecta a la vía de la App Store (D-014).

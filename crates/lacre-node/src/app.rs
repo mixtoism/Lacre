@@ -1074,7 +1074,16 @@ impl App {
     /// Añade `@dirección` por cada dirección nuestra alcanzable desde otras
     /// redes (la onion, cuando ya está publicada).
     async fn append_addrs(&self, code: &mut String) {
+        // Con IPv6 suele haber varias direcciones (temporales); con dos
+        // basta, para que el QR no crezca de más.
+        let mut v6 = 0;
         for a in self.net.listen_addrs().await.unwrap_or_default() {
+            if matches!(a.iter().next(), Some(Protocol::Ip6(_))) {
+                if v6 == 2 || !is_dialable_from_anywhere(&a) {
+                    continue;
+                }
+                v6 += 1;
+            }
             if is_dialable_from_anywhere(&a) {
                 code.push('@');
                 code.push_str(&a.to_string());

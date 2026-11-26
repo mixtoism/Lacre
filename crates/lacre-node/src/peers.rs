@@ -5,7 +5,7 @@
 //! depender de nodos de arranque fijos. Es un archivo de texto con una
 //! dirección `…/p2p/<peer>` por línea, del más reciente al más antiguo.
 
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::PathBuf;
 
 use libp2p::multiaddr::Protocol;
@@ -84,7 +84,7 @@ fn split_peer(mut addr: Multiaddr) -> Option<(PeerId, Multiaddr)> {
     }
 }
 
-/// Servicio onion, o IPv4 pública sin pasar por un relay.
+/// Servicio onion, o IP pública (v4 o v6) sin pasar por un relay.
 pub fn is_dialable_from_anywhere(addr: &Multiaddr) -> bool {
     if addr.iter().any(|p| p == Protocol::P2pCircuit) {
         return false;
@@ -92,8 +92,15 @@ pub fn is_dialable_from_anywhere(addr: &Multiaddr) -> bool {
     match addr.iter().next() {
         Some(Protocol::Onion3(_)) => true,
         Some(Protocol::Ip4(ip)) => is_public(ip),
+        Some(Protocol::Ip6(ip)) => is_public_v6(ip),
         _ => false,
     }
+}
+
+/// Unicast global (2000::/3), salvo el rango de documentación.
+pub(crate) fn is_public_v6(ip: Ipv6Addr) -> bool {
+    let s = ip.segments();
+    (s[0] & 0xe000) == 0x2000 && !(s[0] == 0x2001 && s[1] == 0x0db8)
 }
 
 pub(crate) fn is_public(ip: Ipv4Addr) -> bool {
@@ -121,6 +128,8 @@ mod tests {
                 "/ip4/100.98.132.201/tcp/4001".parse().unwrap(),
                 "/ip4/85.87.64.38/tcp/4001".parse().unwrap(),
                 onion.clone(),
+                "/ip6/fe80::1/tcp/4001".parse().unwrap(),
+                "/ip6/2a00:1450:4003::1/tcp/4001".parse().unwrap(),
             ],
         );
         let reopened = PeerCache::open(path);
@@ -129,6 +138,7 @@ mod tests {
             vec![
                 "/ip4/85.87.64.38/tcp/4001".parse::<Multiaddr>().unwrap().with(Protocol::P2p(peer)),
                 onion.with(Protocol::P2p(peer)),
+                "/ip6/2a00:1450:4003::1/tcp/4001".parse::<Multiaddr>().unwrap().with(Protocol::P2p(peer)),
             ]
         );
         std::fs::remove_dir_all(dir).unwrap();

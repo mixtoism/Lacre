@@ -357,6 +357,13 @@ pub fn spawn(device_secret: [u8; 32], cfg: NetConfig) -> Result<(Client, mpsc::R
     if cfg.listen {
         swarm.listen_on(format!("/ip4/0.0.0.0/tcp/{}", cfg.port).parse()?)?;
         swarm.listen_on(format!("/ip4/0.0.0.0/udp/{}/quic-v1", cfg.port).parse()?)?;
+        // IPv6 (D-052): en el móvil suele haber IPv6 pública sin NAT. Sin
+        // IPv6 en el equipo, se sigue solo con IPv4.
+        for a in [format!("/ip6/::/tcp/{}", cfg.port), format!("/ip6/::/udp/{}/quic-v1", cfg.port)] {
+            if let Err(e) = swarm.listen_on(a.parse()?) {
+                debug!("no IPv6 listener on {a}: {e}");
+            }
+        }
     }
     for addr in cfg.external {
         swarm.add_external_address(addr);
@@ -446,11 +453,7 @@ fn is_relayed(addr: &Multiaddr) -> bool {
 fn is_global(addr: &Multiaddr) -> bool {
     match addr.iter().next() {
         Some(Protocol::Ip4(ip)) => crate::peers::is_public(ip),
-        Some(Protocol::Ip6(ip)) => {
-            let s = ip.segments()[0];
-            // Unicast global: 2000::/3.
-            (s & 0xe000) == 0x2000
-        }
+        Some(Protocol::Ip6(ip)) => crate::peers::is_public_v6(ip),
         _ => false,
     }
 }
@@ -900,7 +903,8 @@ mod tests {
         assert!(!g("/ip4/192.168.1.10/tcp/4001"));
         assert!(!g("/ip4/127.0.0.1/tcp/4001"));
         assert!(!g("/ip4/100.64.1.1/tcp/4001"));
-        assert!(g("/ip6/2001:db8::1/tcp/4001"));
+        assert!(g("/ip6/2a00:1450:4003::1/tcp/4001"));
+        assert!(!g("/ip6/2001:db8::1/tcp/4001"));
         assert!(!g("/ip6/fd00::1/tcp/4001"));
         assert!(!g("/ip6/fe80::1/tcp/4001"));
         assert!(!g("/ip6/::1/tcp/4001"));

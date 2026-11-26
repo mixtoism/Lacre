@@ -273,8 +273,8 @@ qr        = "p2m:" handle ":" BASE32(root_pk) *( "@" multiaddr )
 ```
 
 Las direcciones del QR son las del dispositivo que se pueden marcar desde
-cualquier red: `/onion3/…` o IPv4 públicas, nunca direcciones de relay ni
-privadas. Quien lee el QR DEBE comprobar que la clave raíz del registro
+cualquier red: `/onion3/…` o IP públicas (IPv4, o IPv6 unicast global,
+como mucho dos), nunca direcciones de relay ni privadas. Quien lee el QR DEBE comprobar que la clave raíz del registro
 resuelto es la del QR, y DEBE ignorar las direcciones que no entienda.
 
 ## 5. Directorio distribuido (DHT)
@@ -375,7 +375,7 @@ una IP pública en su interfaz, o fijada a mano.
 Un nodo conoce a otros por estas vías, en orden de preferencia:
 
 1. **Caché de peers**: hasta 64 peers con hasta 4 direcciones cada uno
-   (onion o IPv4 pública). Se vuelven a marcar al arrancar y cada 30 s
+   (onion o IP pública, v4 o v6 unicast global). Se vuelven a marcar al arrancar y cada 30 s
    mientras no haya conexión.
 2. **mDNS** en la red local (solo con wifi y en primer plano).
 3. **Direcciones de un QR** (§4.4).

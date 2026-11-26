@@ -379,7 +379,7 @@ p2m:<name>#<suffix>:<root_pk base32>[@<multiaddr>]…
 
 - The addresses are full multiaddrs (`…/p2p/<peer-id>`) of the device showing
   the QR. Only addresses reachable from another network are included: onion
-  services and public IPv4. Private, CGNAT and relay addresses are left out.
+  services and public IPv4/IPv6. Private, CGNAT and relay addresses are left out.
 - When you open a chat from a QR, the node first dials those addresses (for
   up to 60 s), then resolves the handle through the DHT and checks that the
   record's root key matches the QR's key.
@@ -437,7 +437,7 @@ Known risks and trade-offs:
   own backup.
 - **No independent audit yet.** An internal security review hardened
   linking, MLS membership checks, handle pinning and resource limits
-  (D-039–D-051), but nothing should be considered secure until audited.
+  (D-039–D-052), but nothing should be considered secure until audited.
 
 ---
 
@@ -651,7 +651,8 @@ Current limitations:
 - Earlier history reaches a new device only from another own device that is
   online (within 7 days); there is no backup, and copied history carries no
   author signatures.
-- Relay discovery is IPv4 only. A public IP on the interface is assumed
+- Relay discovery (Mainline, trackers) is IPv4 only; direct connections
+  also use IPv6 (D-052). A public IP on the interface is assumed
   reachable even if a firewall blocks it.
 - History is a single CBOR file rewritten on every message.
 
@@ -663,7 +664,7 @@ Planned:
 - Multiple admins and fork resolution.
 - Short handles (`/p2m/v1/name/`), with proof of work and expiry.
 - SQLite/SQLCipher storage and OS keystore integration.
-- IPv6, AutoNAT v2, an optional Tor-only anonymous
+- IPv6 rendezvous, AutoNAT v2, an optional Tor-only anonymous
   mode.
 
 ---
